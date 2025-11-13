@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-=======
-import os
-from accelerate import Accelerator
->>>>>>> a080f8f (Fix training script and slurm)
 from transformers import (
     AutoModelForCausalLM,
     DataCollatorForLanguageModeling,

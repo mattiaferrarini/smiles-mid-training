@@ -7,12 +7,20 @@ from pathlib import Path
 from utils.logging import setup_logging
 from utils.config import hf_auth, load_config
 from training.training import run_training_pipeline
+<<<<<<< HEAD
 from training.benchmarking import evaluate_baselines
+=======
+>>>>>>> 460caa6 (main)
 from training.baselines import download_baseline_models
 from tokenizer.registry import list_trainable_tokenizers
 from embeddings.cli import evaluate_embedding_strategy, list_embeddings
 from tokenizer.cli import evaluate_tokenizer, list_tokenizers, preview_tokenizer, train_tokenizer
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> 460caa6 (main)
 TRAINABLE_TOKENIZER_SCHEMES = sorted(list(list_trainable_tokenizers().keys()))
 DEFAULT_TOKENIZER_SCHEME = (
     TRAINABLE_TOKENIZER_SCHEMES[0] if TRAINABLE_TOKENIZER_SCHEMES else "bpe"

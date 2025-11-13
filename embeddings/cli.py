@@ -2,6 +2,7 @@ import json
 import yaml
 import typer
 
+from pathlib import Path
 from transformers import AutoModelForCausalLM
 
 from utils.config import hf_auth, load_config
@@ -27,6 +28,7 @@ def _write_embedding_metadata(
     num_tokens,
     stats,
 ):
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     metadata = {
@@ -68,6 +70,8 @@ def evaluate_embedding_strategy(
     hf_token=None,
     model_override=None,
 ):
+    if isinstance(num_tokens, str):
+        num_tokens = int(num_tokens)
     if num_tokens <= 0:
         typer.echo("ERROR: num_tokens must be a positive integer.")
         raise typer.Exit(code=1)
@@ -108,6 +112,7 @@ def evaluate_embedding_strategy(
         typer.echo(f"  {key}: {value:.6f}")
 
     if report_path is not None:
+        report_path = Path(report_path)
         report_path.parent.mkdir(parents=True, exist_ok=True)
         with report_path.open("w", encoding="utf-8") as handle:
             json.dump(

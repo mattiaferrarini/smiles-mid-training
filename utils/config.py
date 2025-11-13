@@ -1,6 +1,7 @@
 import os
 import yaml
 
+from pathlib import Path
 from dotenv import load_dotenv
 from huggingface_hub import login
 
@@ -9,6 +10,7 @@ from .logging import get_logger
 LOGGER = get_logger(__name__)
 
 def load_config(path):
+    path = Path(path)
     with path.open("r", encoding="utf-8") as config_file:
         return yaml.safe_load(config_file)
     

@@ -1,10 +1,14 @@
 
 import json
+from pathlib import Path
 from utils.logging import get_logger
 
 LOGGER = get_logger(__name__)
 
 def iter_text_samples(path, limit=None):
+    path = Path(path)
+    if isinstance(limit, str):
+        limit = int(limit)
     with path.open("r", encoding="utf-8") as src:
         for idx, line in enumerate(src):
             if limit is not None and idx >= limit:
@@ -74,6 +78,7 @@ def compute_tokenizer_metrics(
 def dump_metrics(metrics, report_path):
     if report_path is None:
         return
+    report_path = Path(report_path)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with report_path.open("w", encoding="utf-8") as handle:
         json.dump(metrics, handle, indent=2)

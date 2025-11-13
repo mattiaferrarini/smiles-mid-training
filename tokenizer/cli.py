@@ -1,6 +1,7 @@
 import json
 import yaml
 import typer
+from pathlib import Path
 
 from utils.logging import get_logger
 from utils.config import hf_auth, load_config
@@ -55,6 +56,7 @@ def _write_training_metadata(
     tokenizer_type,
     tokenizer_vocab_size,
 ):
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     metadata = {

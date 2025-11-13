@@ -6,11 +6,11 @@ from transformers import (
     set_seed,
 )
 
-from .utils import resolve_embedding_config, summarise_embedding_sections
-
 from utils.logging import get_logger
+from data.loading import load_train_eval_datasets
+from data.instruction import load_instruction_datasets
 from embeddings.registry import build_embedding_strategy
-from data.loading import load_instruction_datasets, load_train_eval_datasets
+from embeddings.utils import resolve_embedding_config, summarise_embedding_sections
 
 LOGGER = get_logger(__name__)
 

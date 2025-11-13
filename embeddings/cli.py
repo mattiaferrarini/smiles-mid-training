@@ -4,7 +4,7 @@ import typer
 
 from transformers import AutoModelForCausalLM
 
-from .config import hf_auth, load_config
+from utils.config import hf_auth, load_config
 from .utils import resolve_embedding_config, summarise_embedding_sections
 
 from utils.logging import get_logger

@@ -3,7 +3,7 @@ from transformers import PreTrainedTokenizerBase
 class ElementTokenizer(PreTrainedTokenizerBase):
     def __init__(self):
         super().__init__()
-        self.vocab = {"H": 1, "He": 2, "Li": 3, "Be": 4, "B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "Ne": 10} # TODO
+        self.vocab = {"H": 1, "He": 2, "Li": 3, "Be": 4, "B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "Ne": 10, "+": 11} # TODO
 
     def get_vocab(self):
         return self.vocab

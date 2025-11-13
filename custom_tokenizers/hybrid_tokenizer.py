@@ -3,7 +3,7 @@ from transformers import AutoTokenizer
 import os
 from dotenv import load_dotenv
 import re
-from element_tokenizer import ElementTokenizer
+from .element_tokenizer import ElementTokenizer
 
 class HybridTokenizer(PreTrainedTokenizerBase):
     def __init__(self, base_tokenizer, chem_tokenizer, chem_start, chem_end):

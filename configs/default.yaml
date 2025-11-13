@@ -1,0 +1,22 @@
+model:
+  name: google/gemma-3-4b-it
+
+tokenizer:
+  type: element
+
+embeddings:
+  strategy: mean_std
+
+data:
+  chemical_train: data/chemistry/train.txt
+  chemical_eval: data/chemistry/eval.txt
+  general_train: null
+  general_eval: null
+  chemical_fraction: 0.6
+
+training:
+  output_dir: artifacts/runs/chemistry_baseline
+  epochs: 1
+  batch_size: 2
+  eval_batch_size: 2
+  learning_rate: 5.0e-5

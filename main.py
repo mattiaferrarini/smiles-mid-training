@@ -7,12 +7,11 @@ from pathlib import Path
 from utils.logging import setup_logging
 from utils.config import hf_auth, load_config
 from training.training import run_training_pipeline
+from training.benchmarking import evaluate_baselines
 from training.baselines import download_baseline_models
 from tokenizer.registry import list_trainable_tokenizers
 from embeddings.cli import evaluate_embedding_strategy, list_embeddings
 from tokenizer.cli import evaluate_tokenizer, list_tokenizers, preview_tokenizer, train_tokenizer
-
-
 
 TRAINABLE_TOKENIZER_SCHEMES = sorted(list(list_trainable_tokenizers().keys()))
 DEFAULT_TOKENIZER_SCHEME = (
@@ -309,6 +308,86 @@ def train_command(
     config_dict = load_config(config)
     token = hf_auth(token_override=hf_token)
     run_training_pipeline(config_dict, token, embedding_override=embedding_strategy)
+
+@app.command("benchmark-baselines")
+def benchmark_baselines_command(
+    baselines_root=typer.Option(
+        Path("artifacts/baselines"),
+        "--baselines-root",
+        "-b",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        help="Directory containing downloaded baseline checkpoints.",
+    ),
+    model_names=typer.Option(
+        None,
+        "--model",
+        "-m",
+        help="Optional subset of baseline model folders to evaluate (repeatable).",
+    ),
+    output_dir=typer.Option(
+        Path("artifacts/benchmark-results"),
+        "--output-dir",
+        "-o",
+        help="Destination for ChemBench/ChemPile/ChemIQ reports.",
+    ),
+    prompt_type=typer.Option(
+        "instruction",
+        "--prompt-type",
+        help="ChemBench prompt template to use.",
+    ),
+    topics=typer.Option(
+        None,
+        "--topic",
+        "-t",
+        help="Limit ChemBench to specific topics (repeatable).",
+    ),
+    device=typer.Option(
+        "auto",
+        "--device",
+        help="Device override passed to the HF model wrapper.",
+    ),
+    torch_dtype=typer.Option(
+        "auto",
+        "--torch-dtype",
+        help="Torch dtype string (e.g. float16, bfloat16) or 'auto'.",
+    ),
+    max_new_tokens=typer.Option(
+        512,
+        "--max-new-tokens",
+        help="Maximum tokens generated per ChemBench prompt.",
+    ),
+    temperature=typer.Option(
+        0.0,
+        "--temperature",
+        help="Sampling temperature; >0 enables sampling.",
+    ),
+    chempile_command=typer.Option(
+        None,
+        "--chempile-command",
+        help="Shell template for invoking the official ChemPile runner (expects {model_dir}/{output_dir}).",
+    ),
+    chemiq_command=typer.Option(
+        None,
+        "--chemiq-command",
+        help="Shell template for invoking the official ChemIQ runner (expects {model_dir}/{output_dir}).",
+    ),
+):
+    summaries = evaluate_baselines(
+        baselines_root=baselines_root,
+        model_filters=list(model_names) if model_names else None,
+        output_root=output_dir,
+        prompt_type=prompt_type,
+        topics=list(topics) if topics else None,
+        device=device,
+        torch_dtype=torch_dtype,
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        chempile_command=chempile_command,
+        chemiq_command=chemiq_command,
+    )
+    typer.echo(f"Wrote summaries for {len(summaries)} model(s) to {output_dir}")
 
 
 if __name__ == "__main__":

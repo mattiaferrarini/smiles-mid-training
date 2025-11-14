@@ -2,9 +2,9 @@ from transformers import PreTrainedTokenizerBase
 from tokenizers import Tokenizer
 import re
 
-class ElementTokenizer(PreTrainedTokenizerBase):
+class ElementNoParenthesisTokenizer(PreTrainedTokenizerBase):
 
-    ATOM_LEVEL_PATTERN = r"(\[[^\]]+]|Br?|Cl?|[A-Z][a-z]?|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9])"
+    ATOM_LEVEL_PATTERN = r"(\[|\]|Br?|Cl?|[A-Z][a-z]?|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9])"
 
     def __init__(self):
         super().__init__()

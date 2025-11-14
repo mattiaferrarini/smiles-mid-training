@@ -1,6 +1,8 @@
 import os
 import csv
+import json
 import argparse
+from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 
@@ -66,14 +68,16 @@ def load_name_to_symbol(csv_path: Optional[str] = None) -> Dict[str, str]:
 
 
 def main() -> None:
-    """CLI entrypoint: print symbol -> atomic number vocabulary.
+    """CLI entrypoint: build symbol->atomic-number vocabulary and save as JSON.
 
-    Usage examples:
-        python .\\utils\\getelements.py
-        python .\\utils\\getelements.py --csv .\\csv\\Periodic Table of Elements.csv --sort symbol
+    The output JSON will be written to `json/vocab_symbol_to_number.json` under the
+    project root (two levels above this file) unless `--out` is provided.
+    The vocabulary will include `"[UNK]": 0` and then element symbols mapped to
+    their atomic numbers from the CSV.
     """
-    parser = argparse.ArgumentParser(description='Print element symbol -> atomic number vocabulary')
+    parser = argparse.ArgumentParser(description='Save element symbol -> atomic number vocabulary as JSON')
     parser.add_argument('--csv', '-c', help='Path to Periodic Table CSV', default=None)
+    parser.add_argument('--out', '-o', help='Output JSON path', default=None)
     parser.add_argument('--sort', choices=['atomic', 'symbol'], default='atomic', help='Sort output by atomic number or symbol')
     args = parser.parse_args()
 
@@ -85,8 +89,54 @@ def main() -> None:
     else:
         rows.sort(key=lambda r: r['symbol'])
 
+    # Build vocabulary: include [UNK]: 0
+    vocab: Dict[str, int] = {"[UNK]": 0}
     for r in rows:
-        print(f"{r['symbol']}: {r['atomic_number']}")
+        sym = r['symbol']
+        num = int(r['atomic_number'])
+        # ensure we don't overwrite [UNK]
+        if sym in vocab:
+            # skip or overwrite? we skip to preserve [UNK]
+            continue
+        vocab[sym] = num
+    vocab_add ={ "[": 119, 
+            "]": 120,
+            "(": 121, 
+            ")": 122,
+            ".": 123, 
+            "=": 124, 
+            "#": 125,
+            "-": 126,  
+            "+": 127,
+            "\\": 128,
+            "/": 129,
+            "@": 130, 
+            "1": 131,
+            "2": 132,
+            "3": 133,
+            "4": 134,
+            "5": 135,
+            "6": 136,
+            "7": 137,
+            "8": 138,
+            "9": 139}
+    
+    vocab.update(vocab_add)
+
+    # Determine output path
+    if args.out:
+        out_path = Path(args.out)
+    else:
+        base = Path(__file__).resolve().parent.parent
+        out_dir = base / 'json'
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / 'vocab_symbol_to_number.json'
+
+    # Save JSON
+    with out_path.open('w', encoding='utf-8') as fh:
+        json.dump(vocab, fh, ensure_ascii=False, indent=2)
+
+    print(f"Saved vocabulary ({len(vocab)} tokens) to: {out_path}")
 
 
 if __name__ == '__main__':

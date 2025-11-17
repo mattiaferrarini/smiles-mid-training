@@ -9,9 +9,18 @@
 #SBATCH --error=/iopsstor/scratch/cscs/$USER/logs/jobname_%j.log
 #SBATCH -A a131
 
+export ENV_NAME=ml4science
+
 # Activate conda environment
 source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
-conda activate ml4science
+
+if conda env list | grep -q "^$ENV_NAME "; then \
+  echo "Env exists - updating..."; \
+  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
+else \
+  conda create -n "$ENV_NAME" python=3.12 -y && \
+  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
+fi
 
 # Jobreport
 export JOBREPORT=/users/$USER/jobreport

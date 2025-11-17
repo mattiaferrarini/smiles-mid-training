@@ -37,11 +37,8 @@ class Gemma:
         #print(prompts)
         generations = []
         for prompt in prompts:
-            # generation = self.generate_text(messages)
-            print("Generating")
             generation = self.generate_text(prompt)
             generations.append([Generation(text=generation)])
-            print("Generated")
 
         return Generations(generations=generations)
 

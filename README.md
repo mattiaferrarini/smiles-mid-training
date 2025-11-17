@@ -117,6 +117,9 @@ I believe we need to change this to run long jobs.
 ### --nodes
 To change to two for big jobs (eg training)
 
+### --ntasks-per-node
+Probably we need to set it = ``--gres=gpu`` to have one task per GPU.
+
 ### Jobreport
 Just use it as in the examples we were given.
 

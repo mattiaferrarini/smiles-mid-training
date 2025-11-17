@@ -21,6 +21,6 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 export MODEL_NAME=google/gemma-3-4b-it
 export REPORT_FOLDER=/iopsstor/scratch/cscs/$USER/baseline
 
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- python baseline.py -m "$MODEL_NAME" -r "$REPORT_FOLDER" 
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- python baseline/baseline.py -m "$MODEL_NAME" -r "$REPORT_FOLDER" 
 
 $JOBREPORT print "$PROFILING_FOLDER"

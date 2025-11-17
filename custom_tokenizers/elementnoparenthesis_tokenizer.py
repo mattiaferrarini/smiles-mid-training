@@ -119,4 +119,3 @@ if __name__ == "__main__":
     tk.create_vocabulary(s, append_to_existing_vocabulary=False)
     print("Vocab size after create:", len(tk))
     print("Encoded:", tk(s))
-

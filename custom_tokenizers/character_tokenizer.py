@@ -104,3 +104,4 @@ if __name__ == "__main__":
     print("Vocab size after create:", len(tk))
     print("Encoded:", tk(s))
 
+

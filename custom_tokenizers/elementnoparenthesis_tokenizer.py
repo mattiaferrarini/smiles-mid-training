@@ -3,6 +3,7 @@ from tokenizers import Tokenizer
 import re
 import json
 from pathlib import Path
+import utils.helpers as helpers
 
 class ElementNoParenthesisTokenizer(PreTrainedTokenizerBase):
 
@@ -50,64 +51,17 @@ class ElementNoParenthesisTokenizer(PreTrainedTokenizerBase):
         return tokens
 
     def _load_vocab_from_json(self, path, append_to_existing_vocabulary=False):
-        p = Path(path)
-        if not p.exists():
-            print("Vocabulary file does not exist at path:", path)
-            return {}
-        with p.open("r", encoding="utf-8") as fh:
-            raw = json.load(fh)
-        # normalize types
-        vocab = {str(k): int(v) for k, v in raw.items()}
-        if append_to_existing_vocabulary:
-            for token in self.vocab.keys():
-                if token not in vocab:
-                    vocab[token] = self.vocab[token]
-        else:
-            # Ensure "[UNK]": 0 exists; if 0 is taken shift existing ids +1
-            if "[UNK]" in vocab:
-                if vocab["[UNK]"] != 0:
-                    # shift all ids by +1 and set [UNK]=0
-                    vocab = {k: (v + 1) if k != "[UNK]" else 0 for k, v in vocab.items()}
-                    vocab["[UNK]"] = 0
-            else:
-                if 0 in vocab.values():
-                    vocab = {k: (v + 1) for k, v in vocab.items()}
-                vocab["[UNK]"] = 0
-            return vocab
-    
+        return helpers._load_vocab_from_json(path, append_to_existing_vocabulary, self.vocab)
+
     def reset_vocabulary(self):
-        self.vocab = {'[UNK]': 0}
+        self.vocab = helpers.reset_vocabulary()
 
     def load_vocabulary(self, vocab_path="../json/vocab_symbol_to_number.json"):
-        try:
-            self.vocab = self._load_vocab_from_json(vocab_path)
-            return self.vocab
-        except Exception as e:
-            print("Json file not found or could not be loaded:", e)
-            return {}
+        self.vocab = helpers.load_vocabulary(vocab_path)
+
 
     def create_vocabulary(self, text, append_to_existing_vocabulary=False, vocab_path="../json/vocab_symbol_to_number.json", save_vocabulary=False):
-        if append_to_existing_vocabulary:
-            try:
-                vocab_file = self._load_vocab_from_json(vocab_path)
-                for token in vocab_file.keys():
-                    if token not in self.vocab:
-                        self.vocab[token] = vocab_file[token]
-            except Exception as e:
-                print("Json file not found or could not be loaded:", e)
-        
-        tokens = self._tokenize(text)
-        max_id = max(self.vocab.values()) if self.vocab else -1
-        next_id = max_id + 1        
-        for token in tokens:
-            if token not in self.vocab:
-                self.vocab[token] = next_id
-                next_id += 1
-        # Save updated vocabulary to JSON
-        if save_vocabulary:
-            with open(vocab_path, 'w', encoding='utf-8') as fh:
-                import json
-                json.dump(self.vocab, fh, ensure_ascii=False, indent=2)
+        self.vocab = helpers.create_vocabulary( text, self._tokenize, append_to_existing_vocabulary, vocab_path, save_vocabulary, self.vocab)
 
 
 if __name__ == "__main__":

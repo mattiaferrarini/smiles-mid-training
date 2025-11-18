@@ -9,7 +9,6 @@
 #SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH -A a131
 
-set -ex
 
 export ENV_NAME=ml4science
 

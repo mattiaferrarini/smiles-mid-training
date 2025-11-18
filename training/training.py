@@ -1,3 +1,4 @@
+import os
 from accelerate import Accelerator
 from transformers import (
     AutoModelForCausalLM,
@@ -39,7 +40,7 @@ def train(model_name, data_folder, output_dir, text_field):
     # model.gradient_checkpointing_enable()
     
     # Load and process dataset
-    dataset = load_dataset("arrow", data_dir=data_folder)
+    dataset = load_dataset("arrow", data_dir=data_folder, data_files="**/*.arrow")
     dataset = dataset["train"]
     
     # TODO: Maybe we need to format examples
@@ -98,11 +99,11 @@ def main():
     data_folder = args.data_folder
     output_dir = args.output_dir
     text_field = args.text_field
-
-    # Create timestamped output directory
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = str(Path(output_dir) / timestamp)
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    
+    if "SLURM_PROCID" in os.environ:
+        os.environ["RANK"] = os.environ["SLURM_PROCID"]
+        os.environ["LOCAL_RANK"] = os.environ["SLURM_LOCALID"]
+        os.environ["WORLD_SIZE"] = os.environ["SLURM_NTASKS"]
 
     # Initialize distributed training
     accelerator = Accelerator()
@@ -115,6 +116,11 @@ def main():
         print(f"Training on text field: {text_field}")
         print(f"Distributed: {accelerator.distributed_type}")
         print(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
+	
+	# Create timestamped output directory
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = str(Path(output_dir) / timestamp)
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     # Start training
     trainer = train(model_name, data_folder, output_dir, text_field)

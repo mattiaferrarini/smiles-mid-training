@@ -70,9 +70,25 @@ source ~/.bashrc
 My idea is to create and update conda environments directly within the SLURM jobs (see `slurm/baseline.slurm` for an example) as that seems the easiest way to run jobs without having to remember to do many things.
 
 
+### Jobreport
+This needs to be installed in your home folder as well. Following [documentation](https://confluence.cscs.ch/spaces/KB/pages/862946109/Batch+Job+Summary+Report):
+
+1. Get jobreport:
+```
+wget https://github.com/eth-cscs/alps-jobreport/releases/download/v0.1/jobreport
+```
+
+2. Make it executable:
+```
+chmod +x ./jobreport
+```
+
 ---------------------------------------------
 
 ## Running SLURM jobs
+
+> ### ! Important
+> Remember to create your ``.env`` with your tokens as discussed above.
 
 To run a slurm job:
 ```

@@ -31,7 +31,7 @@ def train(model_name, data_folder, output_dir, text_field):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype="auto",
+        dtype="auto",
         device_map=None # Let accelerator handle device mapping
     )
     

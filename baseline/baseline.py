@@ -8,11 +8,9 @@ from chembench.evaluate import ChemBenchmark
 from chembench.prompter import PrompterBuilder
 import json
 
-MODEL_NAME = "HuggingFaceTB/SmolLM-360M-Instruct" 
-
 class Gemma:
     def __init__(self, model_id: str) -> None:
-        self.model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto", torch_dtype="auto", trust_remote_code=True)
+        self.model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto", dtype="auto", trust_remote_code=True)
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         self.pipeline = pipeline(
             "text-generation",
@@ -33,10 +31,10 @@ class Gemma:
         output = self.pipeline(formatted_prompt, **generation_args)
         return output[0]["generated_text"]
 
-    def generate(self, prompts: List[str], **kwargs): # 
-        #print(prompts)
+    def generate(self, prompts: List[str], **kwargs) -> Generations:
         generations = []
-        for prompt in prompts:
+        for i, prompt in enumerate(prompts):
+            print(f"Generating for prompt {i+1}/{len(prompts)}")
             generation = self.generate_text(prompt)
             generations.append([Generation(text=generation)])
 
@@ -47,8 +45,8 @@ if __name__ == "__main__":
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="Run ChemBench baseline with a selectable model.")
-    parser.add_argument("--model-name", "-m", type=str, default=MODEL_NAME,
-                        help=f"Model to load from Hugging Face (default: {MODEL_NAME})")
+    parser.add_argument("--model-name", "-m", type=str, default="HuggingFaceTB/SmolLM-360M-Instruct",
+                        help=f"Model to load from Hugging Face")
     parser.add_argument("--report-dir", "-r", type=str, default="reports",
                         help="Directory where benchmark reports are stored (default: reports)")
     args = parser.parse_args()

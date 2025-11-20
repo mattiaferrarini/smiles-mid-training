@@ -1,4 +1,4 @@
-
+import yaml
 import typer
 import logging
 
@@ -7,20 +7,12 @@ from pathlib import Path
 from utils.logging import setup_logging
 from utils.config import hf_auth, load_config
 from training.training import run_training_pipeline
-<<<<<<< HEAD
 from training.benchmarking import evaluate_baselines
-=======
->>>>>>> 460caa6 (main)
 from training.baselines import download_baseline_models
 from tokenizer.registry import list_trainable_tokenizers
 from embeddings.cli import evaluate_embedding_strategy, list_embeddings
 from tokenizer.cli import evaluate_tokenizer, list_tokenizers, preview_tokenizer, train_tokenizer
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> 460caa6 (main)
 TRAINABLE_TOKENIZER_SCHEMES = sorted(list(list_trainable_tokenizers().keys()))
 DEFAULT_TOKENIZER_SCHEME = (
     TRAINABLE_TOKENIZER_SCHEMES[0] if TRAINABLE_TOKENIZER_SCHEMES else "bpe"
@@ -320,12 +312,18 @@ def train_command(
         help="Override the output directory defined in the config.",
     ),
 ):
-    run_training_pipeline(
-        config_path=str(config),
-        model_name=model_name,
-        data_folder=data_folder,
-        output_dir=output_dir,
-    )
+    with open(config, "r") as fh:
+        cfg = yaml.safe_load(fh)
+
+    if model_name:
+        cfg.setdefault("model", {})["name"] = model_name
+    if data_folder:
+        cfg.setdefault("data", {})["data_folder"] = str(data_folder)
+    if output_dir:
+        cfg.setdefault("training", {})["output_dir"] = str(output_dir)
+
+    token = hf_auth()
+    run_training_pipeline(cfg, token, embedding_override=None)
 
 @app.command("benchmark-baselines")
 def benchmark_baselines_command(

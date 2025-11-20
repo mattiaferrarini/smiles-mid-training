@@ -32,6 +32,10 @@ def _default_training_section():
         "seed": 42,
     }
 
+#wandb update#
+import subprocess
+import shutil
+import logging
 
 def _normalise_training_config(raw_cfg):
     cfg = {**_default_training_section(), **raw_cfg}

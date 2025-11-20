@@ -1,6 +1,6 @@
 
 from pathlib import Path
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from huggingface_hub import snapshot_download
 
 from utils.logging import get_logger
 
@@ -69,32 +69,20 @@ def download_baseline_models(
     for spec in specs:
         model_name = spec["name"]
         revision = spec.get("revision")
-        model_kwargs = spec.get("model_kwargs") or {}
-        tokenizer_kwargs = spec.get("tokenizer_kwargs") or {}
 
         if output_dir is not None:
-            target_dir = output_dir / model_name.replace("/", "-")
+            target_dir = Path(output_dir) / model_name.replace("/", "-")
         else:
             target_dir = Path("artifacts/baselines") / model_name.replace("/", "-")
 
-        target_dir.mkdir(parents=True, exist_ok=True)
+        LOGGER.info("Ensuring baseline model %s is available at %s", model_name, target_dir)
 
-        LOGGER.info("Downloading baseline model %s -> %s", model_name, target_dir)
-
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
+        snapshot_download(
+            repo_id=model_name,
             revision=revision,
+            local_dir=target_dir,
             token=hf_token,
-            **model_kwargs,
-        )
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            revision=revision,
-            token=hf_token,
-            **tokenizer_kwargs,
+            local_dir_use_symlinks=False,
         )
 
-        model.save_pretrained(target_dir)
-        tokenizer.save_pretrained(target_dir)
-
-        LOGGER.info("Saved baseline model artifacts for %s", model_name)
+        LOGGER.info("Verified baseline model artifacts for %s", model_name)

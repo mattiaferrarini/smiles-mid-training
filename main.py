@@ -301,21 +301,31 @@ def train_command(
         file_okay=True,
         dir_okay=False,
     ),
-    embedding_strategy=typer.Option(
+    model_name=typer.Option(
         None,
-        "--embedding-strategy",
-        "-es",
-        help="Override the embedding initialisation strategy defined in the config.",
+        "--model-name",
+        "-m",
+        help="Override the model name defined in the config.",
     ),
-    hf_token=typer.Option(
+    data_folder=typer.Option(
         None,
-        "--hf-token",
-        help="Optional Hugging Face token override for gated models.",
+        "--data-folder",
+        "-d",
+        help="Override the data folder defined in the config.",
+    ),
+    output_dir=typer.Option(
+        None,
+        "--output-dir",
+        "-o",
+        help="Override the output directory defined in the config.",
     ),
 ):
-    config_dict = load_config(config)
-    token = hf_auth(token_override=hf_token)
-    run_training_pipeline(config_dict, token, embedding_override=embedding_strategy)
+    run_training_pipeline(
+        config_path=str(config),
+        model_name=model_name,
+        data_folder=data_folder,
+        output_dir=output_dir,
+    )
 
 @app.command("benchmark-baselines")
 def benchmark_baselines_command(
@@ -381,7 +391,24 @@ def benchmark_baselines_command(
         "--chemiq-command",
         help="Shell template for invoking the official ChemIQ runner (expects {model_dir}/{output_dir}).",
     ),
+    config=typer.Option(
+        Path("configs/default.yaml"),
+        "--config",
+        "-c",
+        help="Path to YAML configuration file used to resolve default model if not provided.",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+    ),
 ):
+    if not model_names:
+        config_dict = load_config(config)
+        model_cfg = config_dict.get("model")
+        if isinstance(model_cfg, str):
+            model_names = [model_cfg]
+        elif isinstance(model_cfg, dict) and "name" in model_cfg:
+            model_names = [model_cfg["name"]]
+
     summaries = evaluate_baselines(
         baselines_root=baselines_root,
         model_filters=list(model_names) if model_names else None,

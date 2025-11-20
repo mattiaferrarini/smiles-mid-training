@@ -1,10 +1,12 @@
 import json
-import subprocess
-from datetime import datetime
-from pathlib import Path
-
 import torch
+import subprocess
+import os
+
+from pathlib import Path
+from datetime import datetime
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from dotenv import load_dotenv
 
 from utils.logging import get_logger
 
@@ -240,6 +242,18 @@ def run_chembench(
     results = benchmark.bench(prompter, topics=list(topics) if topics else None)
     save_topic_reports(benchmark, results, report_name=run_id)
 
+    # Calculate aggregate score
+    scores = []
+    for result in results:
+        # ChemBench TaskResult usually has a 'metrics' dict
+        metrics = getattr(result, "metrics", {})
+        # Try common metric names
+        score = metrics.get("all_correct") or metrics.get("multiple_choice_grade") or metrics.get("exact_str_match")
+        if score is not None:
+            scores.append(float(score))
+    
+    mean_score = sum(scores) / len(scores) if scores else 0.0
+
     summary_path = _latest_summary(output_dir)
     return BenchmarkOutcome(
         name="chembench",
@@ -248,6 +262,7 @@ def run_chembench(
         details={
             "num_results": len(results),
             "report_root": str(output_dir),
+            "mean_score": mean_score,
         },
     )
 
@@ -327,7 +342,6 @@ def evaluate_single_model(
     torch_dtype,
     max_new_tokens,
     temperature,
-    chempile_command,
     chemiq_command,
 ):
     model_path = Path(model_path)
@@ -352,14 +366,6 @@ def evaluate_single_model(
             dataset_name=chembench_dataset,
             prompt_type=prompt_type,
             topics=topics,
-        )
-    )
-    outcomes.append(
-        run_external_benchmark(
-            "chempile",
-            chempile_command,
-            model_path=model_path,
-            output_dir=model_output_dir / "chempile",
         )
     )
     outcomes.append(
@@ -403,7 +409,7 @@ def discover_baseline_models(baselines_root, selected=None):
             raise FileNotFoundError(f"Baseline '{entry}' not found under {root}")
         return paths
 
-    return sorted(path for path in root.iterdir() if path.is_dir())
+    return sorted(path for path in root.iterdir() if path.is_dir() and not path.name.startswith("."))
 
 
 def evaluate_baselines(
@@ -417,9 +423,16 @@ def evaluate_baselines(
     torch_dtype="auto",
     max_new_tokens=512,
     temperature=0.0,
-    chempile_command=None,
     chemiq_command=None,
 ):
+    load_dotenv()
+    try:
+        import wandb
+        has_wandb = True
+    except ImportError:
+        has_wandb = False
+        LOGGER.warning("WandB not installed, skipping logging")
+
     baselines = discover_baseline_models(Path(baselines_root), model_filters)
     if not baselines:
         raise RuntimeError(f"No baseline models found under {baselines_root}")
@@ -440,10 +453,46 @@ def evaluate_baselines(
             torch_dtype=torch_dtype,
             max_new_tokens=max_new_tokens,
             temperature=temperature,
-            chempile_command=chempile_command,
             chemiq_command=chemiq_command,
         )
         summaries.append(summary)
+
+        if has_wandb and os.getenv("WANDB_API_KEY"):
+            try:
+                model_name = summary["model"]
+                run = wandb.init(
+                    project="smiles-mid-training-benchmarks",
+                    name=f"benchmark-{model_name}",
+                    config={
+                        "model": model_name,
+                        "prompt_type": prompt_type,
+                        "topics": topics,
+                        "max_new_tokens": max_new_tokens,
+                        "temperature": temperature,
+                    },
+                    reinit=True,
+                )
+                
+                # Log metrics
+                metrics = {}
+                for outcome in summary["outcomes"]:
+                    name = outcome["name"]
+                    details = outcome["details"]
+                    if name == "chembench" and "mean_score" in details:
+                        metrics[f"{name}/mean_score"] = details["mean_score"]
+                    if "exit_code" in details:
+                        metrics[f"{name}/exit_code"] = details["exit_code"]
+                
+                wandb.log(metrics)
+                
+                # Log artifacts
+                artifact = wandb.Artifact(f"benchmark-report-{model_name}", type="benchmark-report")
+                artifact.add_dir(str(output_root / model_name))
+                run.log_artifact(artifact)
+                
+                run.finish()
+            except Exception as e:
+                LOGGER.warning("Failed to log to WandB: %s", e)
 
     aggregate = {
         "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",

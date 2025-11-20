@@ -20,7 +20,7 @@ if conda env list | grep -q "^$ENV_NAME "; then \
   conda run -n "$ENV_NAME" pip install -r requirements.txt; \
 else \
   echo "Creating conda env"; \
-  conda create -n "$ENV_NAME" python=3.12 -y && \
+  conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
   conda run -n "$ENV_NAME" pip install -r requirements.txt; \
 fi
 
@@ -46,11 +46,9 @@ mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
-# Training settings
-export MODEL_NAME=google/gemma-3-4b-it
-export DATA_FOLDER=/capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1
+# Configuration
+export CONFIG_PATH=configs/baseline.yaml
 export OUTPUT_DIR=/iopsstor/scratch/cscs/$USER/finetuning
-export TEXT_FIELD=text
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -61,7 +59,10 @@ export MASTER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0
 export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
-# Run the training with jobreport
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training.py --model-name "$MODEL_NAME" --data-folder "$DATA_FOLDER" --output-dir "$OUTPUT_DIR" --text-field "$TEXT_FIELD"
+# Run training with jobreport
+echo "Running training with config: $CONFIG_PATH"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py train \
+    --config "$CONFIG_PATH" \
+    --output-dir "$OUTPUT_DIR"
 
 $JOBREPORT print "$PROFILING_FOLDER"

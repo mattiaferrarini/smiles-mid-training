@@ -25,7 +25,7 @@ import wandb
 DDP_BACKEND = "nccl"
 
 
-def train(config):
+def train(config, accelerator, output_dir):
     # Load tokenizer and model    
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
     model = AutoModelForCausalLM.from_pretrained(
@@ -43,19 +43,30 @@ def train(config):
     
     # TODO: Maybe we need to format examples
     # Tokenize the text field
-    dataset = dataset.map(
-        lambda x: tokenizer(x[config["data"]["text_field"]]), 
-        batched=True,
-        num_proc=config["training"]["num_workers"],
-	batch_size=5000
-    )
-    
+    # Silence progress bars on non-main processes
+    if not accelerator.is_main_process:
+        datasets.utils.logging.disable_progress_bar()
+
+    # Process dataset with main process
+    with accelerator.main_process_first():
+        dataset = dataset.map(
+            lambda x: tokenizer(x[config["data"]["text_field"]]), 
+            batched=True,
+            num_proc=config["training"]["num_workers"],
+            batch_size=5000, 
+            load_from_cache_file=True, 
+        )
+
+    # Re-enable logging
+    if not accelerator.is_main_process:
+        datasets.utils.logging.enable_progress_bar()   
+ 
     # Data collator
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
     
     # Training arguments
     training_args = TrainingArguments(
-        output_dir=config["training"]["output_dir"],
+        output_dir=output_dir,
         per_device_train_batch_size=config["training"]["per_device_batch_size"],
         gradient_accumulation_steps=config["training"]["gradient_accumulation_steps"],
         num_train_epochs=config["training"]["epochs"],
@@ -143,7 +154,7 @@ def main():
     init_wandb(config)
 
     # Start training
-    trainer = train(config)
+    trainer = train(config, accelerator, output_dir)
     
     # Save final model
     final_model_dir = f"{output_dir}/final-model"

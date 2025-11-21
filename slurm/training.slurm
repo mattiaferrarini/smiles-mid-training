@@ -38,7 +38,6 @@ export HF_DATASETS_CACHE="/iopsstor/scratch/cscs/$USER/cache/huggingface/dataset
 # Create needed folders
 mkdir -p /iopsstor/scratch/cscs/$USER/logs
 mkdir -p /iopsstor/scratch/cscs/$USER/jobreports
-mkdir -p /iopsstor/scratch/cscs/$USER/finetuning
 mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface"
 mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 
@@ -47,10 +46,8 @@ export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
 # Training settings
-export MODEL_NAME=google/gemma-3-4b-it
-export DATA_FOLDER=/capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1
 export OUTPUT_DIR=/iopsstor/scratch/cscs/$USER/finetuning
-export TEXT_FIELD=text
+export CONFIG_PATH=configs/default.yaml
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -62,6 +59,6 @@ export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
 # Run the training with jobreport
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training.py --model-name "$MODEL_NAME" --data-folder "$DATA_FOLDER" --output-dir "$OUTPUT_DIR" --text-field "$TEXT_FIELD"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 
 $JOBREPORT print "$PROFILING_FOLDER"

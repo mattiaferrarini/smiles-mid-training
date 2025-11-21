@@ -1,0 +1,33 @@
+job:
+  name: chemistry_baseline_training
+
+model:
+  name: google/gemma-3-4b-it
+
+data:
+  data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1
+  text_field: text_annotated_v1
+
+training:
+  epochs: 2 
+  batch_size: 2
+  gradient_accumulation_steps: 4
+  learning_rate: 2.0e-5
+  warmup_steps: 100
+  weight_decay: 0.0
+  save_steps: 1000
+  logging_steps: 50
+  bf16: true
+  fp16: false
+  evaluation_strategy: "no"
+  save_strategy: "no"
+  seed: 42
+  gradient_checkpointing: false
+  num_workers: 4
+  per_device_batch_size: 2
+
+tokenizer:
+  type: element
+
+embeddings:
+  strategy: mean_std

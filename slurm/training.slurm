@@ -1,8 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=gemma_finetuning
 #SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=64
 #SBATCH --time=00:30:00
-#SBATCH --partition=normal
+#SBATCH --partition=debug
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
@@ -57,6 +58,8 @@ export MASTER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0
 # Get full path to python exec
 export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
+
+export TOKENIZERS_PARALLELISM=false
 
 # Run the training with jobreport
 srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"

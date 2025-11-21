@@ -14,6 +14,7 @@ from transformers import (
     TrainingArguments
 )
 from datasets import load_dataset
+import datasets
 from dotenv import load_dotenv
 import argparse
 from datetime import datetime
@@ -46,6 +47,7 @@ def train(config):
         lambda x: tokenizer(x[config["data"]["text_field"]]), 
         batched=True,
         num_proc=config["training"]["num_workers"],
+	batch_size=5000
     )
     
     # Data collator

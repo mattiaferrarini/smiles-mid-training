@@ -20,6 +20,7 @@ import argparse
 from datetime import datetime
 from utils.config import load_config
 import wandb
+import torch
 
 # Training hyperparameters
 DDP_BACKEND = "nccl"
@@ -30,7 +31,7 @@ def train(config, accelerator, output_dir):
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
     model = AutoModelForCausalLM.from_pretrained(
         config["model"]["name"],
-        dtype="auto",
+        dtype=torch.bfloat16,
         device_map=None # Let accelerator handle device mapping
     )
     
@@ -41,20 +42,33 @@ def train(config, accelerator, output_dir):
     dataset = load_dataset("arrow", data_dir=config["data"]["data_folder"], data_files="**/*.arrow")
     dataset = dataset["train"]
     
-    # TODO: Maybe we need to format examples
     # Tokenize the text field
     # Silence progress bars on non-main processes
     if not accelerator.is_main_process:
         datasets.utils.logging.disable_progress_bar()
 
+    def tokenize_and_split(examples):
+        outputs = tokenizer(
+            examples[config["data"]["text_field"]],
+            truncation=True,
+            max_length=config["training"]["max_length"],
+            return_overflowing_tokens=True, # Split long samples
+            stride=config["training"]["stride_size"] # Overlap between chunks
+        )
+        
+        if "overflow_to_sample_mapping" in outputs:
+            outputs.pop("overflow_to_sample_mapping")
+            
+        return outputs
+
     # Process dataset with main process
     with accelerator.main_process_first():
         dataset = dataset.map(
-            lambda x: tokenizer(x[config["data"]["text_field"]]), 
+            tokenize_and_split,
             batched=True,
             num_proc=config["training"]["num_workers"],
             batch_size=10000,
-	    remove_columns=dataset.column_names, 
+	        remove_columns=dataset.column_names, 
             load_from_cache_file=True 
         )
 
@@ -80,7 +94,7 @@ def train(config, accelerator, output_dir):
         remove_unused_columns=False,
         dataloader_num_workers=config["training"]["num_workers"],
         ddp_backend=DDP_BACKEND,
-	ddp_find_unused_parameters=True,
+	    ddp_find_unused_parameters=True,
         report_to="wandb",
         gradient_checkpointing=config["training"]["gradient_checkpointing"],
         gradient_checkpointing_kwargs={"use_reentrant": False},

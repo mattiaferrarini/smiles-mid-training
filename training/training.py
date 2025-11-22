@@ -34,8 +34,8 @@ def train(config, accelerator, output_dir):
         device_map=None # Let accelerator handle device mapping
     )
     
-    # TODO: Maybe enable gradient checkpointing
-    # model.gradient_checkpointing_enable()
+    if config["training"]["gradient_checkpointing"]:
+        model.gradient_checkpointing_enable()
     
     # Load and process dataset
     dataset = load_dataset("arrow", data_dir=config["data"]["data_folder"], data_files="**/*.arrow")
@@ -53,8 +53,9 @@ def train(config, accelerator, output_dir):
             lambda x: tokenizer(x[config["data"]["text_field"]]), 
             batched=True,
             num_proc=config["training"]["num_workers"],
-            batch_size=5000, 
-            load_from_cache_file=True, 
+            batch_size=10000,
+	    remove_columns=dataset.column_names, 
+            load_from_cache_file=True 
         )
 
     # Re-enable logging
@@ -79,8 +80,10 @@ def train(config, accelerator, output_dir):
         remove_unused_columns=False,
         dataloader_num_workers=config["training"]["num_workers"],
         ddp_backend=DDP_BACKEND,
+	ddp_find_unused_parameters=True,
         report_to="wandb",
-        # gradient_checkpointing=config["training"]["gradient_checkpointing"],
+        gradient_checkpointing=config["training"]["gradient_checkpointing"],
+        gradient_checkpointing_kwargs={"use_reentrant": False},
     )
     
     # Initialize Trainer
@@ -88,7 +91,7 @@ def train(config, accelerator, output_dir):
         model=model,
         args=training_args,
         train_dataset=dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         data_collator=data_collator,
     )
     
@@ -145,13 +148,13 @@ def main():
         print(f"Config: {config}")
         print(f"Output dir: {output_dir}")
 	
-	    # Create timestamped output directory
+	# Create timestamped output directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = str(Path(output_dir) / timestamp)
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # Initialize wandb
-    init_wandb(config)
+        # Initialize wandb
+        init_wandb(config)
 
     # Start training
     trainer = train(config, accelerator, output_dir)

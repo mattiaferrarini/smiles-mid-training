@@ -10,8 +10,8 @@ data:
 
 training:
   epochs: 2 
-  batch_size: 32
-  gradient_accumulation_steps: 4
+  batch_size: 8
+  gradient_accumulation_steps: 1
   learning_rate: 2.0e-5
   warmup_steps: 100
   weight_decay: 0.0
@@ -22,7 +22,7 @@ training:
   evaluation_strategy: "no"
   save_strategy: "no"
   seed: 42
-  gradient_checkpointing: false
+  gradient_checkpointing: true
   num_workers: 64
   per_device_batch_size: 2
 

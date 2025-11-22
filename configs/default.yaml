@@ -8,13 +8,27 @@ data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1
   text_field: text_annotated_v1
 
+distributed:
+  strategy: "fsdp" # Options: "ddp" or "fsdp"
+  
+  ddp:
+    find_unused_parameters: true
+    backend: "nccl"
+
+  fsdp:
+    policy: "full_shard auto_wrap" 
+    config:
+      fsdp_offload_params: false
+      fsdp_state_dict_type: "FULL_STATE_DICT"
+      fsdp_transformer_layer_cls_to_wrap: "Gemma3DecoderLayer"
+
 training:
   epochs: 2 
   gradient_accumulation_steps: 10
   learning_rate: 2.0e-5
   warmup_steps: 100
   weight_decay: 0.0
-  save_steps: 1000
+  save_steps: 1
   logging_steps: 1
   bf16: true
   fp16: false

@@ -26,6 +26,53 @@ import torch
 # Training hyperparameters
 DDP_BACKEND = "nccl"
 
+def prepare_training_args(config, output_dir):
+    strategy = config["distributed"]["strategy"]
+
+    # Common arguments
+    args_dict = {
+        "output_dir": output_dir,
+        "per_device_train_batch_size": config["training"]["per_device_batch_size"],
+        "gradient_accumulation_steps": config["training"]["gradient_accumulation_steps"],
+        "num_train_epochs": config["training"]["epochs"],
+        "warmup_steps": config["training"]["warmup_steps"],
+        "learning_rate": config["training"]["learning_rate"],
+        "bf16": config["training"]["bf16"],
+        "fp16": config["training"]["fp16"],
+        "remove_unused_columns": False,
+        "dataloader_num_workers": config["training"]["num_workers"],
+        "report_to": config["training"]["report_to"],
+        "gradient_checkpointing": config["training"]["gradient_checkpointing"],
+        "gradient_checkpointing_kwargs": {"use_reentrant": False},
+        "save_strategy": config["training"]["save_strategy"],
+        "save_steps": config["training"]["save_steps"],
+        "logging_steps": config["training"]["logging_steps"],
+    }
+
+    if strategy == "fsdp":
+        # FSDP-specific arguments
+        fsdp_conf = config["distributed"]["fsdp"]
+        args_dict["fsdp"] = fsdp_conf["policy"]
+        fsdp_inner_config = fsdp_conf["config"].copy()
+
+        if "fsdp_transformer_layer_cls_to_wrap" in fsdp_inner_config:
+            args_dict["fsdp_transformer_layer_cls_to_wrap"] = fsdp_inner_config.pop("fsdp_transformer_layer_cls_to_wrap")
+            print(f"FSDP Wrapping Layer: {args_dict['fsdp_transformer_layer_cls_to_wrap']}")
+        
+        args_dict["fsdp_config"] = fsdp_inner_config
+        
+        print(f"Training Strategy: FSDP ({args_dict['fsdp']})")
+    elif strategy == "ddp":
+        # DDP-specific arguments
+        ddp_conf = config["distributed"]["ddp"]
+        args_dict["ddp_backend"] = ddp_conf["backend"]
+        args_dict["ddp_find_unused_parameters"] = ddp_conf["find_unused_parameters"]
+        print(f"Training Strategy: DDP (Backend: {args_dict['ddp_backend']})")
+    else:
+        raise ValueError(f"Unsupported distributed strategy: {strategy}")
+    
+    training_args = TrainingArguments(**args_dict)
+    return training_args
 
 def train(config, accelerator, output_dir):
     # Load tokenizer and model    
@@ -94,26 +141,7 @@ def train(config, accelerator, output_dir):
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
     
     # Training arguments
-    training_args = TrainingArguments(
-        output_dir=output_dir,
-        per_device_train_batch_size=config["training"]["per_device_batch_size"],
-        gradient_accumulation_steps=config["training"]["gradient_accumulation_steps"],
-        num_train_epochs=config["training"]["epochs"],
-        warmup_steps=config["training"]["warmup_steps"],
-        learning_rate=config["training"]["learning_rate"],
-        bf16=config["training"]["bf16"],
-        fp16=config["training"]["fp16"],
-        remove_unused_columns=False,
-        dataloader_num_workers=config["training"]["num_workers"],
-        ddp_backend=DDP_BACKEND,
-	    ddp_find_unused_parameters=True,
-        report_to=config["training"]["report_to"],
-        gradient_checkpointing=config["training"]["gradient_checkpointing"],
-        gradient_checkpointing_kwargs={"use_reentrant": False},
-        save_strategy=config["training"]["save_strategy"],
-        save_steps=config["training"]["save_steps"],
-        logging_steps=config["training"]["logging_steps"],
-    )
+    training_args = prepare_training_args(config, output_dir)
     
     # Initialize Trainer
     trainer = Trainer(

@@ -26,6 +26,7 @@ training:
   per_device_batch_size: 3
   max_length: 4096
   stride_size: 1024
+  report_to: "wandb"
 
 tokenizer:
   type: element

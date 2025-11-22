@@ -101,17 +101,18 @@ def train(config, accelerator, output_dir):
         num_train_epochs=config["training"]["epochs"],
         warmup_steps=config["training"]["warmup_steps"],
         learning_rate=config["training"]["learning_rate"],
-        save_steps=config["training"]["save_steps"],
-        logging_steps=config["training"]["logging_steps"],
         bf16=config["training"]["bf16"],
         fp16=config["training"]["fp16"],
         remove_unused_columns=False,
         dataloader_num_workers=config["training"]["num_workers"],
         ddp_backend=DDP_BACKEND,
 	    ddp_find_unused_parameters=True,
-        report_to="wandb",
+        report_to=config["training"]["report_to"],
         gradient_checkpointing=config["training"]["gradient_checkpointing"],
         gradient_checkpointing_kwargs={"use_reentrant": False},
+        save_strategy=config["training"]["save_strategy"],
+        save_steps=config["training"]["save_steps"],
+        logging_steps=config["training"]["logging_steps"],
     )
     
     # Initialize Trainer
@@ -183,7 +184,8 @@ def main():
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
         # Initialize wandb
-        init_wandb(config)
+        if config["training"]["report_to"] == "wandb":
+            init_wandb(config)
 
     # Start training
     trainer = train(config, accelerator, output_dir)

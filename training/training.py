@@ -11,7 +11,8 @@ from transformers import (
     AutoTokenizer,
     DataCollatorForLanguageModeling,
     Trainer,
-    TrainingArguments
+    TrainingArguments,
+    TrainerCallback
 )
 from datasets import load_dataset
 import datasets
@@ -35,12 +36,25 @@ def train(config, accelerator, output_dir):
         device_map=None # Let accelerator handle device mapping
     )
     
+    class MultiGPUResourcesCallback(TrainerCallback):
+        def on_step_end(self, args, state, control, **kwargs):
+            # Print memory usage for EVERY rank to ensure load balancing
+            if torch.cuda.is_available():
+                rank = int(os.environ.get("RANK", 0))
+                # Only print for all ranks occasionally (e.g. every 10 steps) to reduce log spam
+                # Or every step if you are debugging short runs
+                if state.global_step % 1 == 0: 
+                    current_mem = torch.cuda.memory_allocated() / (1024 ** 3)
+                    max_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
+                    print(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
+
     if config["training"]["gradient_checkpointing"]:
         model.gradient_checkpointing_enable()
     
     # Load and process dataset
     dataset = load_dataset("arrow", data_dir=config["data"]["data_folder"], data_files="**/*.arrow")
     dataset = dataset["train"]
+    dataset = dataset.select(range(200))
     
     # Tokenize the text field
     # Silence progress bars on non-main processes
@@ -107,6 +121,7 @@ def train(config, accelerator, output_dir):
         train_dataset=dataset,
         processing_class=tokenizer,
         data_collator=data_collator,
+        callbacks=[MultiGPUResourcesCallback()]
     )
     
     # Train the model

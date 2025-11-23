@@ -10,25 +10,23 @@ data:
 
 distributed:
   strategy: "fsdp" # Options: "ddp" or "fsdp"
-  
   ddp:
     find_unused_parameters: true
     backend: "nccl"
-
   fsdp:
     policy: "full_shard auto_wrap" 
     config:
       fsdp_offload_params: false
-      fsdp_state_dict_type: "FULL_STATE_DICT"
+      fsdp_state_dict_type: "SHARDED_STATE_DICT"
       fsdp_transformer_layer_cls_to_wrap: "Gemma3DecoderLayer"
 
 training:
   epochs: 2 
-  gradient_accumulation_steps: 10
+  gradient_accumulation_steps: 6 # 10 for DDP
   learning_rate: 2.0e-5
   warmup_steps: 100
   weight_decay: 0.0
-  save_steps: 1
+  save_steps: 1000
   logging_steps: 1
   bf16: true
   fp16: false
@@ -37,7 +35,7 @@ training:
   seed: 42
   gradient_checkpointing: true
   num_workers: 64
-  per_device_batch_size: 3
+  per_device_batch_size: 5 # 3 for DDP
   max_length: 4096
   stride_size: 1024
   report_to: "wandb"

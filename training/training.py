@@ -59,6 +59,10 @@ def prepare_training_args(config, output_dir):
             args_dict["fsdp_transformer_layer_cls_to_wrap"] = fsdp_inner_config.pop("fsdp_transformer_layer_cls_to_wrap")
             print(f"FSDP Wrapping Layer: {args_dict['fsdp_transformer_layer_cls_to_wrap']}")
         
+        if args_dict["gradient_checkpointing"]:
+            fsdp_inner_config["activation_checkpointing"] = True
+        args_dict["gradient_checkpointing"] = False       
+ 
         args_dict["fsdp_config"] = fsdp_inner_config
         
         print(f"Training Strategy: FSDP ({args_dict['fsdp']})")
@@ -219,10 +223,11 @@ def main():
     trainer = train(config, accelerator, output_dir)
     
     # Save final model
-    final_model_dir = f"{output_dir}/final-model"
-    if accelerator.is_main_process:
-        trainer.save_model(final_model_dir)
+    final_model_dir = f"{output_dir}/final-model"    
+    trainer.save_model(final_model_dir)
 
+    if accelerator.is_main_process:
+        print(f"Saved model to {final_model_dir}")
  
 if __name__ == "__main__":
     main()

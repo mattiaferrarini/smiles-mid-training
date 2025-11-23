@@ -32,6 +32,19 @@ conda activate "$ENV_NAME"
 pip uninstall -y torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
+# Share cpus per task with torch
+export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
+
+# Distributed settings
+export NCCL_ASYNC_ERROR_HANDLING=1
+export NCCL_DEBUG=WARN
+export PYTHONUNBUFFERED=1
+export TOKENIZERS_PARALLELISM=false
+
+# Silence standard Python warnings for cleaner logs
+export PYTHONWARNINGS="ignore"
+
 # HF cache folders
 export HF_HOME="/iopsstor/scratch/cscs/$USER/cache/huggingface"
 export HF_DATASETS_CACHE="/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
@@ -59,9 +72,8 @@ export MASTER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0
 export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
-export TOKENIZERS_PARALLELISM=false
-
 # Run the training with jobreport
 srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 
+# Print report
 $JOBREPORT print "$PROFILING_FOLDER"

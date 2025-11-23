@@ -16,9 +16,9 @@ distributed:
   fsdp:
     policy: "full_shard auto_wrap" 
     config:
-      fsdp_offload_params: true
+      # fsdp_offload_params: true
       # fsdp_state_dict_type: "FULL_STATE_DICT"
-      # fsdp_transformer_layer_cls_to_wrap: "Gemma3DecoderLayer"
+      fsdp_transformer_layer_cls_to_wrap: "Gemma3DecoderLayer"
 
 training:
   epochs: 2 

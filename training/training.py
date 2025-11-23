@@ -154,11 +154,13 @@ def train(config, accelerator, output_dir):
         train_dataset=dataset,
         processing_class=tokenizer,
         data_collator=data_collator,
-        callbacks=[MultiGPUResourcesCallback()]
+        callbacks=[MultiGPUResourcesCallback()],
     )
     
     # Train the model
+    print(f"[RANK {int(os.environ.get("RANK", 0))}] Start training")
     trainer.train()
+    print(f"[RANK {int(os.environ.get("RANK", 0))}] Finish training")
     return trainer
 
 

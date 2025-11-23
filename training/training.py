@@ -202,6 +202,10 @@ def main():
 
     # Initialize distributed training
     accelerator = Accelerator()
+
+    output_dir = str(Path(output_dir).resolve())
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    accelerator.wait_for_everyone()
     
     if accelerator.is_main_process:
         print("Starting fine-tuning.")
@@ -209,15 +213,12 @@ def main():
         print(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
         print(f"Config: {config}")
         print(f"Output dir: {output_dir}")
-	
-	# Create timestamped output directory
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = str(Path(output_dir) / timestamp)
-        Path(output_dir).mkdir(parents=True, exist_ok=True)
 
         # Initialize wandb
         if config["training"]["report_to"] == "wandb":
             init_wandb(config)
+   
+    print(f"[RANK {int(os.environ.get("RANK", 0))}] Output dir:", output_dir)
 
     # Start training
     trainer = train(config, accelerator, output_dir)

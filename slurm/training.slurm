@@ -41,8 +41,9 @@ export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK
 
 # Distributed settings
-export NCCL_ASYNC_ERROR_HANDLING=1
-export NCCL_DEBUG=WARN
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
+export NCCL_DEBUG=WAR
+export TORCH_DISTRIBUTED_DEBUG=DETAIL
 export PYTHONUNBUFFERED=1
 export TOKENIZERS_PARALLELISM=false
 
@@ -64,7 +65,8 @@ export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
 # Training settings
-export OUTPUT_DIR=/iopsstor/scratch/cscs/$USER/finetuning
+export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/$TIMESTAMP"
 export CONFIG_PATH=configs/default.yaml
 
 # Get master host address

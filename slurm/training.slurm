@@ -32,6 +32,10 @@ conda activate "$ENV_NAME"
 pip uninstall -y torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
+# Update requirements with specific CUDA versions for cluster
+echo "Updating requirements.txt with current environment packages..."
+pip freeze > requirements.txt
+
 # Share cpus per task with torch
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export MKL_NUM_THREADS=$SLURM_CPUS_PER_TASK

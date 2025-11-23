@@ -16,8 +16,8 @@ distributed:
   fsdp:
     policy: "full_shard auto_wrap" 
     config:
-      fsdp_offload_params: false
-      fsdp_state_dict_type: "SHARDED_STATE_DICT"
+      fsdp_offload_params: true
+      fsdp_state_dict_type: "FULL_STATE_DICT"
       fsdp_transformer_layer_cls_to_wrap: "Gemma3DecoderLayer"
 
 training:
@@ -34,7 +34,7 @@ training:
   save_strategy: "steps"
   seed: 42
   gradient_checkpointing: true
-  num_workers: 64
+  num_workers: 8
   per_device_batch_size: 5 # 3 for DDP
   max_length: 4096
   stride_size: 1024

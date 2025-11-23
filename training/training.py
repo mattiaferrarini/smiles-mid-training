@@ -221,9 +221,11 @@ def main():
 
     # Start training
     trainer = train(config, accelerator, output_dir)
+    print(f"[RANK {int(os.environ.get("RANK", 0))}] Finished training")
     
     # Save final model
-    final_model_dir = f"{output_dir}/final-model"    
+    final_model_dir = f"{output_dir}/final-model"
+    print(f"[RANK {int(os.environ.get("RANK", 0))}] Saving model to:", final_model_dir)   
     trainer.save_model(final_model_dir)
 
     if accelerator.is_main_process:

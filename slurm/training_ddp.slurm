@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=gemma_finetuning
+#SBATCH --job-name=gemma_ddp
 #SBATCH --ntasks-per-node=4
-#SBATCH --cpus-per-task=64
-#SBATCH --time=00:30:00
-#SBATCH --partition=debug
+#SBATCH --cpus-per-task=16
+#SBATCH --time=04:00:00
+#SBATCH --partition=normal
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
@@ -11,7 +11,7 @@
 #SBATCH -A a131
 
 # Check GPU state before starting
-srun --ntasks=$SLURM_NTASKS --ntasks-per-node=$SLURM_NTASKS_PER_NODE bash -c 'nvidia-smi'
+# srun --ntasks=$SLURM_NTASKS --ntasks-per-node=$SLURM_NTASKS_PER_NODE bash -c 'nvidia-smi'
 
 export ENV_NAME=ml4science
 
@@ -19,25 +19,25 @@ export ENV_NAME=ml4science
 source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
 
 # Create or update conda environment
-if conda env list | grep -q "^$ENV_NAME "; then \
-  echo "Conda env exists: updating"; \
-  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-else \
-  echo "Creating conda env"; \
-  conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
-  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-fi
+# if conda env list | grep -q "^$ENV_NAME "; then \
+#  echo "Conda env exists: updating"; \
+#  conda run -n "$ENV_NAME" pip install -r requirements2.txt; \
+# else \
+#  echo "Creating conda env"; \
+#  conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
+#  conda run -n "$ENV_NAME" pip install -r requirements2.txt; \
+# fi
 
 # Activate conda environment
 conda activate "$ENV_NAME"
 
 # Ensure the GPU version of PyTorch is installed
-pip uninstall -y torch torchvision torchaudio
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+# pip uninstall -y torch torchvision torchaudio
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # Update requirements with specific CUDA versions for cluster
-echo "Updating requirements.txt with current environment packages..."
-pip freeze > requirements.txt
+# echo "Updating requirements.txt with current environment packages..."
+# pip freeze > requirements2.txt
 
 # Distributed settings
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
@@ -45,6 +45,9 @@ export NCCL_DEBUG=INFO
 export TORCH_DISTRIBUTED_DEBUG=DETAIL
 export PYTHONUNBUFFERED=1
 export TOKENIZERS_PARALLELISM=false
+
+# Memory Management (Fix for CUDA OOM)
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # Silence standard Python warnings for cleaner logs
 export PYTHONWARNINGS="ignore"
@@ -66,7 +69,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 # Training settings
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/$TIMESTAMP"
-export CONFIG_PATH=configs/default.yaml
+export CONFIG_PATH=configs/default_dpp.yaml
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)

@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=gemma_finetuning
+#SBATCH --job-name=gemma_fsdp
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
-#SBATCH --time=00:30:00
-#SBATCH --partition=debug
+#SBATCH --time=04:00:00
+#SBATCH --partition=normal
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
@@ -34,6 +34,11 @@ conda activate "$ENV_NAME"
 # Ensure the GPU version of PyTorch is installed
 pip uninstall -y torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# pip install triton>=3.0.0 --upgrade
+
+# Install flash attention
+# pip install flash-attn --no-build-isolation
 
 # Update requirements with specific CUDA versions for cluster
 echo "Updating requirements.txt with current environment packages..."
@@ -66,7 +71,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 # Training settings
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/$TIMESTAMP"
-export CONFIG_PATH=configs/default.yaml
+export CONFIG_PATH=configs/default_fsdp.yaml
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -78,7 +83,7 @@ export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
 # Run the training with jobreport
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training2.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

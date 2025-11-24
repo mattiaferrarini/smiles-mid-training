@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=gemma_ddp
 #SBATCH --ntasks-per-node=4
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=64
 #SBATCH --time=04:00:00
 #SBATCH --partition=normal
 #SBATCH --nodes=2
@@ -46,7 +46,7 @@ export TORCH_DISTRIBUTED_DEBUG=DETAIL
 export PYTHONUNBUFFERED=1
 export TOKENIZERS_PARALLELISM=false
 
-# Memory Management (Fix for CUDA OOM)
+# Memory Management
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # Silence standard Python warnings for cleaner logs
@@ -69,7 +69,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 # Training settings
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/$TIMESTAMP"
-export CONFIG_PATH=configs/default_dpp.yaml
+export CONFIG_PATH=configs/default_ddp.yaml
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)

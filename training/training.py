@@ -47,6 +47,8 @@ def prepare_training_args(config, output_dir):
         "save_strategy": config["training"]["save_strategy"],
         "save_steps": config["training"]["save_steps"],
         "logging_steps": config["training"]["logging_steps"],
+        "dataloader_pin_memory": True,
+        "dataloader_persistent_workers": True
     }
 
     if strategy == "fsdp":

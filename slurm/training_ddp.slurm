@@ -21,11 +21,11 @@ source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded An
 # Create or update conda environment
 # if conda env list | grep -q "^$ENV_NAME "; then \
 #  echo "Conda env exists: updating"; \
-#  conda run -n "$ENV_NAME" pip install -r requirements2.txt; \
+#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
 # else \
 #  echo "Creating conda env"; \
 #  conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
-#  conda run -n "$ENV_NAME" pip install -r requirements2.txt; \
+#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
 # fi
 
 # Activate conda environment
@@ -37,7 +37,7 @@ conda activate "$ENV_NAME"
 
 # Update requirements with specific CUDA versions for cluster
 # echo "Updating requirements.txt with current environment packages..."
-# pip freeze > requirements2.txt
+# pip freeze > requirements.txt
 
 # Distributed settings
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1

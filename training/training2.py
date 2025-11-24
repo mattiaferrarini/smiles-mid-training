@@ -79,17 +79,18 @@ def prepare_training_args(config, output_dir):
     return training_args
 
 def train(config, accelerator, output_dir):
-    # Load tokenizer   
+    # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "right"
+    tokenizer.padding_side = "right"    
 
-    # Load mode
+    # Load model
     model = AutoModelForCausalLM.from_pretrained(
         config["model"]["name"],
         dtype=torch.bfloat16,
-        device_map=None # Let accelerator handle device mapping
+        device_map=None, # Let accelerator handle device mapping
+        # attn_implementation="flash_attention_2"
     )
     
     class MultiGPUResourcesCallback(TrainerCallback):
@@ -105,6 +106,8 @@ def train(config, accelerator, output_dir):
     if config["training"]["gradient_checkpointing"]:
         model.gradient_checkpointing_enable()
     
+    # model = torch.compile(model)
+
     # Load and process dataset
     dataset = load_dataset(
         "arrow", 
@@ -113,8 +116,9 @@ def train(config, accelerator, output_dir):
         # streaming=True
     )
     dataset = dataset["train"]
-    dataset = dataset.select(range(10000))
-    # dataset = dataset.take(10000)
+    # dataset = dataset.take(10000)	    
+    dataset = dataset.select(range(100000))
+    
     # Tokenize the text field
     # Silence progress bars on non-main processes
     if not accelerator.is_main_process:
@@ -126,8 +130,7 @@ def train(config, accelerator, output_dir):
             truncation=True,
             max_length=config["training"]["max_length"],
             return_overflowing_tokens=True, # Split long samples
-            stride=config["training"]["stride_size"], # Overlap between chunks
-            padding=False
+            stride=config["training"]["stride_size"] # Overlap between chunks
         )
         
         if "overflow_to_sample_mapping" in outputs:
@@ -142,7 +145,7 @@ def train(config, accelerator, output_dir):
             batched=True,
             num_proc=config["training"]["num_workers"],
             batch_size=10000,
-            remove_columns=dataset.column_names, 
+           remove_columns=dataset.column_names, 
             load_from_cache_file=True
         )
     '''
@@ -151,21 +154,16 @@ def train(config, accelerator, output_dir):
         batched=True,
         # num_proc=config["training"]["num_workers"],
         batch_size=10000,
-        remove_columns=dataset.column_names, 
+        remove_columns=dataset.column_names,    
         # load_from_cache_file=True
     ).with_format("torch")
     '''
-
     # Re-enable logging
     if not accelerator.is_main_process:
         datasets.utils.logging.enable_progress_bar()   
  
     # Data collator
-    data_collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer, 
-        mlm=False,
-        pad_to_multiple_of=64
-    )
+    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
     
     # Training arguments
     training_args = prepare_training_args(config, output_dir)

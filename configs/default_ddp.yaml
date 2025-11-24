@@ -6,10 +6,10 @@ model:
 
 data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1
-  text_field: text_annotated_v1
+  text_field: text
 
 distributed:
-  strategy: "fsdp" # Options: "ddp" or "fsdp"
+  strategy: "ddp" # Options: "ddp" or "fsdp"
   ddp:
     find_unused_parameters: true
     backend: "nccl"
@@ -22,20 +22,20 @@ distributed:
 
 training:
   epochs: 2 
-  gradient_accumulation_steps: 8 # 10 for DDP
+  gradient_accumulation_steps: 8 #8 for FSDP
   learning_rate: 2.0e-5
-  warmup_steps: 100
+  warmup_steps: 50
   weight_decay: 0.0
-  save_steps: 1000
-  logging_steps: 1
+  save_steps: 500
+  logging_steps: 30
   bf16: true
   fp16: false
   evaluation_strategy: "no"
   save_strategy: "steps"
   seed: 42
   gradient_checkpointing: true
-  num_workers: 8
-  per_device_batch_size: 4 # 3 for DDP
+  num_workers: 16
+  per_device_batch_size: 4 # 4 for FSDP
   max_length: 4096
   stride_size: 1024
   report_to: "wandb"

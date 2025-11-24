@@ -23,8 +23,17 @@ from utils.config import load_config
 import wandb
 import torch
 
-# Training hyperparameters
-DDP_BACKEND = "nccl"
+
+class MultiGPUResourcesCallback(TrainerCallback):
+        def on_step_end(self, args, state, control, **kwargs):
+            # Print memory usage for every rank to ensure load balancing
+            if torch.cuda.is_available():
+                rank = int(os.environ.get("RANK", 0))
+                if state.global_step % 10 == 0: 
+                    current_mem = torch.cuda.memory_allocated() / (1024 ** 3)
+                    max_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
+                    print(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
+
 
 def prepare_training_args(config, output_dir):
     strategy = config["distributed"]["strategy"]
@@ -93,16 +102,6 @@ def train(config, accelerator, output_dir):
         dtype=torch.bfloat16,
         device_map=None # Let accelerator handle device mapping
     )
-    
-    class MultiGPUResourcesCallback(TrainerCallback):
-        def on_step_end(self, args, state, control, **kwargs):
-            # Print memory usage for every rank to ensure load balancing
-            if torch.cuda.is_available():
-                rank = int(os.environ.get("RANK", 0))
-                if state.global_step % 10 == 0: 
-                    current_mem = torch.cuda.memory_allocated() / (1024 ** 3)
-                    max_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
-                    print(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
 
     if config["training"]["gradient_checkpointing"]:
         model.gradient_checkpointing_enable()
@@ -115,8 +114,9 @@ def train(config, accelerator, output_dir):
         # streaming=True
     )
     dataset = dataset["train"]
+    # TODO: remove this line for full training
     dataset = dataset.select(range(10000))
-    # dataset = dataset.take(10000)
+
     # Tokenize the text field
     # Silence progress bars on non-main processes
     if not accelerator.is_main_process:
@@ -147,16 +147,6 @@ def train(config, accelerator, output_dir):
             remove_columns=dataset.column_names, 
             load_from_cache_file=True
         )
-    '''
-    dataset = dataset.map(
-        tokenize_and_split,
-        batched=True,
-        # num_proc=config["training"]["num_workers"],
-        batch_size=10000,
-        remove_columns=dataset.column_names, 
-        # load_from_cache_file=True
-    ).with_format("torch")
-    '''
 
     # Re-enable logging
     if not accelerator.is_main_process:
@@ -183,9 +173,7 @@ def train(config, accelerator, output_dir):
     )
     
     # Train the model
-    print(f"[RANK {int(os.environ.get("RANK", 0))}] Start training")
     trainer.train()
-    print(f"[RANK {int(os.environ.get("RANK", 0))}] Finish training")
     return trainer
 
 
@@ -244,16 +232,13 @@ def main():
         # Initialize wandb
         if config["training"]["report_to"] == "wandb":
             init_wandb(config)
-   
-    print(f"[RANK {int(os.environ.get("RANK", 0))}] Output dir:", output_dir)
 
     # Start training
     trainer = train(config, accelerator, output_dir)
     print(f"[RANK {int(os.environ.get("RANK", 0))}] Finished training")
     
     # Save final model
-    final_model_dir = f"{output_dir}/final-model"
-    print(f"[RANK {int(os.environ.get("RANK", 0))}] Saving model to:", final_model_dir)   
+    final_model_dir = f"{output_dir}/final-model" 
     trainer.save_model(final_model_dir)
 
     if accelerator.is_main_process:

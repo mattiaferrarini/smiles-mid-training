@@ -26,54 +26,52 @@ import time
 
 
 class MultiGPUResourcesCallback(TrainerCallback):
-        def __init__(self):
-            super().__init__()
-            self.step_start_time = None
-            self.total_tokens = 0
+    def __init__(self, log_steps):
+        super().__init__()
+        self.log_steps = log_steps
+
+    def on_step_end(self, args, state, control, **kwargs):
+        # Print memory usage for every rank to ensure load balancing
+        if torch.cuda.is_available():
+            rank = int(os.environ.get("RANK", 0))
+            if state.global_step % self.log_steps == 0: 
+                current_mem = torch.cuda.memory_allocated() / (1024 ** 3)
+                max_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
+                print(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
+
+
+class ThroughputLoggerCallback(TrainerCallback):
+    def __init__(self, log_steps):
+        super().__init__()
+        self.log_steps = log_steps
+        self.last_time = None
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        self.last_time = time.time()
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.global_step % self.log_steps == 0 and state.global_step > 0:
+            current_time = time.time()
+            time_delta = current_time - self.last_time
             
-        def on_step_begin(self, args, state, control, **kwargs):
-            self.step_start_time = time.time()
+            # Calculate global effective batch size
+            total_batch_size = (
+                args.per_device_train_batch_size * args.world_size * args.gradient_accumulation_steps
+            )
             
-        def on_step_end(self, args, state, control, **kwargs):
-            # Print memory usage for every rank to ensure load balancing
-            if torch.cuda.is_available():
-                rank = int(os.environ.get("RANK", 0))
-                
-                # Calculate tokens per second
-                if self.step_start_time is not None:
-                    step_time = time.time() - self.step_start_time
-                    
-                    # Get batch from kwargs if available
-                    inputs = kwargs.get("inputs", None)
-                    if inputs is not None and "input_ids" in inputs:
-                        batch_tokens = inputs["input_ids"].numel()
-                        tokens_per_sec = batch_tokens / step_time if step_time > 0 else 0
-                        self.total_tokens += batch_tokens
-                        
-                        # Log every 10 steps
-                        if state.global_step % 10 == 0:
-                            current_mem = torch.cuda.memory_allocated() / (1024 ** 3)
-                            max_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
-                            print(f"[Step {state.global_step}] Rank {rank}: "
-                                  f"{current_mem:.2f} GB (Max: {max_mem:.2f} GB) | "
-                                  f"Tokens/sec: {tokens_per_sec:.0f} | "
-                                  f"Total tokens: {self.total_tokens:,}")
-                            
-                            # Log to wandb if enabled
-                            if wandb.run is not None:
-                                wandb.log({
-                                    f"gpu_{rank}/tokens_per_sec": tokens_per_sec,
-                                    f"gpu_{rank}/memory_allocated_gb": current_mem,
-                                    f"gpu_{rank}/memory_max_gb": max_mem,
-                                    f"gpu_{rank}/total_tokens": self.total_tokens,
-                                    "global_step": state.global_step
-                                })
-                    else:
-                        # Fallback if inputs not available in kwargs
-                        if state.global_step % 10 == 0:
-                            current_mem = torch.cuda.memory_allocated() / (1024 ** 3)
-                            max_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
-                            print(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
+            samples_processed = total_batch_size * self.log_steps
+            samples_per_sec = samples_processed / time_delta
+            
+            self.last_time = current_time
+
+            if args.process_index == 0:
+                # Log to wandb and terminal
+                if wandb.run is not None:
+                    wandb.log(
+                        {"throughput/samples_per_sec": samples_per_sec}, 
+                        step=state.global_step
+                    )
+                print(f"[Step {state.global_step}] Throughput: {samples_per_sec:.2f} samples/sec")
 
 
 def prepare_training_args(config, output_dir):
@@ -202,7 +200,8 @@ def train(config, accelerator, output_dir):
     
     # Training arguments
     training_args = prepare_training_args(config, output_dir)
-    
+    resource_logging_steps = config["training"]["resource_logging_steps"]    
+
     # Initialize Trainer
     trainer = Trainer(
         model=model,
@@ -210,7 +209,10 @@ def train(config, accelerator, output_dir):
         train_dataset=dataset,
         processing_class=tokenizer,
         data_collator=data_collator,
-        callbacks=[MultiGPUResourcesCallback()],
+        callbacks=[
+            MultiGPUResourcesCallback(resource_logging_steps), 
+            ThroughputLoggerCallback(resource_logging_steps)
+        ]
     )
     
     # Train the model

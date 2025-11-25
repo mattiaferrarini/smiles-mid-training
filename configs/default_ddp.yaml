@@ -25,14 +25,15 @@ training:
   warmup_steps: 50
   weight_decay: 0.0
   save_steps: 500
-  logging_steps: 30
+  logging_steps: 5
+  resource_logging_steps: 5
   bf16: true
   fp16: false
   evaluation_strategy: "no"
   save_strategy: "steps"
   seed: 42
   gradient_checkpointing: true
-  num_workers: 64
+  num_workers: 16
   per_device_batch_size: 3 # 4 for FSDP
   max_length: 4096
   stride_size: 1024

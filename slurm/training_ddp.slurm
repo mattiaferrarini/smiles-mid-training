@@ -2,7 +2,7 @@
 #SBATCH --job-name=gemma_ddp
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
-#SBATCH --time=04:00:00
+#SBATCH --time=00:30:00
 #SBATCH --partition=debug
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4

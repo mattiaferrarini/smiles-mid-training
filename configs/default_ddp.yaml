@@ -33,7 +33,9 @@ training:
   save_strategy: "steps"
   seed: 42
   gradient_checkpointing: true
-  num_workers: 16
+  num_workers: 8
+  preprocessing_num_workers: 64
+  prefetch_factor: 4
   per_device_batch_size: 3 # 4 for FSDP
   max_length: 4096
   stride_size: 1024

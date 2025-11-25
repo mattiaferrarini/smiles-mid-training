@@ -128,7 +128,8 @@ def prepare_training_args(config, output_dir):
         "save_steps": config["training"]["save_steps"],
         "logging_steps": config["training"]["logging_steps"],
         "dataloader_pin_memory": True,
-        "dataloader_persistent_workers": True
+        "dataloader_persistent_workers": True,
+        "dataloader_prefetch_factor": config["training"]["prefetch_factor"]
     }
 
     if strategy == "fsdp":
@@ -213,7 +214,7 @@ def train(config, accelerator, output_dir):
         dataset = dataset.map(
             tokenize_and_split,
             batched=True,
-            num_proc=config["training"]["num_workers"],
+            num_proc=config["training"]["preprocessing_num_workers"],
             batch_size=10000,
             remove_columns=dataset.column_names, 
             load_from_cache_file=True

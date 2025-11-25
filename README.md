@@ -139,3 +139,7 @@ Probably we need to set it = ``--gres=gpu`` to have one task per GPU.
 ### Jobreport
 Just use it as in the examples we were given.
 
+## Benchmarks
+To be able to run ChemIQ benchmarks, make sure to clone the repository inside `smiles-mid-training` with:
+
+`git clone https://github.com/oxpig/ChemIQ.git`

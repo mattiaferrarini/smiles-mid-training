@@ -1,5 +1,8 @@
-.venv
 .env
-__pycache__/
-Miniconda3*
+.venv
+__pycache__
+
 wandb
+ChemIQ
+artifacts
+Miniconda3*

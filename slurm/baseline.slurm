@@ -1,17 +1,14 @@
 #!/bin/bash
-#SBATCH --job-name=gemma_ddp
+#SBATCH --job-name=baseline
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
-#SBATCH --time=00:30:00
-#SBATCH --partition=debug
+#SBATCH --time=04:00:00
+#SBATCH --partition=normal
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH -A a131
-
-# Check GPU state before starting
-# srun --ntasks=$SLURM_NTASKS --ntasks-per-node=$SLURM_NTASKS_PER_NODE bash -c 'nvidia-smi'
 
 export ENV_NAME=ml4science
 
@@ -31,14 +28,6 @@ fi
 # Activate conda environment
 conda activate "$ENV_NAME"
 
-# Ensure the GPU version of PyTorch is installed
-# pip uninstall -y torch torchvision torchaudio
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-
-# Update requirements with specific CUDA versions for cluster
-# echo "Updating requirements.txt with current environment packages..."
-# pip freeze > requirements.txt
-
 # Distributed settings
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
 export NCCL_DEBUG=INFO
@@ -56,10 +45,6 @@ export PYTHONWARNINGS="ignore"
 export HF_HOME="/iopsstor/scratch/cscs/$USER/cache/huggingface"
 export HF_DATASETS_CACHE="/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 
-# WandB settings (uncomment if using WandB)
-export WANDB_API_KEY=$(grep WANDB_API_KEY .env | cut -d '=' -f 2)
-export WANDB_PROJECT="slurm"
-
 # Create needed folders
 mkdir -p /iopsstor/scratch/cscs/$USER/logs
 mkdir -p /iopsstor/scratch/cscs/$USER/jobreports
@@ -72,11 +57,12 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 
 # Training settings
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/$TIMESTAMP"
+export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/artifacts/baselines/"
 export CONFIG_PATH=configs/default_ddp.yaml
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+
 # Ask the OS for a free port for the master
 export MASTER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
 
@@ -84,14 +70,10 @@ export MASTER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0
 export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
-# Run the training with jobreport
-srun "$PYTHON_EXEC" main.py train-model \
+# Download baselines
+echo "Downloading baselines..."
+srun "$PYTHON_EXEC" main.py download-baseline \
     --config "$CONFIG_PATH" \
     --output-path "$OUTPUT_DIR"
 
-# Print report
-# TODO: this is for debugging purposes, recomment the second part and uncomment the first to have the jobreport printed
 $JOBREPORT print "$PROFILING_FOLDER"
-# echo "--- Starting direct Python run for debugging (Job $SLURM_JOB_ID) ---"
-# srun --propagate=NONE --label "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
-# echo "--- Python run finished ---"

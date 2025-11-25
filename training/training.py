@@ -22,6 +22,7 @@ from datetime import datetime
 from utils.config import load_config
 import wandb
 import torch
+import torch.distributed as dist
 import time
 
 
@@ -82,28 +83,52 @@ class ThroughputLoggerCallback(TrainerCallback):
 
             rank = args.process_index
             
-            # Log per-GPU throughput for all ranks
-            if wandb.run is not None:
-                wandb.log(
-                    {
-                        f"throughput/samples_per_sec_rank_{rank}": per_gpu_samples_per_sec,
-                        f"throughput/tokens_per_sec_rank_{rank}": per_gpu_tokens_per_sec
-                    }, 
-                    step=state.global_step
-                )
+            # Print per-GPU throughput for all ranks
             print(f"[Step {state.global_step}] Rank {rank} Throughput: {per_gpu_samples_per_sec:.2f} samples/sec, {per_gpu_tokens_per_sec:.2f} tokens/sec")
             
-            # Log aggregate throughput only from main process
-            if rank == 0:
-                if wandb.run is not None:
+            # Gather metrics from all ranks to log in wandb
+            if dist.is_initialized():
+                # Create tensors for gathering
+                samples_tensor = torch.tensor([per_gpu_samples_per_sec], device='cuda')
+                tokens_tensor = torch.tensor([per_gpu_tokens_per_sec], device='cuda')
+                
+                # Gather all metrics to rank 0
+                if rank == 0:
+                    gathered_samples = [torch.zeros_like(samples_tensor) for _ in range(args.world_size)]
+                    gathered_tokens = [torch.zeros_like(tokens_tensor) for _ in range(args.world_size)]
+                    dist.gather(samples_tensor, gathered_samples, dst=0)
+                    dist.gather(tokens_tensor, gathered_tokens, dst=0)
+                else:
+                    dist.gather(samples_tensor, dst=0)
+                    dist.gather(tokens_tensor, dst=0)
+                
+                # Log from rank 0
+                if rank == 0 and wandb.run is not None:
+                    metrics = {
+                        "throughput/samples_per_sec_total": total_samples_per_sec,
+                        "throughput/tokens_per_sec_total": total_tokens_per_sec,
+                    }
+                    
+                    # Add per-GPU metrics
+                    for i in range(args.world_size):
+                        metrics[f"throughput/samples_per_sec_rank_{i}"] = gathered_samples[i].item()
+                        metrics[f"throughput/tokens_per_sec_rank_{i}"] = gathered_tokens[i].item()
+                    
+                    wandb.log(metrics, step=state.global_step)
+                    print(f"[Step {state.global_step}] Total Throughput: {total_samples_per_sec:.2f} samples/sec, {total_tokens_per_sec:.2f} tokens/sec")
+            else:
+                # Fallback for non-distributed or single GPU
+                if rank == 0 and wandb.run is not None:
                     wandb.log(
                         {
                             "throughput/samples_per_sec_total": total_samples_per_sec,
-                            "throughput/tokens_per_sec_total": total_tokens_per_sec
+                            "throughput/tokens_per_sec_total": total_tokens_per_sec,
+                            f"throughput/samples_per_sec_rank_{rank}": per_gpu_samples_per_sec,
+                            f"throughput/tokens_per_sec_rank_{rank}": per_gpu_tokens_per_sec
                         }, 
                         step=state.global_step
                     )
-                print(f"[Step {state.global_step}] Total Throughput: {total_samples_per_sec:.2f} samples/sec, {total_tokens_per_sec:.2f} tokens/sec")
+                    print(f"[Step {state.global_step}] Total Throughput: {total_samples_per_sec:.2f} samples/sec, {total_tokens_per_sec:.2f} tokens/sec")
 
 
 def prepare_training_args(config, output_dir):

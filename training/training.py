@@ -54,24 +54,56 @@ class ThroughputLoggerCallback(TrainerCallback):
             current_time = time.time()
             time_delta = current_time - self.last_time
             
-            # Calculate global effective batch size
-            total_batch_size = (
-                args.per_device_train_batch_size * args.world_size * args.gradient_accumulation_steps
+            # Calculate per-GPU batch size
+            per_gpu_batch_size = (
+                args.per_device_train_batch_size * args.gradient_accumulation_steps
             )
+            per_gpu_samples_processed = per_gpu_batch_size * self.log_steps
+            per_gpu_samples_per_sec = per_gpu_samples_processed / time_delta
             
-            samples_processed = total_batch_size * self.log_steps
-            samples_per_sec = samples_processed / time_delta
+            # Calculate aggregate throughput
+            total_batch_size = per_gpu_batch_size * args.world_size
+            total_samples_processed = total_batch_size * self.log_steps
+            total_samples_per_sec = total_samples_processed / time_delta
+            
+            # Get sequence length from model input
+            model = kwargs.get('model')
+            if model is not None and hasattr(model, 'config') and hasattr(model.config, 'max_position_embeddings'):
+                seq_length = model.config.max_position_embeddings
+            else:
+                # Fallback to max_length from training args if available
+                seq_length = getattr(args, 'max_seq_length', None) or 512
+            
+            # Calculate tokens per second
+            per_gpu_tokens_per_sec = per_gpu_samples_per_sec * seq_length
+            total_tokens_per_sec = total_samples_per_sec * seq_length
             
             self.last_time = current_time
 
-            if args.process_index == 0:
-                # Log to wandb and terminal
+            rank = args.process_index
+            
+            # Log per-GPU throughput for all ranks
+            if wandb.run is not None:
+                wandb.log(
+                    {
+                        f"throughput/samples_per_sec_rank_{rank}": per_gpu_samples_per_sec,
+                        f"throughput/tokens_per_sec_rank_{rank}": per_gpu_tokens_per_sec
+                    }, 
+                    step=state.global_step
+                )
+            print(f"[Step {state.global_step}] Rank {rank} Throughput: {per_gpu_samples_per_sec:.2f} samples/sec, {per_gpu_tokens_per_sec:.2f} tokens/sec")
+            
+            # Log aggregate throughput only from main process
+            if rank == 0:
                 if wandb.run is not None:
                     wandb.log(
-                        {"throughput/samples_per_sec": samples_per_sec}, 
+                        {
+                            "throughput/samples_per_sec_total": total_samples_per_sec,
+                            "throughput/tokens_per_sec_total": total_tokens_per_sec
+                        }, 
                         step=state.global_step
                     )
-                print(f"[Step {state.global_step}] Throughput: {samples_per_sec:.2f} samples/sec")
+                print(f"[Step {state.global_step}] Total Throughput: {total_samples_per_sec:.2f} samples/sec, {total_tokens_per_sec:.2f} tokens/sec")
 
 
 def prepare_training_args(config, output_dir):

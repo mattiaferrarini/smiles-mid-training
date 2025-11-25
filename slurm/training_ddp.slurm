@@ -19,14 +19,14 @@ export ENV_NAME=ml4science
 source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
 
 # Create or update conda environment
-# if conda env list | grep -q "^$ENV_NAME "; then \
-#  echo "Conda env exists: updating"; \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# else \
-#  echo "Creating conda env"; \
-#  conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# fi
+if conda env list | grep -q "^$ENV_NAME "; then \
+ echo "Conda env exists: updating"; \
+ conda run -n "$ENV_NAME" pip install -r requirements.txt; \
+else \
+ echo "Creating conda env"; \
+ conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
+ conda run -n "$ENV_NAME" pip install -r requirements.txt; \
+fi
 
 # Activate conda environment
 conda activate "$ENV_NAME"
@@ -56,6 +56,10 @@ export PYTHONWARNINGS="ignore"
 export HF_HOME="/iopsstor/scratch/cscs/$USER/cache/huggingface"
 export HF_DATASETS_CACHE="/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 
+# WandB settings (uncomment if using WandB)
+#export WANDB_API_KEY=$(grep WANDB_API_KEY .env | cut -d '=' -f 2)
+#export WANDB_PROJECT="chemistry_baseline_training"
+
 # Create needed folders
 mkdir -p /iopsstor/scratch/cscs/$USER/logs
 mkdir -p /iopsstor/scratch/cscs/$USER/jobreports
@@ -84,4 +88,8 @@ echo "Using Python at: $PYTHON_EXEC"
 srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 
 # Print report
-$JOBREPORT print "$PROFILING_FOLDER"
+# TODO: this is for debugging purposes, recomment the second part and uncomment the first to have the jobreport printed
+#$JOBREPORT print "$PROFILING_FOLDER"
+echo "--- Starting direct Python run for debugging (Job $SLURM_JOB_ID) ---"
+srun --propagate=NONE --label "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
+echo "--- Python run finished ---"

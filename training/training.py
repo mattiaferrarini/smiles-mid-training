@@ -14,7 +14,7 @@ from transformers import (
     TrainingArguments,
     TrainerCallback
 )
-from datasets import load_dataset
+from datasets import load_dataset, interleave_datasets
 import datasets
 from dotenv import load_dotenv
 import argparse
@@ -96,7 +96,7 @@ def train(config, accelerator, output_dir):
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
 
-    # Load mode
+    # Load model
     model = AutoModelForCausalLM.from_pretrained(
         config["model"]["name"],
         dtype=torch.bfloat16,
@@ -105,17 +105,43 @@ def train(config, accelerator, output_dir):
 
     if config["training"]["gradient_checkpointing"]:
         model.gradient_checkpointing_enable()
-    
+
     # Load and process dataset
+    subset_path = config["data_mix"]["external_subset_name"]
+    num_chunks = config["data_mix"]["num_chunks_to_use"]
+    fineweb_data_files = []
+    FILES_PER_MAIN_INDEX = config["data_mix"]["files_per_main_index"]
+    for i in range(num_chunks):
+        main_index = i // FILES_PER_MAIN_INDEX  
+        sub_index = i % FILES_PER_MAIN_INDEX   
+        main_part = f"{main_index:03d}"  
+        sub_part = f"{sub_index:05d}"    
+        file_name = f"{subset_path}/{main_part}_{sub_part}.parquet"
+        fineweb_data_files.append(file_name)
+
+
+    fineweb = load_dataset(
+        config["data_mix"]["external_dataset_name"],
+        #name=config["data_mix"]["external_subset_name"],
+        split="train",
+        #streaming=True
+        data_files=fineweb_data_files
+    ).select_columns(["text"])
+
+
     dataset = load_dataset(
         "arrow", 
         data_dir=config["data"]["data_folder"], 
-        data_files="**/*.arrow", 
-        # streaming=True
-    )
-    dataset = dataset["train"]
+        data_files=config["data"]["data_files_pattern"], 
+        split="train",
+        #streaming=True
+    ).select_columns([config["data"]["text_field"]]) # or select_columns("text")
+    #dataset = dataset["train"]
+    #dataset = dataset.rename_column(config["data"]["text_field"], "text")
+
+    
     # TODO: remove this line for full training
-    dataset = dataset.select(range(10000))
+    #dataset = dataset.select(range(10000))
 
     # Tokenize the text field
     # Silence progress bars on non-main processes
@@ -136,9 +162,20 @@ def train(config, accelerator, output_dir):
             outputs.pop("overflow_to_sample_mapping")
             
         return outputs
-
+    
+    #dataset = dataset.map(tokenize_and_split, remove_columns=dataset.column_names)
+    
     # Process dataset with main process
     with accelerator.main_process_first():
+        fineweb = fineweb.map(
+        tokenize_and_split,
+        batched=True,
+        num_proc=config["training"]["num_workers"],
+        batch_size=10000,
+        remove_columns=fineweb.column_names, 
+        load_from_cache_file=True
+        )
+
         dataset = dataset.map(
             tokenize_and_split,
             batched=True,
@@ -151,7 +188,27 @@ def train(config, accelerator, output_dir):
     # Re-enable logging
     if not accelerator.is_main_process:
         datasets.utils.logging.enable_progress_bar()   
- 
+
+    # Mix datasets
+    num_fine_web = len(fineweb)
+    num_my_data = len(dataset)
+    total_samples = num_fine_web + num_my_data
+    prob_fine_web = num_fine_web / total_samples
+    prob_my_data = num_my_data / total_samples
+    # comment this line to use config probabilities
+    probabilities = [prob_fine_web, prob_my_data]
+
+    # TODO: remove for full training
+    dataset = dataset.select(range(int(1000 * 0.7)))
+    fineweb = fineweb.select(range(int(1000 * 0.3)))
+
+    combined_dataset = interleave_datasets(
+        [fineweb, dataset],
+        probabilities=probabilities,
+        seed=config["training"]["seed"], # Usa il seed del training per riproducibilità
+        stopping_strategy="first_exhausted" # TODO: if we keep it to put in the config
+    )
+    
     # Data collator
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer, 

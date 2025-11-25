@@ -239,12 +239,12 @@ def train(config, accelerator, output_dir):
     # Process dataset with main process
     with accelerator.main_process_first():
         fineweb = fineweb.map(
-        tokenize_and_split,
-        batched=True,
-        num_proc=config["training"]["num_workers"],
-        batch_size=10000,
-        remove_columns=fineweb.column_names, 
-        load_from_cache_file=True
+            tokenize_and_split,
+            batched=True,
+            num_proc=config["training"]["preprocessing_num_workers"],
+            batch_size=10000,
+            remove_columns=fineweb.column_names, 
+            load_from_cache_file=True
         )
 
         dataset = dataset.map(

@@ -14,16 +14,15 @@ from transformers import (
     TrainingArguments,
     TrainerCallback
 )
-from datasets import load_dataset
+from datasets import load_dataset, interleave_datasets
 import datasets
 from dotenv import load_dotenv
-import argparse
-from datetime import datetime
-from utils.config import load_config
 import wandb
 import torch
 import time
+from utils.logging import get_logger
 
+LOGGER = get_logger(__name__)
 
 class MultiGPUResourcesCallback(TrainerCallback):
     def __init__(self, log_steps):
@@ -140,7 +139,7 @@ def prepare_training_args(config, output_dir):
 
         if "fsdp_transformer_layer_cls_to_wrap" in fsdp_inner_config:
             args_dict["fsdp_transformer_layer_cls_to_wrap"] = fsdp_inner_config.pop("fsdp_transformer_layer_cls_to_wrap")
-            print(f"FSDP Wrapping Layer: {args_dict['fsdp_transformer_layer_cls_to_wrap']}")
+            LOGGER.info(f"FSDP Wrapping Layer: {args_dict['fsdp_transformer_layer_cls_to_wrap']}")
         
         if args_dict["gradient_checkpointing"]:
             fsdp_inner_config["activation_checkpointing"] = True
@@ -148,13 +147,13 @@ def prepare_training_args(config, output_dir):
  
         args_dict["fsdp_config"] = fsdp_inner_config
         
-        print(f"Training Strategy: FSDP ({args_dict['fsdp']})")
+        LOGGER.info(f"Training Strategy: FSDP ({args_dict['fsdp']})")
     elif strategy == "ddp":
         # DDP-specific arguments
         ddp_conf = config["distributed"]["ddp"]
         args_dict["ddp_backend"] = ddp_conf["backend"]
         args_dict["ddp_find_unused_parameters"] = ddp_conf["find_unused_parameters"]
-        print(f"Training Strategy: DDP (Backend: {args_dict['ddp_backend']})")
+        LOGGER.info(f"Training Strategy: DDP (Backend: {args_dict['ddp_backend']})")
     else:
         raise ValueError(f"Unsupported distributed strategy: {strategy}")
     
@@ -168,7 +167,7 @@ def train(config, accelerator, output_dir):
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
 
-    # Load mode
+    # Load model
     model = AutoModelForCausalLM.from_pretrained(
         config["model"]["name"],
         dtype=torch.bfloat16,
@@ -177,17 +176,43 @@ def train(config, accelerator, output_dir):
 
     if config["training"]["gradient_checkpointing"]:
         model.gradient_checkpointing_enable()
-    
+
     # Load and process dataset
+    subset_path = config["data_mix"]["external_subset_name"]
+    num_chunks = config["data_mix"]["num_chunks_to_use"]
+    fineweb_data_files = []
+    FILES_PER_MAIN_INDEX = config["data_mix"]["files_per_main_index"]
+    for i in range(num_chunks):
+        main_index = i // FILES_PER_MAIN_INDEX  
+        sub_index = i % FILES_PER_MAIN_INDEX   
+        main_part = f"{main_index:03d}"  
+        sub_part = f"{sub_index:05d}"    
+        file_name = f"{subset_path}/{main_part}_{sub_part}.parquet"
+        fineweb_data_files.append(file_name)
+
+
+    fineweb = load_dataset(
+        config["data_mix"]["external_dataset_name"],
+        #name=config["data_mix"]["external_subset_name"],
+        split="train",
+        #streaming=True
+        data_files=fineweb_data_files
+    ).select_columns(["text"])
+
+
     dataset = load_dataset(
         "arrow", 
         data_dir=config["data"]["data_folder"], 
-        data_files="**/*.arrow", 
-        # streaming=True
-    )
-    dataset = dataset["train"]
+        data_files=config["data"]["data_files_pattern"], 
+        split="train",
+        #streaming=True
+    ).select_columns([config["data"]["text_field"]]) # or select_columns("text")
+    #dataset = dataset["train"]
+    #dataset = dataset.rename_column(config["data"]["text_field"], "text")
+
+    
     # TODO: remove this line for full training
-    dataset = dataset.select(range(10000))
+    #dataset = dataset.select(range(10000))
 
     # Tokenize the text field
     # Silence progress bars on non-main processes
@@ -208,9 +233,20 @@ def train(config, accelerator, output_dir):
             outputs.pop("overflow_to_sample_mapping")
             
         return outputs
-
+    
+    #dataset = dataset.map(tokenize_and_split, remove_columns=dataset.column_names)
+    
     # Process dataset with main process
     with accelerator.main_process_first():
+        fineweb = fineweb.map(
+        tokenize_and_split,
+        batched=True,
+        num_proc=config["training"]["num_workers"],
+        batch_size=10000,
+        remove_columns=fineweb.column_names, 
+        load_from_cache_file=True
+        )
+
         dataset = dataset.map(
             tokenize_and_split,
             batched=True,
@@ -223,7 +259,27 @@ def train(config, accelerator, output_dir):
     # Re-enable logging
     if not accelerator.is_main_process:
         datasets.utils.logging.enable_progress_bar()   
- 
+
+    # Mix datasets
+    num_fine_web = len(fineweb)
+    num_my_data = len(dataset)
+    total_samples = num_fine_web + num_my_data
+    prob_fine_web = num_fine_web / total_samples
+    prob_my_data = num_my_data / total_samples
+    # comment this line to use config probabilities
+    probabilities = [prob_fine_web, prob_my_data]
+
+    # TODO: remove for full training
+    dataset = dataset.select(range(int(1000 * 0.7)))
+    fineweb = fineweb.select(range(int(1000 * 0.3)))
+
+    combined_dataset = interleave_datasets(
+        [fineweb, dataset],
+        probabilities=probabilities,
+        seed=config["training"]["seed"], # Usa il seed del training per riproducibilità
+        stopping_strategy="first_exhausted" # TODO: if we keep it to put in the config
+    )
+    
     # Data collator
     data_collator = DataCollatorForLanguageModeling(
         tokenizer=tokenizer, 
@@ -272,19 +328,8 @@ def init_wandb(config):
         }
     )
 
-
-def main():
-    # Load environment variables from .env file
+def train_model(config, output_dir):
     load_dotenv()
-
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Fine-tune Gemma model.")
-    parser.add_argument("--config-path", "-c", type=str, required=True)
-    parser.add_argument("--output-dir", "-o", type=str, required=True)
-    args = parser.parse_args()
-
-    config = load_config(args.config_path)
-    output_dir = args.output_dir
 
     if "SLURM_PROCID" in os.environ:
         os.environ["RANK"] = os.environ["SLURM_PROCID"]
@@ -299,26 +344,22 @@ def main():
     accelerator.wait_for_everyone()
     
     if accelerator.is_main_process:
-        print("Starting fine-tuning.")
-        print(f"Distributed: {accelerator.distributed_type}")
-        print(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
-        print(f"Config: {config}")
-        print(f"Output dir: {output_dir}")
-
+        LOGGER.info("Starting fine-tuning.")
+        LOGGER.info(f"Distributed: {accelerator.distributed_type}")
+        LOGGER.info(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
+        LOGGER.info(f"Config: {config}")
+        LOGGER.info(f"Output dir: {output_dir}")
         # Initialize wandb
         if config["training"]["report_to"] == "wandb":
             init_wandb(config)
 
     # Start training
     trainer = train(config, accelerator, output_dir)
-    print(f"[RANK {int(os.environ.get("RANK", 0))}] Finished training")
+    LOGGER.info(f"[RANK {int(os.environ.get('RANK', 0))}] Finished training")
     
     # Save final model
     final_model_dir = f"{output_dir}/final-model" 
     trainer.save_model(final_model_dir)
 
     if accelerator.is_main_process:
-        print(f"Saved model to {final_model_dir}")
- 
-if __name__ == "__main__":
-    main()
+        LOGGER.info(f"Saved model to {final_model_dir}")

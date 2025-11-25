@@ -14,7 +14,7 @@ data_mix:
   external_subset_name: sample/100BT # specify subset if needed
   files_per_main_index: 10
   external_data_files: [] # empty if we want to stream the whole dataset
-  num_chunks_to_use: 1
+  num_chunks_to_use: 2
   probabilities: [0.3, 0.7] #Sampling ratio between your dataset and FineWeb
 
 distributed:

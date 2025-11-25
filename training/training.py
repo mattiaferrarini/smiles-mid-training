@@ -17,12 +17,11 @@ from transformers import (
 from datasets import load_dataset, interleave_datasets
 import datasets
 from dotenv import load_dotenv
-import argparse
-from datetime import datetime
-from utils.config import load_config
 import wandb
 import torch
+from utils.logging import get_logger
 
+LOGGER = get_logger(__name__)
 
 class MultiGPUResourcesCallback(TrainerCallback):
         def on_step_end(self, args, state, control, **kwargs):
@@ -32,7 +31,7 @@ class MultiGPUResourcesCallback(TrainerCallback):
                 if state.global_step % 10 == 0: 
                     current_mem = torch.cuda.memory_allocated() / (1024 ** 3)
                     max_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
-                    print(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
+                    LOGGER.info(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
 
 
 def prepare_training_args(config, output_dir):
@@ -68,7 +67,7 @@ def prepare_training_args(config, output_dir):
 
         if "fsdp_transformer_layer_cls_to_wrap" in fsdp_inner_config:
             args_dict["fsdp_transformer_layer_cls_to_wrap"] = fsdp_inner_config.pop("fsdp_transformer_layer_cls_to_wrap")
-            print(f"FSDP Wrapping Layer: {args_dict['fsdp_transformer_layer_cls_to_wrap']}")
+            LOGGER.info(f"FSDP Wrapping Layer: {args_dict['fsdp_transformer_layer_cls_to_wrap']}")
         
         if args_dict["gradient_checkpointing"]:
             fsdp_inner_config["activation_checkpointing"] = True
@@ -76,13 +75,13 @@ def prepare_training_args(config, output_dir):
  
         args_dict["fsdp_config"] = fsdp_inner_config
         
-        print(f"Training Strategy: FSDP ({args_dict['fsdp']})")
+        LOGGER.info(f"Training Strategy: FSDP ({args_dict['fsdp']})")
     elif strategy == "ddp":
         # DDP-specific arguments
         ddp_conf = config["distributed"]["ddp"]
         args_dict["ddp_backend"] = ddp_conf["backend"]
         args_dict["ddp_find_unused_parameters"] = ddp_conf["find_unused_parameters"]
-        print(f"Training Strategy: DDP (Backend: {args_dict['ddp_backend']})")
+        LOGGER.info(f"Training Strategy: DDP (Backend: {args_dict['ddp_backend']})")
     else:
         raise ValueError(f"Unsupported distributed strategy: {strategy}")
     
@@ -253,19 +252,8 @@ def init_wandb(config):
         }
     )
 
-
-def main():
-    # Load environment variables from .env file
+def train_model(config, output_dir):
     load_dotenv()
-
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Fine-tune Gemma model.")
-    parser.add_argument("--config-path", "-c", type=str, required=True)
-    parser.add_argument("--output-dir", "-o", type=str, required=True)
-    args = parser.parse_args()
-
-    config = load_config(args.config_path)
-    output_dir = args.output_dir
 
     if "SLURM_PROCID" in os.environ:
         os.environ["RANK"] = os.environ["SLURM_PROCID"]
@@ -280,26 +268,22 @@ def main():
     accelerator.wait_for_everyone()
     
     if accelerator.is_main_process:
-        print("Starting fine-tuning.")
-        print(f"Distributed: {accelerator.distributed_type}")
-        print(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
-        print(f"Config: {config}")
-        print(f"Output dir: {output_dir}")
-
+        LOGGER.info("Starting fine-tuning.")
+        LOGGER.info(f"Distributed: {accelerator.distributed_type}")
+        LOGGER.info(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
+        LOGGER.info(f"Config: {config}")
+        LOGGER.info(f"Output dir: {output_dir}")
         # Initialize wandb
         if config["training"]["report_to"] == "wandb":
             init_wandb(config)
 
     # Start training
     trainer = train(config, accelerator, output_dir)
-    print(f"[RANK {int(os.environ.get("RANK", 0))}] Finished training")
+    LOGGER.info(f"[RANK {int(os.environ.get('RANK', 0))}] Finished training")
     
     # Save final model
     final_model_dir = f"{output_dir}/final-model" 
     trainer.save_model(final_model_dir)
 
     if accelerator.is_main_process:
-        print(f"Saved model to {final_model_dir}")
- 
-if __name__ == "__main__":
-    main()
+        LOGGER.info(f"Saved model to {final_model_dir}")

@@ -22,6 +22,9 @@ import torch
 import torch.distributed as dist
 import time
 from utils.logging import get_logger
+import argparse
+from utils.config import load_config
+
 
 LOGGER = get_logger(__name__)
 
@@ -139,7 +142,9 @@ def prepare_training_args(config, output_dir):
         "per_device_train_batch_size": config["training"]["per_device_batch_size"],
         "gradient_accumulation_steps": config["training"]["gradient_accumulation_steps"],
         "num_train_epochs": config["training"]["epochs"],
-        "warmup_steps": config["training"]["warmup_steps"],
+        #"warmup_steps": config["training"]["warmup_steps"],
+        "warmup_ratio": config["training"]["warmup_ratio"],
+        "lr_scheduler_type": config["training"]["lr_scheduler_type"],
         "learning_rate": config["training"]["learning_rate"],
         "bf16": config["training"]["bf16"],
         "fp16": config["training"]["fp16"],
@@ -215,15 +220,11 @@ def train(config, accelerator, output_dir):
         file_name = f"{subset_path}/{main_part}_{sub_part}.parquet"
         fineweb_data_files.append(file_name)
 
-
     fineweb = load_dataset(
         config["data_mix"]["external_dataset_name"],
-        #name=config["data_mix"]["external_subset_name"],
         split="train",
-        #streaming=True
         data_files=fineweb_data_files
     ).select_columns(["text"])
-
 
     dataset = load_dataset(
         "arrow", 
@@ -231,13 +232,7 @@ def train(config, accelerator, output_dir):
         data_files=config["data"]["data_files_pattern"], 
         split="train",
         #streaming=True
-    ).select_columns([config["data"]["text_field"]]) # or select_columns("text")
-    #dataset = dataset["train"]
-    #dataset = dataset.rename_column(config["data"]["text_field"], "text")
-
-    
-    # TODO: remove this line for full training
-    #dataset = dataset.select(range(10000))
+    ).select_columns([config["data"]["text_field"]])
 
     # Tokenize the text field
     # Silence progress bars on non-main processes
@@ -259,10 +254,17 @@ def train(config, accelerator, output_dir):
             
         return outputs
     
-    #dataset = dataset.map(tokenize_and_split, remove_columns=dataset.column_names)
-    
     # Process dataset with main process
     with accelerator.main_process_first():
+        # Log dataset info
+        LOGGER.info("Dataset info:")
+        info = dataset.info
+        size_gb = info.dataset_size / (1024 ** 3)
+        num_examples = info.splits['train'].num_examples
+        LOGGER.info(f"Dataset Size: {size_gb:.2f} GB")
+        LOGGER.info(f"Total Examples: {num_examples:,}") # The :, adds comma separators       
+
+        # Tokenize datasets 
         fineweb = fineweb.map(
             tokenize_and_split,
             batched=True,
@@ -281,6 +283,10 @@ def train(config, accelerator, output_dir):
             load_from_cache_file=True
         )
 
+        LOGGER.info("Tokenized samples in dataset:", len(dataset))
+        LOGGER.info("Tokenized samples in fineweb:", len(fineweb))
+        LOGGER.info("Total tokenized samples:", len(dataset) + len(fineweb))
+
     # Re-enable logging
     if not accelerator.is_main_process:
         datasets.utils.logging.enable_progress_bar()   
@@ -292,17 +298,18 @@ def train(config, accelerator, output_dir):
     prob_fine_web = num_fine_web / total_samples
     prob_my_data = num_my_data / total_samples
     # comment this line to use config probabilities
-    probabilities = [prob_fine_web, prob_my_data]
+    # probabilities = [prob_fine_web, prob_my_data]
 
-    # TODO: remove for full training
-    dataset = dataset.select(range(int(1000 * 0.7)))
-    fineweb = fineweb.select(range(int(1000 * 0.3)))
+    probabilities = config["data_mix"]["probabilities"]
+
+    # dataset = dataset.select(range(int(1000 * 0.7)))
+    # fineweb = fineweb.select(range(int(1000 * 0.3)))
 
     combined_dataset = interleave_datasets(
         [fineweb, dataset],
         probabilities=probabilities,
-        seed=config["training"]["seed"], # Usa il seed del training per riproducibilità
-        stopping_strategy="first_exhausted" # TODO: if we keep it to put in the config
+        seed=config["training"]["seed"], 
+        stopping_strategy="first_exhausted"
     )
     
     # Data collator
@@ -320,7 +327,7 @@ def train(config, accelerator, output_dir):
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=dataset,
+        train_dataset=combined_dataset,
         processing_class=tokenizer,
         data_collator=data_collator,
         callbacks=[
@@ -388,3 +395,14 @@ def train_model(config, output_dir):
 
     if accelerator.is_main_process:
         LOGGER.info(f"Saved model to {final_model_dir}")
+
+if __name__ == "__main__":
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Fine-tune Gemma model.")
+    parser.add_argument("--config-path", "-c", type=str, required=True)
+    parser.add_argument("--output-dir", "-o", type=str, required=True)
+    args = parser.parse_args()
+
+    config = load_config(args.config_path)
+    output_dir = args.output_dir
+    train_model(config, output_dir)

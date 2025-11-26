@@ -1,5 +1,5 @@
 job:
-  name: chemistry_baseline_training
+  name: gemma_chem_training
 
 model:
   name: google/gemma-3-4b-it
@@ -7,15 +7,15 @@ model:
 data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow"
-  text_field: text
+  text_field: "text"
 
 data_mix:
   external_dataset_name: HuggingFaceFW/fineweb-edu
-  external_subset_name: sample/100BT # specify subset if needed
+  external_subset_name: sample/100BT # Specify subset if needed
   files_per_main_index: 10
-  external_data_files: [] # empty if we want to stream the whole dataset
-  num_chunks_to_use: 2
-  probabilities: [0.3, 0.7] #Sampling ratio between your dataset and FineWeb
+  external_data_files: [] # Empty if we want to stream the whole dataset
+  num_chunks_to_use: 17
+  probabilities: [0.3, 0.7] # Sampling ratio between your dataset and FineWeb
 
 distributed:
   strategy: "ddp" # Options: "ddp" or "fsdp"
@@ -31,11 +31,13 @@ training:
   epochs: 1 
   gradient_accumulation_steps: 10 #8 for FSDP
   learning_rate: 2.0e-5
-  warmup_steps: 50
-  weight_decay: 0.0
-  save_steps: 500
-  logging_steps: 5
-  resource_logging_steps: 5
+  # warmup_steps: 1000
+  warmup_ratio: 0.03
+  lr_scheduler_type: "cosine"
+  weight_decay: 0.1
+  save_steps: 100
+  logging_steps: 50
+  resource_logging_steps: 50
   bf16: true
   fp16: false
   evaluation_strategy: "no"
@@ -48,7 +50,7 @@ training:
   per_device_batch_size: 3 # 4 for FSDP
   max_length: 4096
   stride_size: 1024
-  report_to: "none"
+  report_to: "wandb"
 
 tokenizer:
   type: element

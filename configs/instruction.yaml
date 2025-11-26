@@ -1,0 +1,38 @@
+
+
+model:
+  name: "HuggingFaceTB/SmolLM2-135M-Instruct"
+
+
+data:
+
+  data_folder: "trl-lib/Capybara" #non sono sicuro che funzioni così con huggingface ancora
+
+training:
+  output_dir: "./results"
+  
+  # valori che per ora ho messo a caso
+  epochs: 3             
+  batch_size: 4         
+  gradient_accumulation_steps: 4
+  # just to test it
+  max_steps: 5
+  learning_rate: 1.0e-5  # solitamente più basso per l'Instruction Tuning
+  warmup_steps: 50
+  save_steps: 500
+  logging_steps: 25
+  bf16: true
+  fp16: false
+  seed: 42
+
+# questo non so se serva ma dicono che si metta sempre con l'instruction tuning, serve per usare lora, che permette di aggiustare meno parametri
+peft:
+  use_lora: true 
+  lora_r: 16             # Rank di LORA: 8, 16, 32 sono valori comuni.
+  lora_alpha: 32         # Alpha: Di solito il doppio del rank o uguale.
+  lora_dropout: 0.05
+  # TODO: vedere documentazione lora
+  lora_target_modules: 
+    - q_proj
+    - k_proj
+    - v_proj

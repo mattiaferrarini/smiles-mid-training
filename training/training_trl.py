@@ -45,45 +45,6 @@ class MultiGPUResourcesCallback(TrainerCallback):
                 print(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
 
 
-class ThroughputCallback(TrainerCallback):
-    def __init__(self, log_steps, max_seq_length, accelerator):
-        super().__init__()
-        self.log_steps = log_steps
-        self.max_seq_length = max_seq_length
-        self.accelerator = accelerator
-        self.last_time = None
-        self.last_step = 0
-
-    def on_step_end(self, args, state, control, **kwargs):
-        # Only print on the main process to avoid clutter
-        if state.global_step % self.log_steps == 0 and self.accelerator.is_main_process:
-            current_time = time.time()
-            
-            # Skip the very first log (step 0 or start) as we have no delta
-            if self.last_time is not None:
-                time_delta = current_time - self.last_time
-                steps_delta = state.global_step - self.last_step
-                
-                if time_delta > 0:
-                    # Calculate total samples processed across all GPUs
-                    # Batch size per device * Gradient Accumulation * World Size
-                    batch_size_total = (
-                        args.per_device_train_batch_size * args.gradient_accumulation_steps * args.world_size
-                    )
-                    
-                    # Since packing=True, every sample is filled to max_seq_length
-                    total_tokens = batch_size_total * self.max_seq_length * steps_delta
-                    
-                    tokens_per_sec = total_tokens / time_delta
-                    
-                    LOGGER.info(f"[Step {state.global_step}] "
-                                f"Time: {time_delta:.2f}s | "
-                                f"Throughput: {tokens_per_sec:.2f} tokens/sec")
-
-            self.last_time = current_time
-            self.last_step = state.global_step
-
-
 def prepare_training_args(config, output_dir):
     strategy = config["distributed"]["strategy"]
 
@@ -117,6 +78,7 @@ def prepare_training_args(config, output_dir):
         },
         "dataloader_drop_last": True,
         "max_length": config["training"]["max_length"],
+        "include_tokens_per_second": True,
     }
 
     if strategy == "fsdp":
@@ -233,7 +195,6 @@ def train(config, accelerator, output_dir):
     # Training arguments
     training_args = prepare_training_args(config, output_dir)
     resource_logging_steps = config["training"]["resource_logging_steps"]    
-    max_length = config["training"]["max_length"]
 
     # Initialize Trainer
     trainer = SFTTrainer(
@@ -242,8 +203,7 @@ def train(config, accelerator, output_dir):
         train_dataset=combined_dataset,
         processing_class=tokenizer, # pass tokenizer here
         callbacks=[
-            MultiGPUResourcesCallback(resource_logging_steps), 
-            ThroughputCallback(resource_logging_steps, max_length, accelerator)
+            MultiGPUResourcesCallback(resource_logging_steps),
         ]
     )    
 

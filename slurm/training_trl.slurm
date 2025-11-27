@@ -3,7 +3,7 @@
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
 #SBATCH --time=00:30:00
-#SBATCH --partition=debug
+#SBATCH --partition=normal
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
@@ -79,7 +79,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 # Training settings
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/$TIMESTAMP"
-export CONFIG_PATH=configs/default_ddp.yaml
+export CONFIG_PATH=configs/default_trl.yaml
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -91,7 +91,7 @@ export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
 # Run the training with jobreport
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training_trl.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 
 # Print report
 # TODO: this is for debugging purposes, recomment the second part and uncomment the first to have the jobreport printed

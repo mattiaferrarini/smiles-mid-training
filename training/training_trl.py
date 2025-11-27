@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from accelerate import Accelerator, InitProcessGroupKwargs
+from trl import SFTTrainer, SFTConfig
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -44,96 +45,6 @@ class MultiGPUResourcesCallback(TrainerCallback):
                 print(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
 
 
-class ThroughputLoggerCallback(TrainerCallback):
-    def __init__(self, log_steps):
-        super().__init__()
-        self.log_steps = log_steps
-        self.last_time = None
-
-    def on_train_begin(self, args, state, control, **kwargs):
-        self.last_time = time.time()
-
-    def on_step_end(self, args, state, control, **kwargs):
-        if state.global_step % self.log_steps == 0 and state.global_step > 0:
-            current_time = time.time()
-            time_delta = current_time - self.last_time
-            
-            # Calculate per-GPU batch size
-            per_gpu_batch_size = (
-                args.per_device_train_batch_size * args.gradient_accumulation_steps
-            )
-            per_gpu_samples_processed = per_gpu_batch_size * self.log_steps
-            per_gpu_samples_per_sec = per_gpu_samples_processed / time_delta
-            
-            # Calculate aggregate throughput
-            total_batch_size = per_gpu_batch_size * args.world_size
-            total_samples_processed = total_batch_size * self.log_steps
-            total_samples_per_sec = total_samples_processed / time_delta
-            
-            # Get sequence length from model input
-            model = kwargs.get('model')
-            if model is not None and hasattr(model, 'config') and hasattr(model.config, 'max_position_embeddings'):
-                seq_length = model.config.max_position_embeddings
-            else:
-                # Fallback to max_length from training args if available
-                seq_length = getattr(args, 'max_seq_length', None) or 512
-            
-            # Calculate tokens per second
-            per_gpu_tokens_per_sec = per_gpu_samples_per_sec * seq_length
-            total_tokens_per_sec = total_samples_per_sec * seq_length
-            
-            self.last_time = current_time
-
-            rank = args.process_index
-            
-            # Print per-GPU throughput for all ranks
-            print(f"[Step {state.global_step}] Rank {rank} Throughput: {per_gpu_samples_per_sec:.2f} samples/sec, {per_gpu_tokens_per_sec:.2f} tokens/sec")
-            
-            # Gather metrics from all ranks to log in wandb
-            if dist.is_initialized():
-                # Create tensors for gathering
-                samples_tensor = torch.tensor([per_gpu_samples_per_sec], device='cuda')
-                tokens_tensor = torch.tensor([per_gpu_tokens_per_sec], device='cuda')
-                
-                # Gather all metrics to rank 0
-                if rank == 0:
-                    gathered_samples = [torch.zeros_like(samples_tensor) for _ in range(args.world_size)]
-                    gathered_tokens = [torch.zeros_like(tokens_tensor) for _ in range(args.world_size)]
-                    dist.gather(samples_tensor, gathered_samples, dst=0)
-                    dist.gather(tokens_tensor, gathered_tokens, dst=0)
-                else:
-                    dist.gather(samples_tensor, dst=0)
-                    dist.gather(tokens_tensor, dst=0)
-                
-                # Log from rank 0
-                if rank == 0 and wandb.run is not None:
-                    metrics = {
-                        "throughput/samples_per_sec_total": total_samples_per_sec,
-                        "throughput/tokens_per_sec_total": total_tokens_per_sec,
-                    }
-                    
-                    # Add per-GPU metrics
-                    for i in range(args.world_size):
-                        metrics[f"throughput/samples_per_sec_rank_{i}"] = gathered_samples[i].item()
-                        metrics[f"throughput/tokens_per_sec_rank_{i}"] = gathered_tokens[i].item()
-                    
-                    wandb.log(metrics, step=state.global_step)
-                    print(f"[Step {state.global_step}] Total Throughput: {total_samples_per_sec:.2f} samples/sec, {total_tokens_per_sec:.2f} tokens/sec")
-            else:
-                # Fallback for non-distributed or single GPU
-                if rank == 0 and wandb.run is not None:
-                    wandb.log(
-                        {
-                            "throughput/samples_per_sec_total": total_samples_per_sec,
-                            "throughput/tokens_per_sec_total": total_tokens_per_sec,
-                            f"throughput/samples_per_sec_rank_{rank}": per_gpu_samples_per_sec,
-                            f"throughput/tokens_per_sec_rank_{rank}": per_gpu_tokens_per_sec
-                        }, 
-                        step=state.global_step
-                    )
-                    print(f"[Step {state.global_step}] Total Throughput: {total_samples_per_sec:.2f} samples/sec, {total_tokens_per_sec:.2f} tokens/sec")
-
-
 def prepare_training_args(config, output_dir):
     strategy = config["distributed"]["strategy"]
 
@@ -142,7 +53,8 @@ def prepare_training_args(config, output_dir):
         "output_dir": output_dir,
         "per_device_train_batch_size": config["training"]["per_device_batch_size"],
         "gradient_accumulation_steps": config["training"]["gradient_accumulation_steps"],
-        "num_train_epochs": config["training"]["epochs"],
+        # "num_train_epochs": config["training"]["epochs"],
+        "max_steps": 50000,
         #"warmup_steps": config["training"]["warmup_steps"],
         "warmup_ratio": config["training"]["warmup_ratio"],
         "lr_scheduler_type": config["training"]["lr_scheduler_type"],
@@ -150,7 +62,7 @@ def prepare_training_args(config, output_dir):
         "bf16": config["training"]["bf16"],
         "fp16": config["training"]["fp16"],
         "remove_unused_columns": False,
-        "dataloader_num_workers": config["training"]["num_workers"],
+        "dataloader_num_workers": 4,  # config["training"]["num_workers"],
         "report_to": config["training"]["report_to"],
         "gradient_checkpointing": config["training"]["gradient_checkpointing"],
         "gradient_checkpointing_kwargs": {"use_reentrant": False},
@@ -159,7 +71,14 @@ def prepare_training_args(config, output_dir):
         "logging_steps": config["training"]["logging_steps"],
         "dataloader_pin_memory": True,
         "dataloader_persistent_workers": True,
-        "dataloader_prefetch_factor": config["training"]["prefetch_factor"]
+        "dataloader_prefetch_factor": config["training"]["prefetch_factor"],
+        "packing": True,
+        "accelerator_config": {
+            "dispatch_batches": False,
+        },
+        "dataloader_drop_last": True,
+        "max_length": config["training"]["max_length"],
+        "include_tokens_per_second": True,
     }
 
     if strategy == "fsdp":
@@ -188,8 +107,7 @@ def prepare_training_args(config, output_dir):
     else:
         raise ValueError(f"Unsupported distributed strategy: {strategy}")
     
-    training_args = TrainingArguments(**args_dict)
-    return training_args
+    return SFTConfig(**args_dict)
 
 
 def train(config, accelerator, output_dir):
@@ -226,7 +144,8 @@ def train(config, accelerator, output_dir):
     fineweb = load_dataset(
         config["data_mix"]["external_dataset_name"],
         split="train",
-        data_files=fineweb_data_files
+        data_files=fineweb_data_files,
+        streaming=True
     ).select_columns(["text"])
 
     dataset = load_dataset(
@@ -234,30 +153,15 @@ def train(config, accelerator, output_dir):
         data_dir=config["data"]["data_folder"], 
         data_files=config["data"]["data_files_pattern"], 
         split="train",
-        #streaming=True
+        streaming=True
     ).select_columns([config["data"]["text_field"]])
 
-    # Tokenize the text field
-    # Silence progress bars on non-main processes
-    if not accelerator.is_main_process:
-        datasets.utils.logging.disable_progress_bar()
+    my_text_col = config["data"]["text_field"]
+    if my_text_col != "text":
+        dataset = dataset.rename_column(my_text_col, "text")
+    dataset = dataset.select_columns(["text"])
 
-    def tokenize_and_split(examples):
-        outputs = tokenizer(
-            examples[config["data"]["text_field"]],
-            truncation=True,
-            max_length=config["training"]["max_length"],
-            return_overflowing_tokens=True, # Split long samples
-            stride=config["training"]["stride_size"], # Overlap between chunks
-            padding=False
-        )
-        
-        if "overflow_to_sample_mapping" in outputs:
-            outputs.pop("overflow_to_sample_mapping")
-            
-        return outputs
-    
-    # Process dataset with main process
+    '''
     with accelerator.main_process_first():
         # Log dataset info
         LOGGER.info("Dataset info:")
@@ -266,40 +170,13 @@ def train(config, accelerator, output_dir):
         num_examples = info.splits['train'].num_examples
         LOGGER.info(f"Dataset Size: {size_gb:.2f} GB")
         LOGGER.info(f"Total Examples: {num_examples:,}") # The :, adds comma separators       
-
-        # Tokenize datasets 
-        fineweb = fineweb.map(
-            tokenize_and_split,
-            batched=True,
-            num_proc=config["training"]["preprocessing_num_workers"],
-            batch_size=10000,
-            remove_columns=fineweb.column_names, 
-            load_from_cache_file=True
-        )
-
-        dataset = dataset.map(
-            tokenize_and_split,
-            batched=True,
-            num_proc=config["training"]["preprocessing_num_workers"],
-            batch_size=10000,
-            remove_columns=dataset.column_names, 
-            load_from_cache_file=True
-        )
-
-        LOGGER.info("Tokenized samples in dataset:", len(dataset))
-        LOGGER.info("Tokenized samples in fineweb:", len(fineweb))
-        LOGGER.info("Total tokenized samples:", len(dataset) + len(fineweb))
-
-    # Re-enable logging
-    if not accelerator.is_main_process:
-        datasets.utils.logging.enable_progress_bar()   
-
+    '''
     # Mix datasets
-    num_fine_web = len(fineweb)
-    num_my_data = len(dataset)
-    total_samples = num_fine_web + num_my_data
-    prob_fine_web = num_fine_web / total_samples
-    prob_my_data = num_my_data / total_samples
+    # num_fine_web = len(fineweb)
+    # num_my_data = len(dataset)
+    # total_samples = num_fine_web + num_my_data
+    # prob_fine_web = num_fine_web / total_samples
+    # prob_my_data = num_my_data / total_samples
     # comment this line to use config probabilities
     # probabilities = [prob_fine_web, prob_my_data]
 
@@ -315,30 +192,21 @@ def train(config, accelerator, output_dir):
         stopping_strategy="first_exhausted"
     )
     
-    # Data collator
-    data_collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer, 
-        mlm=False,
-        pad_to_multiple_of=64
-    )
-    
     # Training arguments
     training_args = prepare_training_args(config, output_dir)
     resource_logging_steps = config["training"]["resource_logging_steps"]    
 
     # Initialize Trainer
-    trainer = Trainer(
+    trainer = SFTTrainer(
         model=model,
         args=training_args,
         train_dataset=combined_dataset,
-        processing_class=tokenizer,
-        data_collator=data_collator,
+        processing_class=tokenizer, # pass tokenizer here
         callbacks=[
-            MultiGPUResourcesCallback(resource_logging_steps), 
-            ThroughputLoggerCallback(resource_logging_steps)
+            MultiGPUResourcesCallback(resource_logging_steps),
         ]
-    )
-    
+    )    
+
     # Train the model
     trainer.train()
     return trainer

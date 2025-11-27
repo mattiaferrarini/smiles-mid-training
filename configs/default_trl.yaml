@@ -29,7 +29,7 @@ distributed:
 
 training:
   epochs: 1 
-  gradient_accumulation_steps: 10 #8 for FSDP
+  gradient_accumulation_steps: 5 #8 for FSDP
   learning_rate: 2.0e-5
   # warmup_steps: 1000
   warmup_ratio: 0.03
@@ -44,11 +44,11 @@ training:
   save_strategy: "steps"
   seed: 42
   gradient_checkpointing: true
-  num_workers: 8
+  num_workers: 64
   preprocessing_num_workers: 64
   prefetch_factor: 4
-  per_device_batch_size: 3 # 4 for FSDP
-  max_length: 4096
+  per_device_batch_size: 6 # 4 for FSDP
+  max_length: 2048
   stride_size: 1024
   report_to: "wandb"
 

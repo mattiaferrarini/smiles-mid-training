@@ -111,6 +111,16 @@ def prepare_training_args(config, output_dir):
 
 
 def train(config, accelerator, output_dir):
+    # Check for existing checkpoints
+    checkpoint_dir = None
+    if os.path.exists(output_dir):
+        checkpoints = [d for d in os.listdir(output_dir) if d.startswith("checkpoint-")]
+        if checkpoints:
+            # Sort by checkpoint number and get the latest
+            checkpoints.sort(key=lambda x: int(x.split("-")[1]))
+            checkpoint_dir = os.path.join(output_dir, checkpoints[-1])
+            LOGGER.info(f"Found existing checkpoint: {checkpoint_dir}")
+    
     # Load tokenizer   
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
     if tokenizer.pad_token is None:
@@ -207,8 +217,13 @@ def train(config, accelerator, output_dir):
         ]
     )    
 
-    # Train the model
-    trainer.train()
+    # Train the model (resume from checkpoint if available)
+    if checkpoint_dir:
+        LOGGER.info(f"Resuming training from checkpoint: {checkpoint_dir}")
+        trainer.train(resume_from_checkpoint=checkpoint_dir)
+    else:
+        LOGGER.info("Starting training from scratch")
+        trainer.train()
     return trainer
 
 

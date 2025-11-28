@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=gemma_ddp
+#SBATCH --job-name=gemma_ddp_trl
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
 #SBATCH --time=00:30:00
-#SBATCH --partition=normal
+#SBATCH --partition=debug
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
@@ -43,8 +43,8 @@ export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 # Distributed settings
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
-export NCCL_DEBUG=INFO
-export TORCH_DISTRIBUTED_DEBUG=DETAIL
+# export NCCL_DEBUG=INFO
+# export TORCH_DISTRIBUTED_DEBUG=DETAIL
 export PYTHONUNBUFFERED=1
 export TOKENIZERS_PARALLELISM=false
 
@@ -78,7 +78,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 
 # Training settings
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/$TIMESTAMP"
+export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/test"
 export CONFIG_PATH=configs/default_trl.yaml
 
 # Get master host address

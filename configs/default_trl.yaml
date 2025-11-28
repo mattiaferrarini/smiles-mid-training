@@ -2,7 +2,7 @@ job:
   name: gemma_chem_training
 
 model:
-  name: google/gemma-3-4b-it
+  name: google/gemma-3-1b-it
 
 data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1

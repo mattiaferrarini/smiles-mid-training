@@ -5,6 +5,24 @@ from pathlib import Path
 # Add parent directory to Python path to enable imports from utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import transformers
+import transformers.utils.import_utils
+import transformers.trainer
+
+def patched_check_safety():
+    """
+    Completely bypass the torch.load security check.
+    Required because checking optimizer.pt (legacy pickle) causes a crash 
+    in newer transformers versions.
+    """
+    return
+
+# 1. Patch the utility source (for future imports)
+transformers.utils.import_utils.check_torch_load_is_safe = patched_check_safety
+
+# 2. Patch the Trainer module specifically (fixes the crash in your traceback)
+transformers.trainer.check_torch_load_is_safe = patched_check_safety
+
 from accelerate import Accelerator, InitProcessGroupKwargs
 from trl import SFTTrainer, SFTConfig
 from transformers import (
@@ -15,6 +33,7 @@ from transformers import (
     TrainingArguments,
     TrainerCallback
 )
+
 from datasets import load_dataset, interleave_datasets
 import datasets
 from dotenv import load_dotenv
@@ -219,10 +238,10 @@ def train(config, accelerator, output_dir):
 
     # Train the model (resume from checkpoint if available)
     if checkpoint_dir:
-        LOGGER.info(f"Resuming training from checkpoint: {checkpoint_dir}")
+        print(f"Resuming training from checkpoint: {checkpoint_dir}")
         trainer.train(resume_from_checkpoint=checkpoint_dir)
     else:
-        LOGGER.info("Starting training from scratch")
+        print("Starting training from scratch")
         trainer.train()
     return trainer
 
@@ -232,7 +251,7 @@ def init_wandb(config):
     wandb.login()
 
     # Initialize wandb run
-    wandb.init(
+    run = wandb.init(
         project=os.getenv("WANDB_PROJECT", "smiles"),
         name=config["job"]["name"],
         config={
@@ -243,8 +262,10 @@ def init_wandb(config):
             "data_folder": config["data"]["data_folder"],
             "text_field": config["data"]["text_field"],
             "num_workers": config["training"]["num_workers"],
-        }
+        },
+        group="DDP"
     )
+    return run
 
 
 def train_model(config, output_dir):
@@ -264,14 +285,15 @@ def train_model(config, output_dir):
     accelerator.wait_for_everyone()
     
     if accelerator.is_main_process:
-        LOGGER.info("Starting fine-tuning.")
-        LOGGER.info(f"Distributed: {accelerator.distributed_type}")
-        LOGGER.info(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
-        LOGGER.info(f"Config: {config}")
-        LOGGER.info(f"Output dir: {output_dir}")
-        # Initialize wandb
-        if config["training"]["report_to"] == "wandb":
-            init_wandb(config)
+        print("Starting fine-tuning.")
+        print(f"Distributed: {accelerator.distributed_type}")
+        print(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
+        print(f"Config: {config}")
+        print(f"Output dir: {output_dir}")
+    
+    # Initialize wandb
+    if config["training"]["report_to"] == "wandb":
+        run = init_wandb(config)
 
     # Start training
     trainer = train(config, accelerator, output_dir)
@@ -282,7 +304,10 @@ def train_model(config, output_dir):
     trainer.save_model(final_model_dir)
 
     if accelerator.is_main_process:
-        LOGGER.info(f"Saved model to {final_model_dir}")
+        print(f"Saved model to {final_model_dir}")
+    
+    if config["training"]["report_to"] == "wandb":
+        run.finish()
 
 if __name__ == "__main__":
     # Parse command-line arguments

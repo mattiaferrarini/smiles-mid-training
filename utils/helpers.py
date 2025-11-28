@@ -1,5 +1,8 @@
 import json
 from pathlib import Path
+from datasets import Dataset
+from transformers import PreTrainedTokenizerBase
+from typing import Type
 
 def _load_vocab_from_json(path, append_to_existing_vocabulary=False, self_vocab=None):
     p = Path(path)
@@ -63,5 +66,48 @@ def create_vocabulary( text, _tokenize, append_to_existing_vocabulary=False, voc
             json.dump(vocab, fh, ensure_ascii=False, indent=2)
     return vocab
 
+def save_tokenizer_files(save_directory: Path, vocab_dict: dict, config_dict: dict):
+
+    save_directory.mkdir(parents=True, exist_ok=True)
+    
+    vocab_file = save_directory / "vocab.json"
+    with open(vocab_file, "w", encoding="utf-8") as f:
+        json.dump(vocab_dict, f, indent=4)
+        
+    config_file = save_directory / "tokenizer_config.json"
+    with open(config_file, "w", encoding="utf-8") as f:
+        json.dump(config_dict, f, indent=4)
+        
+    return str(vocab_file), str(config_file)
+
+
+
+def build_and_save_tokenizer(
+    TokenizerClass: Type[PreTrainedTokenizerBase], 
+    dataset: Dataset, 
+    text_field: str, # text field in the dataset
+    output_dir: str # output directory to save the tokenizer
+) -> PreTrainedTokenizerBase:
+    """
+    It learns the vocabulary of the tokenizer and saves it compatible with Huggingface.
+    """
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    tk = TokenizerClass()
+    # TODO: either here or where the dataset is passed, filter it to only chem
+    print("Preparazione del corpus di testo...")
+    all_text = "".join(dataset[text_field])
+    
+    print(f"Avvio creazione vocabolario per {TokenizerClass.__name__}...")
+    tk.create_vocabulary(all_text, save_vocabulary=False) 
+    
+    print(f"Vocabolario creato con {tk.vocab_size} simboli.")
+
+    tk.save_pretrained(output_path)
+    
+    print(f"Tokenizer saved in: {output_path.resolve()}")
+    
+    return tk
 
     

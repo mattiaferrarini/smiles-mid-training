@@ -1,0 +1,13 @@
+job:
+  name: tokenizer_building_experiment
+
+data:
+
+  data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1
+  text_field: text
+
+tokenizer:
+  type: character
+  output_dir: /iopsstor/scratch/cscs/$USER/tokenizers_saved
+  params:
+    max_vocab_size: 50000 

@@ -5,7 +5,7 @@ import os
 from typing import Optional, List, Dict, Any
 import utils.helpers as helpers
 
-class ElementTokenizer(PreTrainedTokenizer):
+class ElementAromaticsTokenizer(PreTrainedTokenizer):
 
     ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar",
             "K","Ca","Sc","Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn","Ga","Ge","As","Se","Br",
@@ -57,7 +57,40 @@ class ElementTokenizer(PreTrainedTokenizer):
         return len(self.vocab)
 
     def _tokenize(self, text):
-        return re.findall(self.current_pattern, text)
+        all_tokens = re.findall(self.current_pattern, text)
+        tokens = []
+        i = 0
+        while i < len(all_tokens):
+            t = all_tokens[i]
+            if t.startswith('[') and t.endswith(']'):
+                tokens.append(t)
+                i += 1
+                continue
+
+            # Detect aromatic rings (lowercase atoms with matching ring numbers)
+            if t.islower():
+                ring_tokens = [t]
+                j = i + 1
+                while j < len(all_tokens):
+                    if all_tokens[j].islower() or all_tokens[j].isdigit() or re.fullmatch(r'%[0-9]{2}', all_tokens[j]):
+                        ring_tokens.append(all_tokens[j])
+                        j += 1
+                    else:
+                        break
+                # collapse aromatic ring into one token
+                tokens.append("AROM_RING:" + "".join(ring_tokens))
+                i = j
+                continue
+
+            if t.isdigit():
+                tokens.append(f'RING{t}')
+            elif re.fullmatch(r'%[0-9]{2}', t):
+                tokens.append(f'RING{t[1:]}')
+            else:
+                tokens.append(t)
+            i += 1
+
+        return tokens
 
     def _convert_token_to_id(self, token):
         return self.vocab.get(token, self.vocab.get(self.unk_token))
@@ -83,24 +116,22 @@ class ElementTokenizer(PreTrainedTokenizer):
         self.decoder = {v: k for k, v in self.vocab.items()}
         return self.vocab
 
-    # Legacy methods kept for compatibility if needed, but redirected or simplified
     def _load_vocab_from_json(self, path, append_to_existing_vocabulary=False):
-        # This is largely replaced by __init__ loading, but keeping for existing scripts
         return helpers._load_vocab_from_json(path, append_to_existing_vocabulary, self.vocab)
-    
+
     def reset_vocabulary(self):
         self.vocab = {self.unk_token: 0, self.pad_token: 1, self.bos_token: 2, self.eos_token: 3}
         self.decoder = {v: k for k, v in self.vocab.items()}
 
     def load_vocabulary(self, vocab_path="../json/vocab_symbol_to_number.json"):
-        # Legacy loader
         self.vocab = helpers.load_vocabulary(vocab_path)
         self.decoder = {v: k for k, v in self.vocab.items()}
 
 
+
 if __name__ == "__main__":
     # small smoke test
-    tk = ElementTokenizer()
+    tk = ElementAromaticsTokenizer()
     print("Initial vocab size:", len(tk))
     s = "CNaC(=O)Oc1ccccc1C(=O)O"
     print("Tokens:", tk._tokenize(s))

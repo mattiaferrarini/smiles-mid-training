@@ -5,20 +5,10 @@ import os
 from typing import Optional, List, Dict, Any
 import utils.helpers as helpers
 
-class ElementTokenizer(PreTrainedTokenizer):
+class SelfiesTokenizer(PreTrainedTokenizer):
 
-    ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar",
-            "K","Ca","Sc","Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn","Ga","Ge","As","Se","Br",
-            "Kr","Rb","Sr","Y","Zr","Nb","Mo","Tc","Ru","Rh","Pd","Ag","Cd","In","Sn","Sb","Te",
-            "I","Xe","Cs","Ba","La","Ce","Pr","Nd","Pm","Sm","Eu","Gd","Tb","Dy","Ho","Er","Tm",
-            "Yb","Lu","Hf","Ta","W","Re","Os","Ir","Pt","Au","Hg","Tl","Pb","Bi","Po","At","Rn",
-            "Fr","Ra","Ac","Th","Pa","U","Np","Pu","Am","Cm","Bk","Cf","Es","Fm","Md","No","Lr",
-            "Rf","Db","Sg","Bh","Hs","Mt","Ds","Rg","Cn","Nh","Fl","Mc","Lv","Ts","Og"]
-    
-    ELEMENTS = sorted(ELEMENTS, key=lambda x: -len(x))  # longest first
-
-    ELEMENT_PATTERN = "|".join(ELEMENTS)  # NO parentheses
-    ATOM_LEVEL_PATTERN = r"\[[^\]]+]|" + ELEMENT_PATTERN + r"|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9]"
+    SELFIES_GROUP_PATTERN = r"(\[[^\[\]]+\])"
+    CHEM_TOKEN_PATTERN = r"([A-Z][a-z]?|\d+|[=#+-]|[()·−])"
 
     vocab_files_names = {"vocab_file": "vocab.json"}
     model_input_names = ["input_ids", "attention_mask"]
@@ -42,7 +32,6 @@ class ElementTokenizer(PreTrainedTokenizer):
             self.vocab = {unk_token: 0, pad_token: 1, bos_token: 2, eos_token: 3}
             
         self.decoder = {v: k for k, v in self.vocab.items()}
-        self.current_pattern = self.ATOM_LEVEL_PATTERN
         
         super().__init__(
             unk_token=unk_token, 
@@ -56,8 +45,30 @@ class ElementTokenizer(PreTrainedTokenizer):
     def vocab_size(self) -> int:
         return len(self.vocab)
 
+    def _tokenize_selfies_style(self, text):
+        tokens = []
+        parts = re.split(self.SELFIES_GROUP_PATTERN, text)
+        
+        for part in parts:
+            if not part:
+                continue
+            
+            if part.startswith('[') and part.endswith(']'):
+                inner = part[1:-1]
+                inner_tokens = re.findall(self.CHEM_TOKEN_PATTERN, inner)
+                
+                tokens.append('[')
+                tokens.extend(inner_tokens)
+                tokens.append(']')
+            else:
+                tokens.extend(re.findall(self.CHEM_TOKEN_PATTERN, part))
+        
+        return tokens
+    
+
     def _tokenize(self, text):
-        return re.findall(self.current_pattern, text)
+        tokens = self._tokenize_selfies_style(text)
+        return tokens
 
     def _convert_token_to_id(self, token):
         return self.vocab.get(token, self.vocab.get(self.unk_token))
@@ -83,24 +94,21 @@ class ElementTokenizer(PreTrainedTokenizer):
         self.decoder = {v: k for k, v in self.vocab.items()}
         return self.vocab
 
-    # Legacy methods kept for compatibility if needed, but redirected or simplified
     def _load_vocab_from_json(self, path, append_to_existing_vocabulary=False):
-        # This is largely replaced by __init__ loading, but keeping for existing scripts
         return helpers._load_vocab_from_json(path, append_to_existing_vocabulary, self.vocab)
-    
+
     def reset_vocabulary(self):
         self.vocab = {self.unk_token: 0, self.pad_token: 1, self.bos_token: 2, self.eos_token: 3}
         self.decoder = {v: k for k, v in self.vocab.items()}
 
     def load_vocabulary(self, vocab_path="../json/vocab_symbol_to_number.json"):
-        # Legacy loader
         self.vocab = helpers.load_vocabulary(vocab_path)
         self.decoder = {v: k for k, v in self.vocab.items()}
 
 
 if __name__ == "__main__":
     # small smoke test
-    tk = ElementTokenizer()
+    tk = SelfiesTokenizer()
     print("Initial vocab size:", len(tk))
     s = "CNaC(=O)Oc1ccccc1C(=O)O"
     print("Tokens:", tk._tokenize(s))

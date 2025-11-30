@@ -125,9 +125,36 @@ def prepare_training_args(config, output_dir):
 
 
 def prepare_dataset(tokenizer, config, accelerator):
-    # Load and process fineweb dataset
+    # Load and process main dataset
+    dataset = load_dataset(
+        "arrow", 
+        data_dir=config["data"]["data_folder"], 
+        data_files=config["data"]["data_files_pattern"], 
+        split="train",
+        # streaming=True
+    ).select_columns([config["data"]["text_field"]])
+
+    # Rename text column if necessary
+    my_text_col = config["data"]["text_field"]
+    if my_text_col != "text":
+        dataset = dataset.rename_column(my_text_col, "text")
+    dataset = dataset.select_columns(["text"])
+
+    # Select a portion of the dataset if specified
+    portion_of_data_used = config["data"]["portion_of_data_used"]
+    if portion_of_data_used < 1.0:
+        total_samples = dataset.num_rows
+        samples_to_use = int(total_samples * portion_of_data_used)
+        dataset = dataset.select(range(samples_to_use))
+
+    # Determine number of fineweb chunks to use
+    SIZE_OF_CHUNK_GB = 2.15
+    probabilities = config["data_mix"]["probabilities"]
+
+    dataset_gb = (dataset.num_rows * dataset.features["text"].lengths.mean()) / (1024 ** 3)
+    num_chunks = int(dataset_gb / SIZE_OF_CHUNK_GB * probabilities[0] / probabilities[1])
     subset_path = config["data_mix"]["external_subset_name"]
-    num_chunks = config["data_mix"]["num_chunks_to_use"]
+    print(f"Using {num_chunks} chunks from FineWeb based on dataset size of {dataset_gb:.2f} GB")
 
     fineweb_data_files = []
     FILES_PER_MAIN_INDEX = config["data_mix"]["files_per_main_index"]
@@ -144,23 +171,8 @@ def prepare_dataset(tokenizer, config, accelerator):
         config["data_mix"]["external_dataset_name"],
         split="train",
         data_files=fineweb_data_files,
-        streaming=True
+        # streaming=True
     ).select_columns(["text"])
-
-    # Load and process main dataset
-    dataset = load_dataset(
-        "arrow", 
-        data_dir=config["data"]["data_folder"], 
-        data_files=config["data"]["data_files_pattern"], 
-        split="train",
-        streaming=True
-    ).select_columns([config["data"]["text_field"]])
-
-    # Rename text column if necessary
-    my_text_col = config["data"]["text_field"]
-    if my_text_col != "text":
-        dataset = dataset.rename_column(my_text_col, "text")
-    dataset = dataset.select_columns(["text"])
 
     # Tokenize the text field
 
@@ -186,12 +198,12 @@ def prepare_dataset(tokenizer, config, accelerator):
     # Process dataset with main process
     with accelerator.main_process_first():
         # Log dataset info
-        LOGGER.info("Dataset info:")
+        print("Dataset info:")
         info = dataset.info
         size_gb = info.dataset_size / (1024 ** 3)
         num_examples = info.splits['train'].num_examples
-        LOGGER.info(f"Dataset Size: {size_gb:.2f} GB")
-        LOGGER.info(f"Total Examples: {num_examples:,}") 
+        print(f"Dataset Size: {size_gb:.2f} GB")
+        print(f"Total Examples: {num_examples:,}") 
 
         # Tokenize datasets 
         fineweb = fineweb.map(
@@ -212,18 +224,13 @@ def prepare_dataset(tokenizer, config, accelerator):
             load_from_cache_file=True
         )
 
-        LOGGER.info("Tokenized samples in dataset:", len(dataset))
-        LOGGER.info("Tokenized samples in fineweb:", len(fineweb))
-        LOGGER.info("Total tokenized samples:", len(dataset) + len(fineweb))
+        print("Tokenized samples in dataset:", len(dataset))
+        print("Tokenized samples in fineweb:", len(fineweb))
+        print("Total tokenized samples:", len(dataset) + len(fineweb))
 
     # Re-enable logging
     if not accelerator.is_main_process:
         datasets.utils.logging.enable_progress_bar()   
-
-    probabilities = config["data_mix"]["probabilities"]
-
-    # dataset = dataset.select(range(int(1000 * 0.7)))
-    # fineweb = fineweb.select(range(int(1000 * 0.3)))
 
     combined_dataset = interleave_datasets(
         [fineweb, dataset],

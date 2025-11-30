@@ -17,10 +17,7 @@ def patched_check_safety():
     """
     return
 
-# 1. Patch the utility source (for future imports)
 transformers.utils.import_utils.check_torch_load_is_safe = patched_check_safety
-
-# 2. Patch the Trainer module specifically (fixes the crash in your traceback)
 transformers.trainer.check_torch_load_is_safe = patched_check_safety
 
 from accelerate import Accelerator, InitProcessGroupKwargs
@@ -72,16 +69,14 @@ def prepare_training_args(config, output_dir):
         "output_dir": output_dir,
         "per_device_train_batch_size": config["training"]["per_device_batch_size"],
         "gradient_accumulation_steps": config["training"]["gradient_accumulation_steps"],
-        # "num_train_epochs": config["training"]["epochs"],
-        "max_steps": 50000,
-        #"warmup_steps": config["training"]["warmup_steps"],
+        # "max_steps": config["training"]["max_steps"],
         "warmup_ratio": config["training"]["warmup_ratio"],
         "lr_scheduler_type": config["training"]["lr_scheduler_type"],
         "learning_rate": config["training"]["learning_rate"],
         "bf16": config["training"]["bf16"],
         "fp16": config["training"]["fp16"],
         "remove_unused_columns": False,
-        "dataloader_num_workers": 4,  # config["training"]["num_workers"],
+        "dataloader_num_workers": config["training"]["num_workers"],
         "report_to": config["training"]["report_to"],
         "gradient_checkpointing": config["training"]["gradient_checkpointing"],
         "gradient_checkpointing_kwargs": {"use_reentrant": False},
@@ -129,7 +124,117 @@ def prepare_training_args(config, output_dir):
     return SFTConfig(**args_dict)
 
 
-def train(config, accelerator, output_dir):
+def prepare_dataset(tokenizer, config, accelerator):
+    # Load and process fineweb dataset
+    subset_path = config["data_mix"]["external_subset_name"]
+    num_chunks = config["data_mix"]["num_chunks_to_use"]
+
+    fineweb_data_files = []
+    FILES_PER_MAIN_INDEX = config["data_mix"]["files_per_main_index"]
+
+    for i in range(num_chunks):
+        main_index = i // FILES_PER_MAIN_INDEX  
+        sub_index = i % FILES_PER_MAIN_INDEX   
+        main_part = f"{main_index:03d}"  
+        sub_part = f"{sub_index:05d}"    
+        file_name = f"{subset_path}/{main_part}_{sub_part}.parquet"
+        fineweb_data_files.append(file_name)
+
+    fineweb = load_dataset(
+        config["data_mix"]["external_dataset_name"],
+        split="train",
+        data_files=fineweb_data_files,
+        streaming=True
+    ).select_columns(["text"])
+
+    # Load and process main dataset
+    dataset = load_dataset(
+        "arrow", 
+        data_dir=config["data"]["data_folder"], 
+        data_files=config["data"]["data_files_pattern"], 
+        split="train",
+        streaming=True
+    ).select_columns([config["data"]["text_field"]])
+
+    # Rename text column if necessary
+    my_text_col = config["data"]["text_field"]
+    if my_text_col != "text":
+        dataset = dataset.rename_column(my_text_col, "text")
+    dataset = dataset.select_columns(["text"])
+
+    # Tokenize the text field
+
+    # Silence progress bars on non-main processes
+    if not accelerator.is_main_process:
+        datasets.utils.logging.disable_progress_bar()
+
+    def tokenize_and_split(examples):
+        outputs = tokenizer(
+            examples[config["data"]["text_field"]],
+            truncation=True,
+            max_length=config["training"]["max_length"],
+            return_overflowing_tokens=True, # Split long samples
+            stride=config["training"]["stride_size"], # Overlap between chunks
+            padding=False
+        )
+        
+        if "overflow_to_sample_mapping" in outputs:
+            outputs.pop("overflow_to_sample_mapping")
+            
+        return outputs
+    
+    # Process dataset with main process
+    with accelerator.main_process_first():
+        # Log dataset info
+        LOGGER.info("Dataset info:")
+        info = dataset.info
+        size_gb = info.dataset_size / (1024 ** 3)
+        num_examples = info.splits['train'].num_examples
+        LOGGER.info(f"Dataset Size: {size_gb:.2f} GB")
+        LOGGER.info(f"Total Examples: {num_examples:,}") 
+
+        # Tokenize datasets 
+        fineweb = fineweb.map(
+            tokenize_and_split,
+            batched=True,
+            num_proc=config["training"]["preprocessing_num_workers"],
+            batch_size=config["training"]["preprocessing_batch_size"],
+            remove_columns=fineweb.column_names, 
+            load_from_cache_file=True
+        )
+
+        dataset = dataset.map(
+            tokenize_and_split,
+            batched=True,
+            num_proc=config["training"]["preprocessing_num_workers"],
+            batch_size=config["training"]["preprocessing_batch_size"],
+            remove_columns=dataset.column_names, 
+            load_from_cache_file=True
+        )
+
+        LOGGER.info("Tokenized samples in dataset:", len(dataset))
+        LOGGER.info("Tokenized samples in fineweb:", len(fineweb))
+        LOGGER.info("Total tokenized samples:", len(dataset) + len(fineweb))
+
+    # Re-enable logging
+    if not accelerator.is_main_process:
+        datasets.utils.logging.enable_progress_bar()   
+
+    probabilities = config["data_mix"]["probabilities"]
+
+    # dataset = dataset.select(range(int(1000 * 0.7)))
+    # fineweb = fineweb.select(range(int(1000 * 0.3)))
+
+    combined_dataset = interleave_datasets(
+        [fineweb, dataset],
+        probabilities=probabilities,
+        seed=config["training"]["seed"], 
+        stopping_strategy="first_exhausted"
+    )
+    return combined_dataset
+
+
+def get_last_checkpoint(output_dir):
     # Check for existing checkpoints
     checkpoint_dir = None
     if os.path.exists(output_dir):
@@ -139,6 +244,12 @@ def train(config, accelerator, output_dir):
             checkpoints.sort(key=lambda x: int(x.split("-")[1]))
             checkpoint_dir = os.path.join(output_dir, checkpoints[-1])
             LOGGER.info(f"Found existing checkpoint: {checkpoint_dir}")
+    return checkpoint_dir
+
+
+def train(config, accelerator, output_dir):
+    # Check for existing checkpoints
+    checkpoint_dir = get_last_checkpoint(output_dir)
     
     # Load tokenizer   
     tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
@@ -157,69 +268,8 @@ def train(config, accelerator, output_dir):
     if config["training"]["gradient_checkpointing"]:
         model.gradient_checkpointing_enable()
 
-    # Load and process dataset
-    subset_path = config["data_mix"]["external_subset_name"]
-    num_chunks = config["data_mix"]["num_chunks_to_use"]
-    fineweb_data_files = []
-    FILES_PER_MAIN_INDEX = config["data_mix"]["files_per_main_index"]
-    for i in range(num_chunks):
-        main_index = i // FILES_PER_MAIN_INDEX  
-        sub_index = i % FILES_PER_MAIN_INDEX   
-        main_part = f"{main_index:03d}"  
-        sub_part = f"{sub_index:05d}"    
-        file_name = f"{subset_path}/{main_part}_{sub_part}.parquet"
-        fineweb_data_files.append(file_name)
-
-    fineweb = load_dataset(
-        config["data_mix"]["external_dataset_name"],
-        split="train",
-        data_files=fineweb_data_files,
-        streaming=True
-    ).select_columns(["text"])
-
-    dataset = load_dataset(
-        "arrow", 
-        data_dir=config["data"]["data_folder"], 
-        data_files=config["data"]["data_files_pattern"], 
-        split="train",
-        streaming=True
-    ).select_columns([config["data"]["text_field"]])
-
-    my_text_col = config["data"]["text_field"]
-    if my_text_col != "text":
-        dataset = dataset.rename_column(my_text_col, "text")
-    dataset = dataset.select_columns(["text"])
-
-    '''
-    with accelerator.main_process_first():
-        # Log dataset info
-        LOGGER.info("Dataset info:")
-        info = dataset.info
-        size_gb = info.dataset_size / (1024 ** 3)
-        num_examples = info.splits['train'].num_examples
-        LOGGER.info(f"Dataset Size: {size_gb:.2f} GB")
-        LOGGER.info(f"Total Examples: {num_examples:,}") # The :, adds comma separators       
-    '''
-    # Mix datasets
-    # num_fine_web = len(fineweb)
-    # num_my_data = len(dataset)
-    # total_samples = num_fine_web + num_my_data
-    # prob_fine_web = num_fine_web / total_samples
-    # prob_my_data = num_my_data / total_samples
-    # comment this line to use config probabilities
-    # probabilities = [prob_fine_web, prob_my_data]
-
-    probabilities = config["data_mix"]["probabilities"]
-
-    # dataset = dataset.select(range(int(1000 * 0.7)))
-    # fineweb = fineweb.select(range(int(1000 * 0.3)))
-
-    combined_dataset = interleave_datasets(
-        [fineweb, dataset],
-        probabilities=probabilities,
-        seed=config["training"]["seed"], 
-        stopping_strategy="first_exhausted"
-    )
+    # Prepare dataset
+    combined_dataset = prepare_dataset(tokenizer, config, accelerator)
     
     # Training arguments
     training_args = prepare_training_args(config, output_dir)
@@ -263,7 +313,7 @@ def init_wandb(config):
             "text_field": config["data"]["text_field"],
             "num_workers": config["training"]["num_workers"],
         },
-        group="DDP"
+        group=os.getenv("WANDB_GROUP", "DDP"),
     )
     return run
 

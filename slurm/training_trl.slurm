@@ -78,7 +78,8 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 
 # Training settings
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/test"
+export JOB_NAME="test"
+export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}"
 export CONFIG_PATH=configs/default_trl.yaml
 
 # Get master host address
@@ -94,7 +95,6 @@ echo "Using Python at: $PYTHON_EXEC"
 srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training_trl.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 
 # Print report
-# TODO: this is for debugging purposes, recomment the second part and uncomment the first to have the jobreport printed
 $JOBREPORT print "$PROFILING_FOLDER"
 # echo "--- Starting direct Python run for debugging (Job $SLURM_JOB_ID) ---"
 # srun --propagate=NONE --label "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"

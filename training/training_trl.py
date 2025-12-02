@@ -17,10 +17,7 @@ def patched_check_safety():
     """
     return
 
-# 1. Patch the utility source (for future imports)
 transformers.utils.import_utils.check_torch_load_is_safe = patched_check_safety
-
-# 2. Patch the Trainer module specifically (fixes the crash in your traceback)
 transformers.trainer.check_torch_load_is_safe = patched_check_safety
 
 from accelerate import Accelerator, InitProcessGroupKwargs
@@ -72,16 +69,15 @@ def prepare_training_args(config, output_dir):
         "output_dir": output_dir,
         "per_device_train_batch_size": config["training"]["per_device_batch_size"],
         "gradient_accumulation_steps": config["training"]["gradient_accumulation_steps"],
-        # "num_train_epochs": config["training"]["epochs"],
-        "max_steps": 50000,
-        #"warmup_steps": config["training"]["warmup_steps"],
+        "num_train_epochs": config["training"]["epochs"],
+        # "max_steps": config["training"]["max_steps"],
         "warmup_ratio": config["training"]["warmup_ratio"],
         "lr_scheduler_type": config["training"]["lr_scheduler_type"],
         "learning_rate": config["training"]["learning_rate"],
         "bf16": config["training"]["bf16"],
         "fp16": config["training"]["fp16"],
         "remove_unused_columns": False,
-        "dataloader_num_workers": 4,  # config["training"]["num_workers"],
+        "dataloader_num_workers": config["training"]["num_workers"],
         "report_to": config["training"]["report_to"],
         "gradient_checkpointing": config["training"]["gradient_checkpointing"],
         "gradient_checkpointing_kwargs": {"use_reentrant": False},
@@ -98,6 +94,7 @@ def prepare_training_args(config, output_dir):
         "dataloader_drop_last": True,
         "max_length": config["training"]["max_length"],
         "include_tokens_per_second": True,
+        "include_num_input_tokens_seen": True,
     }
 
     if strategy == "fsdp":
@@ -129,39 +126,60 @@ def prepare_training_args(config, output_dir):
     return SFTConfig(**args_dict)
 
 
-def train(config, accelerator, output_dir):
-    # Check for existing checkpoints
-    checkpoint_dir = None
-    if os.path.exists(output_dir):
-        checkpoints = [d for d in os.listdir(output_dir) if d.startswith("checkpoint-")]
-        if checkpoints:
-            # Sort by checkpoint number and get the latest
-            checkpoints.sort(key=lambda x: int(x.split("-")[1]))
-            checkpoint_dir = os.path.join(output_dir, checkpoints[-1])
-            LOGGER.info(f"Found existing checkpoint: {checkpoint_dir}")
-    
-    # Load tokenizer   
-    tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "right"
+def build_tokenizer(config):
+    tokenizer = None
+    tokenizer_type = config["tokenizer"]["type"]
 
-    # Load model
-    model = AutoModelForCausalLM.from_pretrained(
-        config["model"]["name"],
-        dtype=torch.bfloat16,
-        attn_implementation="flash_attention_2",
-        device_map=None # Let accelerator handle device mapping
-    )
+    if tokenizer_type == "base":
+        tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
+    else:
+        raise ValueError(f"Unknown tokenizer_type: {tokenizer_type}")
 
-    if config["training"]["gradient_checkpointing"]:
-        model.gradient_checkpointing_enable()
+    return tokenizer 
 
-    # Load and process dataset
+
+def initialize_embeddings(model, tokenizer):
+    # TODO implement
+    return model
+
+
+def prepare_dataset(tokenizer, config, accelerator):
+    # Load and process main dataset
+    dataset = load_dataset(
+        "arrow", 
+        data_dir=config["data"]["data_folder"], 
+        data_files=config["data"]["data_files_pattern"], 
+        split="train",
+        # streaming=True
+    ).select_columns([config["data"]["text_field"]])
+
+    # Rename text column if necessary
+    my_text_col = config["data"]["text_field"]
+    if my_text_col != "text":
+        dataset = dataset.rename_column(my_text_col, "text")
+    dataset = dataset.select_columns(["text"])
+
+    # Select a portion of the dataset if specified
+    print(f"Original dataset size: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")
+    portion_of_data_used = config["data"]["portion_of_data_used"]
+    if portion_of_data_used < 1.0:
+        total_samples = dataset.num_rows
+        samples_to_use = int(total_samples * portion_of_data_used)
+        dataset = dataset.select(range(samples_to_use))
+    print(f"Dataset size after selecting {portion_of_data_used*100}%: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")
+
+    # Determine number of fineweb chunks to use
+    SIZE_OF_CHUNK_GB = 2.15
+    probabilities = config["data_mix"]["probabilities"]
+
+    dataset_gb = dataset.data.nbytes / (1024 ** 3)
+    num_chunks = round(dataset_gb / SIZE_OF_CHUNK_GB * probabilities[0] / probabilities[1])
     subset_path = config["data_mix"]["external_subset_name"]
-    num_chunks = config["data_mix"]["num_chunks_to_use"]
+    print(f"Using {num_chunks} chunks from FineWeb based on dataset size of {dataset_gb:.2f} GB")
+
     fineweb_data_files = []
     FILES_PER_MAIN_INDEX = config["data_mix"]["files_per_main_index"]
+
     for i in range(num_chunks):
         main_index = i // FILES_PER_MAIN_INDEX  
         sub_index = i % FILES_PER_MAIN_INDEX   
@@ -174,45 +192,61 @@ def train(config, accelerator, output_dir):
         config["data_mix"]["external_dataset_name"],
         split="train",
         data_files=fineweb_data_files,
-        streaming=True
+        # streaming=True
     ).select_columns(["text"])
+    
+    # dataset = dataset.select(range(100000))
+    # fineweb = fineweb.select(range(100000))
 
-    dataset = load_dataset(
-        "arrow", 
-        data_dir=config["data"]["data_folder"], 
-        data_files=config["data"]["data_files_pattern"], 
-        split="train",
-        streaming=True
-    ).select_columns([config["data"]["text_field"]])
+    # Tokenize the text field
 
-    my_text_col = config["data"]["text_field"]
-    if my_text_col != "text":
-        dataset = dataset.rename_column(my_text_col, "text")
-    dataset = dataset.select_columns(["text"])
+    # Silence progress bars on non-main processes
+    if not accelerator.is_main_process:
+        datasets.utils.logging.disable_progress_bar()
 
-    '''
+    def tokenize_and_split(examples):
+        outputs = tokenizer(
+            examples[config["data"]["text_field"]],
+            truncation=True,
+            max_length=config["training"]["max_length"],
+            return_overflowing_tokens=True, # Split long samples
+            stride=config["training"]["stride_size"], # Overlap between chunks
+            padding=False
+        )
+        
+        if "overflow_to_sample_mapping" in outputs:
+            outputs.pop("overflow_to_sample_mapping")
+            
+        return outputs
+    
+    # Process dataset with main process
     with accelerator.main_process_first():
-        # Log dataset info
-        LOGGER.info("Dataset info:")
-        info = dataset.info
-        size_gb = info.dataset_size / (1024 ** 3)
-        num_examples = info.splits['train'].num_examples
-        LOGGER.info(f"Dataset Size: {size_gb:.2f} GB")
-        LOGGER.info(f"Total Examples: {num_examples:,}") # The :, adds comma separators       
-    '''
-    # Mix datasets
-    # num_fine_web = len(fineweb)
-    # num_my_data = len(dataset)
-    # total_samples = num_fine_web + num_my_data
-    # prob_fine_web = num_fine_web / total_samples
-    # prob_my_data = num_my_data / total_samples
-    # comment this line to use config probabilities
-    # probabilities = [prob_fine_web, prob_my_data]
+        # Tokenize datasets 
+        fineweb = fineweb.map(
+            tokenize_and_split,
+            batched=True,
+            num_proc=config["training"]["preprocessing_num_workers"],
+            batch_size=config["training"]["preprocessing_batch_size"],
+            remove_columns=fineweb.column_names, 
+            load_from_cache_file=True
+        )
 
-    probabilities = config["data_mix"]["probabilities"]
+        dataset = dataset.map(
+            tokenize_and_split,
+            batched=True,
+            num_proc=config["training"]["preprocessing_num_workers"],
+            batch_size=config["training"]["preprocessing_batch_size"],
+            remove_columns=dataset.column_names, 
+            load_from_cache_file=True
+        )
 
-    # dataset = dataset.select(range(int(1000 * 0.7)))
-    # fineweb = fineweb.select(range(int(1000 * 0.3)))
+        print("Tokenized samples in dataset:", len(dataset))
+        print("Tokenized samples in fineweb:", len(fineweb))
+        print("Total tokenized samples:", len(dataset) + len(fineweb))
+
+    # Re-enable logging
+    if not accelerator.is_main_process:
+        datasets.utils.logging.enable_progress_bar()   
 
     combined_dataset = interleave_datasets(
         [fineweb, dataset],
@@ -220,6 +254,56 @@ def train(config, accelerator, output_dir):
         seed=config["training"]["seed"], 
         stopping_strategy="first_exhausted"
     )
+    return combined_dataset
+
+
+def get_last_checkpoint(output_dir):
+    # Check for existing checkpoints
+    checkpoint_dir = None
+    if os.path.exists(output_dir):
+        checkpoints = [d for d in os.listdir(output_dir) if d.startswith("checkpoint-")]
+        if checkpoints:
+            # Sort by checkpoint number and get the latest
+            checkpoints.sort(key=lambda x: int(x.split("-")[1]))
+            checkpoint_dir = os.path.join(output_dir, checkpoints[-1])
+            LOGGER.info(f"Found existing checkpoint: {checkpoint_dir}")
+    return checkpoint_dir
+
+
+def train(config, accelerator, output_dir):
+    # Check for existing checkpoints
+    checkpoint_dir = get_last_checkpoint(output_dir)
+    
+    # Load tokenizer   
+    tokenizer = build_tokenizer(config)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
+
+    # Load model
+    model = AutoModelForCausalLM.from_pretrained(
+        config["model"]["name"],
+        dtype=torch.bfloat16,
+        attn_implementation="flash_attention_2",
+        device_map=None # Let accelerator handle device mapping
+    )
+   
+    # Explicitly sync model config with tokenizer
+    model.config.pad_token_id = tokenizer.pad_token_id
+    model.config.eos_token_id = tokenizer.eos_token_id
+    if hasattr(model, "generation_config"):
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        model.generation_config.eos_token_id = tokenizer.eos_token_id
+    
+    # Initialize new tokens' embeddings
+    model = initialize_embeddings(model, tokenizer)
+    
+    # Enable gradient checkpointing
+    if config["training"]["gradient_checkpointing"]:
+        model.gradient_checkpointing_enable()
+
+    # Prepare dataset
+    combined_dataset = prepare_dataset(tokenizer, config, accelerator)
     
     # Training arguments
     training_args = prepare_training_args(config, output_dir)
@@ -263,7 +347,7 @@ def init_wandb(config):
             "text_field": config["data"]["text_field"],
             "num_workers": config["training"]["num_workers"],
         },
-        group="DDP"
+        # group=os.getenv("WANDB_GROUP", "DDP"),
     )
     return run
 

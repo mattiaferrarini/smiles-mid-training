@@ -15,7 +15,7 @@ data_mix:
   external_subset_name: sample/100BT # Specify subset if needed
   files_per_main_index: 10
   external_data_files: [] # Empty if we want to stream the whole dataset
-  probabilities: [0.3, 0.7] # Sampling ratio between main dataset and FineWeb
+  probabilities: [0.2, 0.8] # Sampling ratio between main dataset and FineWeb
 
 distributed:
   strategy: "ddp" # Options: "ddp" or "fsdp"
@@ -29,7 +29,7 @@ distributed:
 
 training:
   epochs: 1 
-  gradient_accumulation_steps: 1
+  gradient_accumulation_steps: 2
   learning_rate: 2.0e-5
   max_steps: 20000 #50000
   warmup_ratio: 0.03
@@ -48,8 +48,8 @@ training:
   preprocessing_num_workers: 64
   preprocessing_batch_size: 10000
   prefetch_factor: 4
-  per_device_batch_size: 8
-  max_length: 2048
+  per_device_batch_size: 4
+  max_length: 4096
   stride_size: 1024
   report_to: "wandb"
 

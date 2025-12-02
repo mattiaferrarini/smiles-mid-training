@@ -93,7 +93,8 @@ def prepare_training_args(config, output_dir):
         },
         "dataloader_drop_last": True,
         "max_length": config["training"]["max_length"],
-        # "include_tokens_per_second": True,
+        "include_tokens_per_second": True,
+        "include_num_input_tokens_seen": True,
     }
 
     if strategy == "fsdp":
@@ -286,9 +287,18 @@ def train(config, accelerator, output_dir):
         attn_implementation="flash_attention_2",
         device_map=None # Let accelerator handle device mapping
     )
+   
+    # Explicitly sync model config with tokenizer
+    model.config.pad_token_id = tokenizer.pad_token_id
+    model.config.eos_token_id = tokenizer.eos_token_id
+    if hasattr(model, "generation_config"):
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        model.generation_config.eos_token_id = tokenizer.eos_token_id
+    
     # Initialize new tokens' embeddings
     model = initialize_embeddings(model, tokenizer)
-
+    
+    # Enable gradient checkpointing
     if config["training"]["gradient_checkpointing"]:
         model.gradient_checkpointing_enable()
 

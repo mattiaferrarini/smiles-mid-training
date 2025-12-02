@@ -36,8 +36,8 @@ training:
   lr_scheduler_type: "cosine"
   weight_decay: 0.1
   save_steps: 200
-  logging_steps: 50
-  resource_logging_steps: 50
+  logging_steps: 100
+  resource_logging_steps: 100
   bf16: true
   fp16: false
   evaluation_strategy: "no"

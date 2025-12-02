@@ -3,8 +3,8 @@
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
 #SBATCH --time=00:30:00
-#SBATCH --partition=debug
-#SBATCH --nodes=2
+#SBATCH --partition=normal
+#SBATCH --nodes=8
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
@@ -79,7 +79,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 # Training settings
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 export JOB_NAME="test"
-export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}"
+export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}_${TIMESTAMP}"
 export CONFIG_PATH=configs/default_trl.yaml
 
 # Get master host address

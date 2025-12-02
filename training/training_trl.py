@@ -69,6 +69,7 @@ def prepare_training_args(config, output_dir):
         "output_dir": output_dir,
         "per_device_train_batch_size": config["training"]["per_device_batch_size"],
         "gradient_accumulation_steps": config["training"]["gradient_accumulation_steps"],
+        "num_train_epochs": config["training"]["epochs"],
         # "max_steps": config["training"]["max_steps"],
         "warmup_ratio": config["training"]["warmup_ratio"],
         "lr_scheduler_type": config["training"]["lr_scheduler_type"],
@@ -92,7 +93,7 @@ def prepare_training_args(config, output_dir):
         },
         "dataloader_drop_last": True,
         "max_length": config["training"]["max_length"],
-        "include_tokens_per_second": True,
+        # "include_tokens_per_second": True,
     }
 
     if strategy == "fsdp":
@@ -124,6 +125,23 @@ def prepare_training_args(config, output_dir):
     return SFTConfig(**args_dict)
 
 
+def build_tokenizer(config):
+    tokenizer = None
+    tokenizer_type = config["tokenizer"]["type"]
+
+    if tokenizer_type == "base":
+        tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
+    else:
+        raise ValueError(f"Unknown tokenizer_type: {tokenizer_type}")
+
+    return tokenizer 
+
+
+def initialize_embeddings(model, tokenizer):
+    # TODO implement
+    return model
+
+
 def prepare_dataset(tokenizer, config, accelerator):
     # Load and process main dataset
     dataset = load_dataset(
@@ -141,18 +159,20 @@ def prepare_dataset(tokenizer, config, accelerator):
     dataset = dataset.select_columns(["text"])
 
     # Select a portion of the dataset if specified
+    print(f"Original dataset size: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")
     portion_of_data_used = config["data"]["portion_of_data_used"]
     if portion_of_data_used < 1.0:
         total_samples = dataset.num_rows
         samples_to_use = int(total_samples * portion_of_data_used)
         dataset = dataset.select(range(samples_to_use))
+    print(f"Dataset size after selecting {portion_of_data_used*100}%: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")
 
     # Determine number of fineweb chunks to use
     SIZE_OF_CHUNK_GB = 2.15
     probabilities = config["data_mix"]["probabilities"]
 
-    dataset_gb = (dataset.num_rows * dataset.features["text"].lengths.mean()) / (1024 ** 3)
-    num_chunks = int(dataset_gb / SIZE_OF_CHUNK_GB * probabilities[0] / probabilities[1])
+    dataset_gb = dataset.data.nbytes / (1024 ** 3)
+    num_chunks = round(dataset_gb / SIZE_OF_CHUNK_GB * probabilities[0] / probabilities[1])
     subset_path = config["data_mix"]["external_subset_name"]
     print(f"Using {num_chunks} chunks from FineWeb based on dataset size of {dataset_gb:.2f} GB")
 
@@ -173,6 +193,9 @@ def prepare_dataset(tokenizer, config, accelerator):
         data_files=fineweb_data_files,
         # streaming=True
     ).select_columns(["text"])
+    
+    # dataset = dataset.select(range(100000))
+    # fineweb = fineweb.select(range(100000))
 
     # Tokenize the text field
 
@@ -197,14 +220,6 @@ def prepare_dataset(tokenizer, config, accelerator):
     
     # Process dataset with main process
     with accelerator.main_process_first():
-        # Log dataset info
-        print("Dataset info:")
-        info = dataset.info
-        size_gb = info.dataset_size / (1024 ** 3)
-        num_examples = info.splits['train'].num_examples
-        print(f"Dataset Size: {size_gb:.2f} GB")
-        print(f"Total Examples: {num_examples:,}") 
-
         # Tokenize datasets 
         fineweb = fineweb.map(
             tokenize_and_split,
@@ -259,7 +274,7 @@ def train(config, accelerator, output_dir):
     checkpoint_dir = get_last_checkpoint(output_dir)
     
     # Load tokenizer   
-    tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
+    tokenizer = build_tokenizer(config)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
@@ -271,6 +286,8 @@ def train(config, accelerator, output_dir):
         attn_implementation="flash_attention_2",
         device_map=None # Let accelerator handle device mapping
     )
+    # Initialize new tokens' embeddings
+    model = initialize_embeddings(model, tokenizer)
 
     if config["training"]["gradient_checkpointing"]:
         model.gradient_checkpointing_enable()
@@ -320,7 +337,7 @@ def init_wandb(config):
             "text_field": config["data"]["text_field"],
             "num_workers": config["training"]["num_workers"],
         },
-        group=os.getenv("WANDB_GROUP", "DDP"),
+        # group=os.getenv("WANDB_GROUP", "DDP"),
     )
     return run
 

@@ -8,6 +8,7 @@ data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow"
   text_field: "text"
+  portion_of_data_used: 0.5 # Portion of the main dataset to use
 
 data_mix:
   external_dataset_name: HuggingFaceFW/fineweb-edu
@@ -15,12 +16,11 @@ data_mix:
   files_per_main_index: 10
   external_data_files: [] # Empty if we want to stream the whole dataset
   probabilities: [0.3, 0.7] # Sampling ratio between main dataset and FineWeb
-  portion_of_data_used: 0.5 # Portion of the main dataset to use
 
 distributed:
   strategy: "ddp" # Options: "ddp" or "fsdp"
   ddp:
-    find_unused_parameters: true
+    find_unused_parameters: false
     backend: "nccl"
   fsdp:
     policy: "full_shard auto_wrap" 
@@ -29,13 +29,13 @@ distributed:
 
 training:
   epochs: 1 
-  gradient_accumulation_steps: 5
+  gradient_accumulation_steps: 1
   learning_rate: 2.0e-5
   max_steps: 20000 #50000
   warmup_ratio: 0.03
   lr_scheduler_type: "cosine"
   weight_decay: 0.1
-  save_steps: 100
+  save_steps: 200
   logging_steps: 50
   resource_logging_steps: 50
   bf16: true
@@ -48,13 +48,10 @@ training:
   preprocessing_num_workers: 64
   preprocessing_batch_size: 10000
   prefetch_factor: 4
-  per_device_batch_size: 6
+  per_device_batch_size: 8
   max_length: 2048
   stride_size: 1024
   report_to: "wandb"
 
 tokenizer:
-  type: element
-
-embeddings:
-  strategy: mean_std
+  type: base

@@ -2,7 +2,7 @@
 #SBATCH --job-name=gemma_ddp_trl
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
-#SBATCH --time=00:30:00
+#SBATCH --time=12:00:00
 #SBATCH --partition=normal
 #SBATCH --nodes=8
 #SBATCH --gres=gpu:4
@@ -78,7 +78,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 
 # Training settings
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-export JOB_NAME="test"
+export JOB_NAME="base_finetuning"
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}_${TIMESTAMP}"
 export CONFIG_PATH=configs/default_trl.yaml
 

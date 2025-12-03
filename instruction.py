@@ -5,6 +5,8 @@ from utils.config import load_config, hf_auth
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from peft import LoraConfig
+import os
+import torch
 
 
 parser = argparse.ArgumentParser(description="Instruction-Tuning con SFTTrainer.")
@@ -24,7 +26,17 @@ tokenizer = AutoTokenizer.from_pretrained(model_path)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 
-model = AutoModelForCausalLM.from_pretrained(model_path)
+local_rank = int(os.environ.get("LOCAL_RANK", 0))
+device_map = {"": local_rank}
+
+print(f"Loading model on Local Rank: {local_rank}")
+
+model = AutoModelForCausalLM.from_pretrained(
+    model_path,
+    device_map=device_map, # Crucial for DDP
+    torch_dtype=torch.bfloat16 if config['training']['bf16'] else torch.float32,
+    attn_implementation="eager" # TODO: set "flash_attention_2" if available 
+)
 model.resize_token_embeddings(len(tokenizer))
 
 peft_config = LoraConfig(
@@ -52,18 +64,48 @@ training_args = SFTConfig(
     max_length=2048,
     # just to disable wandb because I am having issues with it
     report_to=config['training'].get('report_to', 'none'), 
-    ddp_find_unused_parameters=False
+    ddp_find_unused_parameters=False,
+    gradient_checkpointing=True
 )
 
 trainer = SFTTrainer(
-    model=model_path,
+    model=model,
     train_dataset=dataset,
     args=training_args,
-    peft_config=peft_config
+    peft_config=peft_config,
+    processing_class=tokenizer
 )
 
 
 trainer.train()
 
-trainer.save_model(config['training']['output_dir'])
-print("Training complete and model saved.")
+if local_rank == 0:
+    trainer.save_model(config['training']['output_dir'])
+    print("Training complete and model saved.")
+
+    # --- SANITY CHECK: Test Generation ---
+    print("\n=== SANITY CHECK: TEST GENERATION ===")
+    # Use a simple prompt to see if the model follows instructions
+    test_messages = [{"role": "user", "content": "Explain what a molecule is in one sentence."}]
+    
+    # Apply the chat template (crucial to verify formatting)
+    try:
+        prompt_str = tokenizer.apply_chat_template(test_messages, tokenize=False, add_generation_prompt=True)
+    except Exception as e:
+        print(f"Warning: Could not apply chat template ({e}). Using raw prompt.")
+        prompt_str = "User: Explain what a molecule is in one sentence.\nAssistant:"
+
+    print(f"Test Input: {prompt_str}")
+    
+    inputs = tokenizer(prompt_str, return_tensors="pt").to(trainer.model.device)
+    
+    # Unwrap model to ensure .generate() works correctly in DDP
+    model_to_gen = trainer.accelerator.unwrap_model(trainer.model)
+
+    model_to_gen.eval() 
+    
+    # Generate
+    with torch.no_grad():
+        outputs = model_to_gen.generate(**inputs, max_new_tokens=60, do_sample=True, temperature=0.7)
+    
+    print(f"Model Output:\n{tokenizer.decode(outputs[0], skip_special_tokens=True)}")

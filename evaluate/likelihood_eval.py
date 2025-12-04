@@ -226,7 +226,7 @@ if __name__ == "__main__":
     
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,
     )
     model = model.to(device)
     
@@ -243,5 +243,20 @@ if __name__ == "__main__":
         with open(f"{output_dir}/{filename}", "w") as f:
             json.dump(results, f, indent=4)
         print("Results saved to", f"{output_dir}/{filename}")
+   
+    # Log final results
+    if rank == 0:
+        correct, total = 0, 0
+        print("Results:")
+        print("=" * 20)
+        for res in results:
+            total += res['total']
+            correct += res['correct']
+            print(f"Config: {res['config']}, Accuracy: {res['accuracy']:.2%} ({res['correct']}/{res['total']})") 
+        if total > 0:
+            acc = correct / total
+            print("=" * 20)
+            print(f"Overall Accuracy: {acc:.2%} ({correct}/{total})")
+            print("=" * 20)
     
     cleanup_distributed()

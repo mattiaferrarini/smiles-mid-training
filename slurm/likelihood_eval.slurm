@@ -2,8 +2,8 @@
 #SBATCH --job-name=likelihood_eval
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
-#SBATCH --time=00:30:00
-#SBATCH --partition=debug
+#SBATCH --time=04:00:00
+#SBATCH --partition=normal
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
@@ -78,8 +78,8 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 
 # Training settings
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval"
-export MODEL_PATH="google/gemma-3-1b-it"
-# export MODEL_PATH="/iopsstor/scratch/cscs/mattiaferrarini/finetuning/base_finetuning_20251202_224440/final-model"
+# export MODEL_PATH="google/gemma-3-1b-it"
+export MODEL_PATH="/iopsstor/scratch/cscs/mattiaferrarini/finetuning/base_finetuning_20251203_175010"
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -108,14 +108,17 @@ else
     LAUNCHER="$JOBREPORT monitor -o $PROFILING_FOLDER -- torchrun"
 fi
 
-# Run the evaluation with torchrun for distributed processing
-srun --ntasks=1 --nodes=$SLURM_JOB_NUM_NODES --cpus-per-task=64 \
+srun --ntasks-per-node=1 \
+     --nodes=$SLURM_JOB_NUM_NODES \
+     --cpus-per-task=64 \
     $LAUNCHER \
     --nnodes=$SLURM_JOB_NUM_NODES \
     --nproc_per_node=$NPROC_PER_NODE \
+    --node_rank=\$SLURM_PROCID \
+    --rdzv_id=$SLURM_JOB_ID \
     --rdzv_backend=c10d \
     --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
-    evaluate/likelihood_eval.py --model_path "$MODEL_PATH" --output_dir "$OUTPUT_DIR" --debug
+    evaluate/likelihood_eval.py --model_path "$MODEL_PATH" --output_dir "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

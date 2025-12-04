@@ -1,7 +1,6 @@
 import torch
 import torch.distributed as dist
 from torch.nn import CrossEntropyLoss
-from torch.nn.parallel import DistributedDataParallel as DDP
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from dotenv import load_dotenv
 from datasets import load_dataset
@@ -19,7 +18,6 @@ configs = ['analytical_chemistry', 'chemical_preference', 'general_chemistry',
 
 
 def setup_distributed():
-    """Initialize distributed training environment"""
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         rank = int(os.environ['RANK'])
         world_size = int(os.environ['WORLD_SIZE'])
@@ -40,6 +38,27 @@ def cleanup_distributed():
     """Clean up distributed training"""
     if dist.is_initialized():
         dist.destroy_process_group()
+
+
+def find_checkpoint_folders(path):
+    if not os.path.isdir(path):
+        return [path]
+    
+    # Check if this path itself is a valid model (has config.json)
+    if os.path.exists(os.path.join(path, "config.json")):
+        return [path]
+    
+    # Look for checkpoint folders
+    checkpoints = []
+    for item in sorted(os.listdir(path)):
+        item_path = os.path.join(path, item)
+        if os.path.isdir(item_path):
+            # Check if it's a valid checkpoint (has config.json)
+            if os.path.exists(os.path.join(item_path, "config.json")):
+                checkpoints.append(item_path)
+    
+    # If no checkpoints found, return the original path
+    return checkpoints if checkpoints else [path]
 
 
 def get_likelihood(model, tokenizer, question, answer, debug=False):
@@ -115,29 +134,17 @@ def process_example(example):
     return question, target_scores, candidates
 
 
-def eval_config(model, tokenizer, config, rank, world_size, debug=False):
+def eval_config(model, tokenizer, config, debug=False):
     # Filter for multiple choice questions
     ds = load_dataset(DATASET, config)["train"]
     ds = ds.filter(lambda x: x["metrics"] == ["multiple_choice_grade"])
     
-    if rank == 0:
-        print(f"Evaluating {config}: {len(ds)} questions.")
-    
-    # Split dataset across GPUs
-    # Each rank processes a subset of the dataset
-    total_examples = len(ds)
-    examples_per_rank = total_examples // world_size
-    start_idx = rank * examples_per_rank
-    end_idx = start_idx + examples_per_rank if rank < world_size - 1 else total_examples
-    
-    if rank == 0:
-        print(f"Total examples: {total_examples}, each rank processes ~{examples_per_rank} examples")
+    print(f"Evaluating {config}: {len(ds)} questions.")
     
     correct_count = 0
     total_count = 0
     
-    # Only process the subset assigned to this rank
-    for idx in tqdm(range(start_idx, end_idx), desc=f"Rank {rank}", disable=(rank != 0)):
+    for idx in tqdm(range(len(ds)), desc=f"{config}"):
         row = ds[idx]
         examples_list = row.get("examples")
         
@@ -151,23 +158,23 @@ def eval_config(model, tokenizer, config, rank, world_size, debug=False):
 
             candidate_scores = []
 
-            if debug and rank == 0:
+            if debug:
                 print(f"Question: {question}")
             # Calculate likelihoods
             for candidate in candidates:
                 score = get_likelihood(model, tokenizer, question, candidate, debug=debug)
-                if debug and rank == 0:
+                if debug:
                     print(f"Candidate: {candidate}, Score: {score}")
                 candidate_scores.append(score)
 
             # Select best candidate
-            if debug and rank == 0:
+            if debug:
                 print("Candidate scores:", candidate_scores)
                 print("Target scores:", target_scores)
 
             best_idx = np.argmax(candidate_scores)
             predicted_answer = candidates[best_idx]
-            if debug and rank == 0:
+            if debug:
                 print(f"Predicted answer: {predicted_answer}")
 
             # Check correctness
@@ -175,34 +182,109 @@ def eval_config(model, tokenizer, config, rank, world_size, debug=False):
                 correct_count += 1
             total_count += 1
 
-    # Gather results from all ranks
-    if world_size > 1:
-        correct_tensor = torch.tensor([correct_count], dtype=torch.long, device=torch.cuda.current_device())
-        total_tensor = torch.tensor([total_count], dtype=torch.long, device=torch.cuda.current_device())
-        
-        dist.all_reduce(correct_tensor, op=dist.ReduceOp.SUM)
-        dist.all_reduce(total_tensor, op=dist.ReduceOp.SUM)
-        
-        correct_count = correct_tensor.item()
-        total_count = total_tensor.item()
-
     accuracy = correct_count / total_count if total_count > 0 else 0
-    if rank == 0:
-        print(f"Accuracy for {config}: {accuracy:.2%} ({correct_count}/{total_count})")
+    print(f"Accuracy for {config}: {accuracy:.2%} ({correct_count}/{total_count})")
     return {"config": config, "accuracy": accuracy, "correct": correct_count, "total": total_count}
 
 
-def evaluate(model, tokenizer, rank, world_size, debug=False):
+def eval_path(model_path, local_rank, debug=False):
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    
+    # Load model on the correct device
+    device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
+    
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        torch_dtype=torch.bfloat16,
+    )
+    model = model.to(device)
+    model.eval()
+
+    # Evaluate each config
     results = []
     for config in configs:
-        result = eval_config(model, tokenizer, config, rank, world_size, debug=debug)
+        result = eval_config(model, tokenizer, config, debug=debug)
         results.append(result)
-    return results
+    
+    # Aggregate overall accuracy
+    correct, total = 0, 0
+    for res in results:
+        correct += res['correct']
+        total += res['total']
+    overall_accuracy = correct / total if total > 0 else 0
+    
+    return {"path": model_path, "results": results, "overall_accuracy": overall_accuracy, "correct": correct, "total": total}
 
+
+def log_path_results(eval_results):
+    path = eval_results['path']
+    results = eval_results['results']
+    overall_accuracy = eval_results['overall_accuracy']
+    correct = eval_results['correct']
+    total = eval_results['total']
+
+    print(f"Results for model at {path}:")
+    print("=" * 20)
+    for res in results:
+        print(f"Config: {res['config']}, Accuracy: {res['accuracy']:.2%} ({res['correct']}/{res['total']})")
+    print("=" * 20)
+    print(f"Overall Accuracy: {overall_accuracy:.2%} ({correct}/{total})")
+    print("=" * 20)
+
+
+def log_all_results(all_results):
+    print("\nSummary of all evaluated checkpoints:")
+
+    # Headers for the table
+    headers = ["Model"] + configs + ["Overall"]
+    
+    # Prepare rows
+    rows = []
+    for result in all_results:
+        path = result['path']
+        short_path = os.path.basename(os.path.normpath(path))
+        row_data = [short_path]
+        
+        config_map = {item['config']: item['accuracy'] for item in result['results']}
+        
+        for config in configs:
+            acc = config_map.get(config, 0.0)
+            row_data.append(f"{acc:.2%}")
+        
+        row_data.append(f"{result['overall_accuracy']:.2%}")
+        rows.append(row_data)
+
+    # Calculate column widths
+    col_widths = [len(h) for h in headers]
+    for row in rows:
+        for i, cell in enumerate(row):
+            col_widths[i] = max(col_widths[i], len(cell))
+    col_widths = [w + 2 for w in col_widths]
+
+    # Formatter string
+    header_fmt = "".join(f"{{:<{w}}}" for w in col_widths)
+    row_fmt = header_fmt
+
+    # Print table
+    print("=" * sum(col_widths))
+    print(header_fmt.format(*headers))
+    print("-" * sum(col_widths))
+    for row in rows:
+        print(row_fmt.format(*row))
+        print("-" * sum(col_widths))
+    print("=" * sum(col_widths))
+
+    # Find and log best model
+    best_result = max(all_results, key=lambda x: x['overall_accuracy'])
+    print("\n" + "="*50)
+    print(f"BEST MODEL (Overall Accuracy): {os.path.basename(os.path.normpath(best_result['path']))}")
+    print("="*50)
+    log_path_results(best_result)
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", type=str, required=True, help="Path to the pretrained model")
+    parser.add_argument("--model_path", type=str, required=True, help="Path to the pretrained model or directory containing checkpoints")
     parser.add_argument("--output_dir", type=str, required=True, help="Directory to save the results")
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
     args = parser.parse_args()
@@ -215,48 +297,62 @@ if __name__ == "__main__":
     
     if rank == 0:
         print(f"Running with {world_size} GPUs")
-        os.makedirs(output_dir, exist_ok=True)
+    
+    os.makedirs(output_dir, exist_ok=True)
 
     load_dotenv()
 
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    # Find all checkpoints to evaluate
+    checkpoint_paths = find_checkpoint_folders(model_path)
     
-    # Load model on the correct device
-    device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() and world_size > 1 else "cuda" if torch.cuda.is_available() else "cpu")
-    
-    model = AutoModelForCausalLM.from_pretrained(
-        model_path,
-        dtype=torch.bfloat16,
-    )
-    model = model.to(device)
-    
-    # Wrap model with DDP if using multiple GPUs
-    if world_size > 1:
-        model = DDP(model, device_ids=[local_rank], output_device=local_rank)
-
-    model.eval()
-    results = evaluate(model, tokenizer, rank, world_size, debug=debug)
-
-    # Only save results from rank 0
     if rank == 0:
+        print(f"Found {len(checkpoint_paths)} checkpoint(s) to evaluate:")
+        for cp in checkpoint_paths:
+            print(f"  - {cp}")
+    
+    # Distribute checkpoints across ranks
+    # Each rank processes a subset of checkpoints
+    my_checkpoints = [cp for i, cp in enumerate(checkpoint_paths) if i % world_size == rank]
+    
+    print(f"Rank {rank}: Processing {len(my_checkpoints)} checkpoint(s)")
+    for cp in my_checkpoints:
+        print(f"  Rank {rank}: {cp}")
+
+    # Each rank evaluates its assigned checkpoints
+    local_results = []
+    for checkpoint_path in my_checkpoints:
+        print(f"\nRank {rank}: Evaluating checkpoint: {checkpoint_path}")
+        eval_results = eval_path(checkpoint_path, local_rank, debug=debug)
+        log_path_results(eval_results)
+        local_results.append(eval_results)
+
+    # Gather results from all ranks
+    if world_size > 1:
+        # Serialize results to gather them
+        local_results_json = json.dumps(local_results)
+        
+        # Gather all results on rank 0
+        gathered_results = [None] * world_size
+        dist.all_gather_object(gathered_results, local_results_json)
+        
+        if rank == 0:
+            all_results = []
+            for result_json in gathered_results:
+                results = json.loads(result_json)
+                all_results.extend(results)
+            # Sort by checkpoint path to maintain consistent ordering
+            all_results.sort(key=lambda x: x['path'])
+        else:
+            all_results = []
+    else:
+        all_results = local_results
+
+    # Log summary and save results from rank 0
+    if rank == 0:
+        log_all_results(all_results)
         filename = model_path.replace("/", "_") + "_results.json"
         with open(f"{output_dir}/{filename}", "w") as f:
-            json.dump(results, f, indent=4)
-        print("Results saved to", f"{output_dir}/{filename}")
-   
-    # Log final results
-    if rank == 0:
-        correct, total = 0, 0
-        print("Results:")
-        print("=" * 20)
-        for res in results:
-            total += res['total']
-            correct += res['correct']
-            print(f"Config: {res['config']}, Accuracy: {res['accuracy']:.2%} ({res['correct']}/{res['total']})") 
-        if total > 0:
-            acc = correct / total
-            print("=" * 20)
-            print(f"Overall Accuracy: {acc:.2%} ({correct}/{total})")
-            print("=" * 20)
+            json.dump(all_results, f, indent=4)
+        print(f"Results saved to {output_dir}/{filename}")
     
     cleanup_distributed()

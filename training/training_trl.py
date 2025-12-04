@@ -384,7 +384,7 @@ def train_model(config, output_dir):
     LOGGER.info(f"[RANK {int(os.environ.get('RANK', 0))}] Finished training")
     
     # Save final model
-    final_model_dir = f"{output_dir}/final-model" 
+    final_model_dir = f"{output_dir}/final_model" 
     trainer.save_model(final_model_dir)
 
     if accelerator.is_main_process:

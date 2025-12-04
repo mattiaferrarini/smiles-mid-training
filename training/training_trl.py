@@ -208,7 +208,7 @@ def prepare_dataset(tokenizer, config, accelerator):
 
     def tokenize_and_split(examples):
         outputs = tokenizer(
-            examples[config["data"]["text_field"]],
+            examples["text"],
             truncation=True,
             max_length=config["training"]["max_length"],
             return_overflowing_tokens=True, # Split long samples

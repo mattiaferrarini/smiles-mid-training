@@ -77,9 +77,8 @@ export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
 # Training settings
-export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 export JOB_NAME="base_finetuning"
-export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}_${TIMESTAMP}"
+export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}_${SLURM_JOB_ID}"
 export CONFIG_PATH=configs/default_trl.yaml
 
 # Get master host address

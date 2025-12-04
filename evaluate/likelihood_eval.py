@@ -195,7 +195,7 @@ def eval_path(model_path, local_rank, debug=False):
     
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,
     )
     model = model.to(device)
     model.eval()

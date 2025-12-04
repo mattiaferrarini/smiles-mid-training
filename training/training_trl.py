@@ -42,6 +42,7 @@ from utils.logging import get_logger
 import argparse
 from utils.config import load_config
 from datetime import timedelta
+import json
 
 
 LOGGER = get_logger(__name__)
@@ -138,7 +139,8 @@ def build_tokenizer(config):
     return tokenizer 
 
 
-def initialize_embeddings(model, tokenizer):
+def initialize_embeddings(model, tokenizer, config):
+    initialization_strategy = config["tokenizer"]["embedding_initialization"]
     # TODO implement
     return model
 
@@ -296,7 +298,7 @@ def train(config, accelerator, output_dir):
         model.generation_config.eos_token_id = tokenizer.eos_token_id
     
     # Initialize new tokens' embeddings
-    model = initialize_embeddings(model, tokenizer)
+    model = initialize_embeddings(model, tokenizer, config)
     
     # Enable gradient checkpointing
     if config["training"]["gradient_checkpointing"]:
@@ -403,3 +405,6 @@ if __name__ == "__main__":
     config = load_config(args.config_path)
     output_dir = args.output_dir
     train_model(config, output_dir)
+
+    with open(os.path.join(output_dir, "training_config.json"), "w") as f:
+        json.dump(config, f, indent=4)

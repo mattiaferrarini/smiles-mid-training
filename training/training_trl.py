@@ -148,6 +148,8 @@ def build_tokenizer(config):
 
 def initialize_embeddings(model, tokenizer, config):
     initialization_strategy = config["tokenizer"]["embedding_initialization"]
+    model.resize_token_embeddings(len(tokenizer))
+    
     if initialization_strategy == "random":
         pass # Rely on default random init
     return model

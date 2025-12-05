@@ -7,7 +7,7 @@ model:
 data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow"
-  text_field: "text"
+  text_field: "text_annotated_v1tags"
   portion_of_data_used: 0.5 # Portion of the main dataset to use
 
 data_mix:

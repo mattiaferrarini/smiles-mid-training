@@ -30,7 +30,7 @@ distributed:
 training:
   epochs: 1 
   gradient_accumulation_steps: 1
-  learning_rate: 1.0e-3
+  learning_rate: 2.0e-4
   max_steps: 20000 #50000
   warmup_ratio: 0.1
   lr_scheduler_type: "cosine"

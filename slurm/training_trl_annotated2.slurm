@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=likelihood_eval
+#SBATCH --job-name=gemma_ddp_trl_annotated
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
-#SBATCH --time=04:00:00
+#SBATCH --time=12:00:00
 #SBATCH --partition=normal
-#SBATCH --nodes=1
+#SBATCH --nodes=16
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
@@ -77,9 +77,9 @@ export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
 # Training settings
-export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval"
-# export MODEL_PATH="google/gemma-3-1b-it"
-export MODEL_PATH="/iopsstor/scratch/cscs/mattiaferrarini/finetuning/base_finetuning_1191527"
+export JOB_NAME="base_finetuning_annotated"
+export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}_${SLURM_JOB_ID}"
+export CONFIG_PATH=configs/default_trl_annotated2.yaml
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -90,35 +90,8 @@ export MASTER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0
 export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
-export NPROC_PER_NODE=4
-export OMP_NUM_THREADS=16
-
-# Debug
-if [ ! -f "$JOBREPORT" ]; then
-    echo "CRITICAL ERROR: The file '$JOBREPORT' was not found."
-    echo "Trying to run torchrun directly without wrapper..."
-    LAUNCHER="torchrun"
-else
-    # Check if executable
-    if [ ! -x "$JOBREPORT" ]; then
-        echo "WARNING: '$JOBREPORT' is not executable. Attempting to fix..."
-        chmod +x "$JOBREPORT"
-    fi
-    echo "Found JOBREPORT at: $JOBREPORT"
-    LAUNCHER="$JOBREPORT monitor -o $PROFILING_FOLDER -- torchrun"
-fi
-
-srun --ntasks-per-node=1 \
-     --nodes=$SLURM_JOB_NUM_NODES \
-     --cpus-per-task=64 \
-    $LAUNCHER \
-    --nnodes=$SLURM_JOB_NUM_NODES \
-    --nproc_per_node=$NPROC_PER_NODE \
-    --node_rank=\$SLURM_PROCID \
-    --rdzv_id=$SLURM_JOB_ID \
-    --rdzv_backend=c10d \
-    --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
-    evaluate/likelihood_eval.py --model_path "$MODEL_PATH" --output_dir "$OUTPUT_DIR"
+# Run the training with jobreport
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training_trl.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

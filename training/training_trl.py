@@ -394,6 +394,12 @@ def train_model(config, output_dir):
     
     if config["training"]["report_to"] == "wandb":
         run.finish()
+    
+    # Ensure group termination    
+    accelerator.wait_for_everyone()
+    if dist.is_initialized():
+        dist.destroy_process_group()
+
 
 if __name__ == "__main__":
     # Parse command-line arguments

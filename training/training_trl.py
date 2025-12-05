@@ -47,6 +47,8 @@ import json
 
 LOGGER = get_logger(__name__)
 
+START_SMILES, END_SMILES = "[START_SMILES]", "[END_SMILES]"
+
 class MultiGPUResourcesCallback(TrainerCallback):
     def __init__(self, log_steps):
         super().__init__()
@@ -131,8 +133,13 @@ def build_tokenizer(config):
     tokenizer = None
     tokenizer_type = config["tokenizer"]["type"]
 
+    base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
     if tokenizer_type == "base":
-        tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
+        tokenizer = base_tokenizer
+    elif tokenizer_type == "base_special":
+        print("Including special SMILES tokens")
+        base_tokenizer.add_special_tokens({'additional_special_tokens': [START_SMILES, END_SMILES]})
+        tokenizer = base_tokenizer
     else:
         raise ValueError(f"Unknown tokenizer_type: {tokenizer_type}")
 
@@ -141,7 +148,8 @@ def build_tokenizer(config):
 
 def initialize_embeddings(model, tokenizer, config):
     initialization_strategy = config["tokenizer"]["embedding_initialization"]
-    # TODO implement
+    if initialization_strategy == "random":
+        pass # Rely on default random init
     return model
 
 

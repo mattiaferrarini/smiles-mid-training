@@ -54,5 +54,5 @@ training:
   report_to: "wandb"
 
 tokenizer:
-  type: base
+  type: "base_special"
   embedding_initialization: "random" 

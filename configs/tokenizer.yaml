@@ -11,6 +11,6 @@ data:
 tokenizer:
   type: base
   chem_type: smiles_bpe
-  output_dir: /iopsstor/scratch/cscs/$USER/tokenizers_saved
+  output_dir: /users/$USER/json/tokenizers
   params:
     max_vocab_size: 2000 

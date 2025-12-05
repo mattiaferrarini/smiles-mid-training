@@ -78,49 +78,50 @@ else:
 
 import re
 
-def extract_chem_segments(text):
-    """Estrae solo il contenuto tra [CHEM] e [/CHEM]"""
-    if text is None:
-        return ""
-    pattern = r"\[START_SMILES\](.*?)\[END_SMILES\]"
-    matches = re.findall(pattern, text, re.DOTALL)
-    return " ".join(matches)
-
 if tokenizerclass:
     print(f"--- Starting build for tokenizer type: {tokenizer_type} ---")
     
-    print("Filtering dataset to extract chemical segments...")
+    print("Filtering dataset to extract chemical segments (flattening to one SMILES per row)...")
     
-    def filter_chem_text(example):
-        return {text_field: extract_chem_segments(example[text_field])}
-    
+    def extract_smiles_batch(batch):
+        extracted_smiles = []
+        pattern = r"\[START_SMILES\](.*?)\[END_SMILES\]"
+        
+        for text in batch[text_field]:
+            if text:
+                matches = re.findall(pattern, text, re.DOTALL)
+                # Filter empty strings and strip whitespace
+                valid_matches = [m.strip() for m in matches if m.strip()]
+                extracted_smiles.extend(valid_matches)
+        
+        return {text_field: extracted_smiles}
+
+    # Debug print of original
     print("\n[DEBUG] First 3 original examples:")
     for i in range(min(3, len(dataset))):
         print(f"Example {i}: {dataset[i][text_field]}...")
 
-    print("\n[DEBUG] First 3 filtered examples (what the tokenizer will see):")
-    non_empty_count = 0
-    chem_dataset = dataset.map(filter_chem_text, num_proc=4)
-    num_chem_row = dataset[count_field]
-    num_chem_row_sum = 0
-    for i in range(min(100, len(chem_dataset))): # Controlla i primi 100
-        text = chem_dataset[i][text_field]
-        num_chem_row_sum += num_chem_row[i]
-        if text.strip():
-            non_empty_count += 1
-            if non_empty_count <= 3:
-                print(f"Filtered {i}: {text}...")
-    
-    if non_empty_count == 0:
-        print(f"Number of chemical segments we should have found: {num_chem_row_sum}")
-        print("\n[WARNING] !!! NO CHEMICAL DATA FOUND !!!")
-        print("The regex didn't match anything in the first 100 examples.")
-        print("Check if your dataset actually contains [START_SMILES] and [END_SMILES] tags.")
-    else:
-        print(f"\n[INFO] We found data in {non_empty_count}% of the first 100 examples checked.")
+    # Apply transformation
+    # We remove all columns from original dataset to avoid mismatch in lengths
+    chem_dataset = dataset.map(
+        extract_smiles_batch, 
+        batched=True, 
+        batch_size=1000,
+        remove_columns=dataset.column_names,
+        num_proc=4
+    )
 
+    print(f"\n[DEBUG] New dataset size: {len(chem_dataset)} rows.")
+    print("[DEBUG] First 5 extracted SMILES:")
+    for i in range(min(5, len(chem_dataset))):
+        print(f"Row {i}: {chem_dataset[i][text_field]}")
     
-    
+    if len(chem_dataset) == 0:
+        print("\n[WARNING] !!! NO CHEMICAL DATA FOUND !!!")
+        print("The regex didn't match anything.")
+    else:
+        print(f"\n[INFO] Successfully extracted {len(chem_dataset)} SMILES segments.")
+
     build_and_save_tokenizer(
         TokenizerClass=tokenizerclass,
         dataset=chem_dataset, 

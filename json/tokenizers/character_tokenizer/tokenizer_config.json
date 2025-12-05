@@ -1,0 +1,5 @@
+{
+    "max_len": 1000000000000000019884624838656,
+    "unk_token": "[UNK]",
+    "model_type": "character_tokenizer"
+}

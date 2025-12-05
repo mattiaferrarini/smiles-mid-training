@@ -33,7 +33,7 @@ echo "=================================================================="
 echo "STARTING TOKENIZER BUILD JOB at $(date)"
 echo "=================================================================="
 
-OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/tokenizers_saved"
+OUTPUT_DIR="/users/$USER/json/tokenizers"
 mkdir -p "$OUTPUT_DIR"
 
 echo "Running tokenizer build script..."

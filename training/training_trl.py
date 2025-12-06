@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+import yaml
 
 # Add parent directory to Python path to enable imports from utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -370,6 +371,17 @@ def train_model(config, output_dir):
     accelerator.wait_for_everyone()
     
     if accelerator.is_main_process:
+        # Save config to output directory in both YAML and JSON formats
+        config_output_path_yaml = os.path.join(output_dir, "training_config.yaml")
+        with open(config_output_path_yaml, "w") as f:
+            yaml.dump(config, f, default_flow_style=False)
+        print(f"Saved config to {config_output_path_yaml}")
+
+        config_output_path_json = os.path.join(output_dir, "training_config.json")
+        with open(config_output_path_json, "w") as f:
+            json.dump(config, f, indent=4)
+        print(f"Saved config to {config_output_path_json}")
+        
         print("Starting fine-tuning.")
         print(f"Distributed: {accelerator.distributed_type}")
         print(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
@@ -411,5 +423,4 @@ if __name__ == "__main__":
     output_dir = args.output_dir
     train_model(config, output_dir)
 
-    with open(os.path.join(output_dir, "training_config.json"), "w") as f:
-        json.dump(config, f, indent=4)
+    

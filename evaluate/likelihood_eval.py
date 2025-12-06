@@ -297,10 +297,10 @@ def get_tokenizer_for_eval(model_path):
         # Local directory
         if os.path.exists(os.path.join(model_path, "config.json")):
             # Single checkpoint folder: find config in parent
-            training_config_path = os.path.join(os.path.dirname(model_path), "training_config.json")    
+            training_config_path = os.path.join(os.path.dirname(model_path), "training_config.yaml")    
         else:
             # Folder with multiple checkpoints
-            training_config_path = os.path.join(model_path, "training_config.json")
+            training_config_path = os.path.join(model_path, "training_config.yaml")
         
         if os.path.exists(training_config_path):
             # Assemble tokenizer from training config

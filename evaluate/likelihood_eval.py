@@ -1,3 +1,4 @@
+from xml.parsers.expat import model
 import torch
 import torch.distributed as dist
 from torch.nn import CrossEntropyLoss
@@ -9,6 +10,15 @@ from tqdm import tqdm
 import argparse
 import json
 import os
+import sys
+from pathlib import Path
+
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from custom_tokenizers.hybrid_tokenizer import HybridTokenizer
+from custom_tokenizers.character_tokenizer import CharacterTokenizer
+from custom_tokenizers.element_tokenizer import ElementTokenizer
+from transformers import PreTrainedTokenizerFast
 
 DATASET = "jablonkagroup/ChemBench"
 
@@ -67,11 +77,13 @@ def get_likelihood(model, tokenizer, question, answer, debug=False):
     full_text = prompt_text + " " + answer
     
     # Tokenize prompt + answer
-    inputs = tokenizer(full_text, return_tensors="pt").to(model.device)
+    inputs = tokenizer(full_text, return_tensors="pt")
+    inputs = {k: v.to(model.device) for k, v in inputs.items()}
     input_ids = inputs["input_ids"]
     
     # Tokenize prompt only to find its length
-    prompt_inputs = tokenizer(prompt_text, return_tensors="pt").to(model.device)
+    prompt_inputs = tokenizer(prompt_text, return_tensors="pt")
+    prompt_inputs = {k: v.to(model.device) for k, v in prompt_inputs.items()}
     prompt_len = prompt_inputs["input_ids"].shape[1]
     
     # Debug: Print tokenization info
@@ -187,8 +199,8 @@ def eval_config(model, tokenizer, config, debug=False):
     return {"config": config, "accuracy": accuracy, "correct": correct_count, "total": total_count}
 
 
-def eval_path(model_path, local_rank, debug=False):
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
+def eval_path(model_path, local_rank, chem_tokenizer_type="base", debug=False):
+
     
     # Load model on the correct device
     device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
@@ -199,6 +211,43 @@ def eval_path(model_path, local_rank, debug=False):
     )
     model = model.to(device)
     model.eval()
+
+    print(f"Reconstructing tokenizer with type: {chem_tokenizer_type}")
+    
+    # 1. Load Base Tokenizer
+    # We try to load the tokenizer saved with the model. 
+    # If the model was saved correctly, this has the full vocabulary (Base + Chem).
+    base_tokenizer = AutoTokenizer.from_pretrained(model_path)
+    
+    if chem_tokenizer_type == "base":
+        tokenizer = base_tokenizer
+    else:
+        # 2. Initialize Chemical Tokenizer
+        chem_tokenizer = None
+        if chem_tokenizer_type == "character":
+            chem_tokenizer = CharacterTokenizer()
+        elif chem_tokenizer_type == "element":
+            chem_tokenizer = ElementTokenizer()
+        elif chem_tokenizer_type == "smiles_bpe":
+            # Try to find the BPE file in the model folder or a standard location
+            # Assuming it might be saved in the model folder as 'smiles_bpe_tokenizer.json' or similar
+            # OR we assume the user provides the path. For now, let's look in the standard build location
+            # as a fallback, or assume the base_tokenizer already has the vocab and we just need the logic.
+            
+            # If you used BPE, the vocab is merged. Re-splitting might be tricky without the original BPE file.
+            # Let's assume for BPE, the saved tokenizer is sufficient because BPE is subword-based anyway.
+            print("Warning: For BPE, we assume the saved tokenizer handles it correctly.")
+            tokenizer = base_tokenizer
+            chem_tokenizer = None # Skip hybrid reconstruction for BPE if complex
+        
+        # 3. Wrap in HybridTokenizer if we have a chem tokenizer
+        if chem_tokenizer:
+            tokenizer = HybridTokenizer(
+                base_tokenizer=base_tokenizer,
+                chem_tokenizer=chem_tokenizer,
+                chem_start="[START_SMILES]",
+                chem_end="[END_SMILES]"
+            )
 
     # Evaluate each config
     results = []
@@ -286,6 +335,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", type=str, required=True, help="Path to the pretrained model or directory containing checkpoints")
     parser.add_argument("--output_dir", type=str, required=True, help="Directory to save the results")
+    parser.add_argument("--chem_tokenizer_type", type=str, default="base", help="Type of chemical tokenizer used (character, element, smiles_bpe)")
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
     args = parser.parse_args()
     model_path = args.model_path
@@ -322,7 +372,7 @@ if __name__ == "__main__":
     local_results = []
     for checkpoint_path in my_checkpoints:
         print(f"\nRank {rank}: Evaluating checkpoint: {checkpoint_path}")
-        eval_results = eval_path(checkpoint_path, local_rank, debug=debug)
+        eval_results = eval_path(checkpoint_path, local_rank, chem_tokenizer_type=args.chem_tokenizer_type, debug=debug)
         log_path_results(eval_results)
         local_results.append(eval_results)
 

@@ -28,7 +28,8 @@ from transformers import (
     DataCollatorForLanguageModeling,
     Trainer,
     TrainingArguments,
-    TrainerCallback
+    TrainerCallback,
+    PreTrainedTokenizerFast
 )
 
 from datasets import load_dataset, interleave_datasets
@@ -43,7 +44,61 @@ import argparse
 from utils.config import load_config
 from datetime import timedelta
 import json
+from custom_tokenizers.hybrid_tokenizer import HybridTokenizer
+from transformers import PreTrainedTokenizerFast
+from custom_tokenizers.element_tokenizer import ElementTokenizer
+from custom_tokenizers.character_tokenizer import CharacterTokenizer
 
+def build_tokenizer(config):
+    # 1. Load Base Tokenizer
+    base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
+    
+    # 2. Determine Chemical Tokenizer Type
+    # You should probably add a field in your config for this, e.g. config["tokenizer"]["chem_type"]
+    # For now, let's assume we check the 'tokenizer' section of the config or default to 'base'
+    
+    chem_tokenizer_type = config.get("tokenizer", {}).get("chem_type", None)
+    
+    if not chem_tokenizer_type:
+        # If no chemical tokenizer specified, just return base
+        return base_tokenizer
+
+    print(f"Building Hybrid Tokenizer with chemical type: {chem_tokenizer_type}")
+    
+    chem_tokenizer = None
+    
+    # 3. Load the specific Chemical Tokenizer
+    if chem_tokenizer_type == "smiles_bpe":
+        # PATH FIX: Point to where build_tokenizer.slurm saved it
+        # You might need to pass this path in the config or hardcode the scratch path
+        user = os.environ.get("USER")
+        vocab_path = f"/iopsstor/scratch/cscs/{user}/tokenizers_saved/smiles_bpe_tokenizer/tokenizer.json"
+        
+        if os.path.exists(vocab_path):
+            print(f"Loading BPE tokenizer from {vocab_path}")
+            chem_tokenizer = PreTrainedTokenizerFast(tokenizer_file=vocab_path)
+        else:
+            raise FileNotFoundError(f"Could not find BPE tokenizer at {vocab_path}. Did you run build_tokenizer.slurm?")
+            
+    elif chem_tokenizer_type == "element":
+        chem_tokenizer = ElementTokenizer()
+        
+    elif chem_tokenizer_type == "character":
+        chem_tokenizer = CharacterTokenizer()
+        
+    # ... add other types as needed ...
+
+    if chem_tokenizer:
+        # 4. Create Hybrid
+        hybrid_tokenizer = HybridTokenizer(
+            base_tokenizer=base_tokenizer,
+            chem_tokenizer=chem_tokenizer,
+            chem_start="[START_SMILES]",
+            chem_end="[END_SMILES]"
+        )
+        return hybrid_tokenizer
+    
+    return base_tokenizer
 
 LOGGER = get_logger(__name__)
 
@@ -160,6 +215,11 @@ def prepare_dataset(tokenizer, config, accelerator):
     if my_text_col != "text":
         dataset = dataset.rename_column(my_text_col, "text")
     dataset = dataset.select_columns(["text"])
+
+    # DEBUG: Limit to 100 rows
+    # # TODO: remove this in production
+    # print("!!! DEBUG MODE: Using only first 100 rows !!!")
+    # dataset = dataset.select(range(100))
 
     # Select a portion of the dataset if specified
     print(f"Original dataset size: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")

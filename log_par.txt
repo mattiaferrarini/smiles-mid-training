@@ -1,0 +1,558 @@
+Conda env exists: updating
+Requirement already satisfied: accelerate==1.11.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 1)) (1.11.0)
+Requirement already satisfied: aiohappyeyeballs==2.6.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 2)) (2.6.1)
+Requirement already satisfied: aiohttp==3.13.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 3)) (3.13.2)
+Requirement already satisfied: aiosignal==1.4.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 4)) (1.4.0)
+Requirement already satisfied: annotated-types==0.7.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 5)) (0.7.0)
+Requirement already satisfied: anthropic==0.73.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 6)) (0.73.0)
+Requirement already satisfied: anyio==4.11.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 7)) (4.11.0)
+Requirement already satisfied: appnope==0.1.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 8)) (0.1.4)
+Requirement already satisfied: asttokens==3.0.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 9)) (3.0.0)
+Requirement already satisfied: attrs==25.4.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 10)) (25.4.0)
+Requirement already satisfied: backoff==2.2.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 11)) (2.2.1)
+Requirement already satisfied: certifi==2025.11.12 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 12)) (2025.11.12)
+Requirement already satisfied: charset-normalizer==3.4.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 13)) (3.4.4)
+Requirement already satisfied: chembench==0.3.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 14)) (0.3.0)
+Requirement already satisfied: click==8.3.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 15)) (8.3.1)
+Requirement already satisfied: comm==0.2.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 16)) (0.2.3)
+Requirement already satisfied: dataclasses-json==0.6.7 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 17)) (0.6.7)
+Requirement already satisfied: datasets==4.4.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 18)) (4.4.1)
+Requirement already satisfied: debugpy==1.8.17 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 19)) (1.8.17)
+Requirement already satisfied: decorator==5.2.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 20)) (5.2.1)
+Requirement already satisfied: dill==0.4.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 21)) (0.4.0)
+Requirement already satisfied: distro==1.9.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 22)) (1.9.0)
+Requirement already satisfied: docstring_parser==0.17.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 23)) (0.17.0)
+Requirement already satisfied: dotenv==0.9.9 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 24)) (0.9.9)
+Requirement already satisfied: executing==2.2.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 25)) (2.2.1)
+Requirement already satisfied: fastcore==1.8.16 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 26)) (1.8.16)
+Requirement already satisfied: fastuuid==0.14.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 27)) (0.14.0)
+Requirement already satisfied: filelock==3.20.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 28)) (3.20.0)
+Requirement already satisfied: fire==0.7.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 29)) (0.7.1)
+Requirement already satisfied: flexcache==0.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 30)) (0.3)
+Requirement already satisfied: flexparser==0.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 31)) (0.4)
+Requirement already satisfied: frozenlist==1.8.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 32)) (1.8.0)
+Requirement already satisfied: fsspec==2025.10.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 33)) (2025.10.0)
+Requirement already satisfied: gitdb==4.0.12 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 34)) (4.0.12)
+Requirement already satisfied: GitPython==3.1.45 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 35)) (3.1.45)
+Requirement already satisfied: greenlet==3.2.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 36)) (3.2.4)
+Requirement already satisfied: groq==0.34.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 37)) (0.34.1)
+Requirement already satisfied: h11==0.16.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 38)) (0.16.0)
+Requirement already satisfied: hf-xet==1.2.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 39)) (1.2.0)
+Requirement already satisfied: httpcore==1.0.9 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 40)) (1.0.9)
+Requirement already satisfied: httpx==0.28.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 41)) (0.28.1)
+Requirement already satisfied: httpx-sse==0.4.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 42)) (0.4.3)
+Requirement already satisfied: huggingface-hub==0.36.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 43)) (0.36.0)
+Requirement already satisfied: idna==3.11 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 44)) (3.11)
+Requirement already satisfied: importlib_metadata==8.7.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 45)) (8.7.0)
+Requirement already satisfied: ipykernel==7.1.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 46)) (7.1.0)
+Requirement already satisfied: ipython==9.7.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 47)) (9.7.0)
+Requirement already satisfied: ipython_pygments_lexers==1.1.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 48)) (1.1.1)
+Requirement already satisfied: jedi==0.19.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 49)) (0.19.2)
+Requirement already satisfied: Jinja2==3.1.6 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 50)) (3.1.6)
+Requirement already satisfied: jiter==0.12.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 51)) (0.12.0)
+Requirement already satisfied: joblib==1.5.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 52)) (1.5.2)
+Requirement already satisfied: jsonpatch==1.33 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 53)) (1.33)
+Requirement already satisfied: jsonpointer==3.0.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 54)) (3.0.0)
+Requirement already satisfied: jsonschema==4.25.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 55)) (4.25.1)
+Requirement already satisfied: jsonschema-specifications==2025.9.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 56)) (2025.9.1)
+Requirement already satisfied: jupyter_client==8.6.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 57)) (8.6.3)
+Requirement already satisfied: jupyter_core==5.9.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 58)) (5.9.1)
+Requirement already satisfied: langchain==1.0.7 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 59)) (1.0.7)
+Requirement already satisfied: langchain-anthropic==1.0.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 60)) (1.0.4)
+Requirement already satisfied: langchain-classic==1.0.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 61)) (1.0.0)
+Requirement already satisfied: langchain-community==0.4.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 62)) (0.4.1)
+Requirement already satisfied: langchain-core==1.0.5 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 63)) (1.0.5)
+Requirement already satisfied: langchain-groq==1.0.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 64)) (1.0.1)
+Requirement already satisfied: langchain-text-splitters==1.0.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 65)) (1.0.0)
+Requirement already satisfied: langgraph==1.0.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 66)) (1.0.3)
+Requirement already satisfied: langgraph-checkpoint==3.0.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 67)) (3.0.1)
+Requirement already satisfied: langgraph-prebuilt==1.0.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 68)) (1.0.4)
+Requirement already satisfied: langgraph-sdk==0.2.9 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 69)) (0.2.9)
+Requirement already satisfied: langsmith==0.4.43 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 70)) (0.4.43)
+Requirement already satisfied: litellm==1.80.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 71)) (1.80.0)
+Requirement already satisfied: loguru==0.7.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 72)) (0.7.3)
+Requirement already satisfied: markdown-it-py==4.0.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 73)) (4.0.0)
+Requirement already satisfied: MarkupSafe==3.0.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 74)) (3.0.3)
+Requirement already satisfied: marshmallow==3.26.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 75)) (3.26.1)
+Requirement already satisfied: matplotlib-inline==0.2.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 76)) (0.2.1)
+Requirement already satisfied: mdurl==0.1.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 77)) (0.1.2)
+Requirement already satisfied: mpmath==1.3.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 78)) (1.3.0)
+Requirement already satisfied: multidict==6.7.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 79)) (6.7.0)
+Requirement already satisfied: multiprocess==0.70.18 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 80)) (0.70.18)
+Requirement already satisfied: mypy_extensions==1.1.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 81)) (1.1.0)
+Requirement already satisfied: nest-asyncio==1.6.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 82)) (1.6.0)
+Requirement already satisfied: networkx==3.5 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 83)) (3.5)
+Requirement already satisfied: numpy==2.3.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 84)) (2.3.4)
+Requirement already satisfied: nvidia-cublas-cu12==12.8.4.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 85)) (12.8.4.1)
+Requirement already satisfied: nvidia-cuda-cupti-cu12==12.8.90 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 86)) (12.8.90)
+Requirement already satisfied: nvidia-cuda-nvrtc-cu12==12.8.93 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 87)) (12.8.93)
+Requirement already satisfied: nvidia-cuda-runtime-cu12==12.8.90 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 88)) (12.8.90)
+Requirement already satisfied: nvidia-cudnn-cu12==9.10.2.21 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 89)) (9.10.2.21)
+Requirement already satisfied: nvidia-cufft-cu12==11.3.3.83 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 90)) (11.3.3.83)
+Requirement already satisfied: nvidia-cufile-cu12==1.13.1.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 91)) (1.13.1.3)
+Requirement already satisfied: nvidia-curand-cu12==10.3.9.90 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 92)) (10.3.9.90)
+Requirement already satisfied: nvidia-cusolver-cu12==11.7.3.90 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 93)) (11.7.3.90)
+Requirement already satisfied: nvidia-cusparse-cu12==12.5.8.93 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 94)) (12.5.8.93)
+Requirement already satisfied: nvidia-cusparselt-cu12==0.7.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 95)) (0.7.1)
+Requirement already satisfied: nvidia-nccl-cu12==2.27.5 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 96)) (2.27.5)
+Requirement already satisfied: nvidia-nvjitlink-cu12==12.8.93 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 97)) (12.8.93)
+Requirement already satisfied: nvidia-nvshmem-cu12==3.3.20 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 98)) (3.3.20)
+Requirement already satisfied: nvidia-nvtx-cu12==12.8.90 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 99)) (12.8.90)
+Requirement already satisfied: openai==2.8.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 100)) (2.8.0)
+Requirement already satisfied: orjson==3.11.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 101)) (3.11.4)
+Requirement already satisfied: ormsgpack==1.12.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 102)) (1.12.0)
+Requirement already satisfied: packaging==25.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 103)) (25.0)
+Requirement already satisfied: pandas==2.3.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 104)) (2.3.3)
+Requirement already satisfied: parso==0.8.5 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 105)) (0.8.5)
+Requirement already satisfied: pexpect==4.9.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 106)) (4.9.0)
+Requirement already satisfied: pillow==12.0.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 107)) (12.0.0)
+Requirement already satisfied: Pint==0.25.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 108)) (0.25.2)
+Requirement already satisfied: platformdirs==4.5.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 109)) (4.5.0)
+Requirement already satisfied: prompt_toolkit==3.0.52 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 110)) (3.0.52)
+Requirement already satisfied: propcache==0.4.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 111)) (0.4.1)
+Requirement already satisfied: protobuf==6.33.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 112)) (6.33.1)
+Requirement already satisfied: psutil==7.1.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 113)) (7.1.3)
+Requirement already satisfied: ptyprocess==0.7.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 114)) (0.7.0)
+Requirement already satisfied: pure_eval==0.2.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 115)) (0.2.3)
+Requirement already satisfied: pyarrow==22.0.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 116)) (22.0.0)
+Requirement already satisfied: pydantic==2.12.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 117)) (2.12.4)
+Requirement already satisfied: pydantic-settings==2.12.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 118)) (2.12.0)
+Requirement already satisfied: pydantic_core==2.41.5 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 119)) (2.41.5)
+Requirement already satisfied: Pygments==2.19.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 120)) (2.19.2)
+Requirement already satisfied: python-dateutil==2.9.0.post0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 121)) (2.9.0.post0)
+Requirement already satisfied: python-dotenv==1.2.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 122)) (1.2.1)
+Requirement already satisfied: pytz==2025.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 123)) (2025.2)
+Requirement already satisfied: PyYAML==6.0.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 124)) (6.0.3)
+Requirement already satisfied: pyzmq==27.1.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 125)) (27.1.0)
+Requirement already satisfied: rdkit==2025.9.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 126)) (2025.9.1)
+Requirement already satisfied: referencing==0.37.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 127)) (0.37.0)
+Requirement already satisfied: regex==2025.11.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 128)) (2025.11.3)
+Requirement already satisfied: requests==2.32.5 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 129)) (2.32.5)
+Requirement already satisfied: requests-toolbelt==1.0.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 130)) (1.0.0)
+Requirement already satisfied: rich==14.2.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 131)) (14.2.0)
+Requirement already satisfied: rpds-py==0.29.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 132)) (0.29.0)
+Requirement already satisfied: safetensors==0.6.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 133)) (0.6.2)
+Requirement already satisfied: scikit-learn==1.7.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 134)) (1.7.2)
+Requirement already satisfied: scipy==1.16.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 135)) (1.16.3)
+Requirement already satisfied: sentry-sdk==2.45.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 136)) (2.45.0)
+Requirement already satisfied: setuptools==80.9.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 137)) (80.9.0)
+Requirement already satisfied: shellingham==1.5.4 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 138)) (1.5.4)
+Requirement already satisfied: six==1.17.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 139)) (1.17.0)
+Requirement already satisfied: smmap==5.0.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 140)) (5.0.2)
+Requirement already satisfied: sniffio==1.3.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 141)) (1.3.1)
+Requirement already satisfied: SQLAlchemy==2.0.44 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 142)) (2.0.44)
+Requirement already satisfied: stack-data==0.6.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 143)) (0.6.3)
+Requirement already satisfied: sympy==1.13.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 144)) (1.13.1)
+Requirement already satisfied: tenacity==8.3.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 145)) (8.3.0)
+Requirement already satisfied: termcolor==3.2.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 146)) (3.2.0)
+Requirement already satisfied: threadpoolctl==3.6.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 147)) (3.6.0)
+Requirement already satisfied: tiktoken==0.12.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 148)) (0.12.0)
+Requirement already satisfied: tokenizers==0.22.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 149)) (0.22.1)
+Requirement already satisfied: torch==2.5.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 150)) (2.5.1)
+Requirement already satisfied: torchaudio==2.5.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 151)) (2.5.1)
+Requirement already satisfied: torchvision==0.20.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 152)) (0.20.1)
+Requirement already satisfied: tornado==6.5.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 153)) (6.5.2)
+Requirement already satisfied: tqdm==4.67.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 154)) (4.67.1)
+Requirement already satisfied: traitlets==5.14.3 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 155)) (5.14.3)
+Requirement already satisfied: transformers==4.57.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 156)) (4.57.1)
+Requirement already satisfied: triton==3.5.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 157)) (3.5.1)
+Requirement already satisfied: typer==0.20.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 158)) (0.20.0)
+Requirement already satisfied: typer-slim==0.20.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 159)) (0.20.0)
+Requirement already satisfied: typing-inspect==0.9.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 160)) (0.9.0)
+Requirement already satisfied: typing-inspection==0.4.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 161)) (0.4.2)
+Requirement already satisfied: typing_extensions==4.15.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 162)) (4.15.0)
+Requirement already satisfied: tzdata==2025.2 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 163)) (2025.2)
+Requirement already satisfied: urllib3==2.5.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 164)) (2.5.0)
+Requirement already satisfied: wandb==0.23.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 165)) (0.23.0)
+Requirement already satisfied: wcwidth==0.2.14 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 166)) (0.2.14)
+Requirement already satisfied: wheel==0.45.1 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 167)) (0.45.1)
+Requirement already satisfied: xxhash==3.6.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 168)) (3.6.0)
+Requirement already satisfied: yarl==1.22.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 169)) (1.22.0)
+Requirement already satisfied: zipp==3.23.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 170)) (3.23.0)
+Requirement already satisfied: zstandard==0.25.0 in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 171)) (0.25.0)
+Requirement already satisfied: trl in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 172)) (0.25.1)
+Requirement already satisfied: peft in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 173)) (0.18.0)
+Requirement already satisfied: bitsandbytes in /users/lprunotto/miniconda3/envs/ml4science/lib/python3.12/site-packages (from -r requirements.txt (line 174)) (0.48.2)
+
+Using Python at: /users/lprunotto/miniconda3/envs/ml4science/bin/python
+--- STARTING DEBUG RUN ---
+The following values were not passed to `accelerate launch` and had defaults used instead:
+	`--num_machines` was set to a value of `1`
+	`--mixed_precision` was set to a value of `'no'`
+	`--dynamo_backend` was set to a value of `'no'`
+To avoid this warning pass in values for each of the problematic parameters or run `accelerate config`.
+Using the `WANDB_DISABLED` environment variable is deprecated and will be removed in v5. Use the --report_to flag to control the integrations used for logging result (for instance --report_to none).
+Using the `WANDB_DISABLED` environment variable is deprecated and will be removed in v5. Use the --report_to flag to control the integrations used for logging result (for instance --report_to none).
+Using the `WANDB_DISABLED` environment variable is deprecated and will be removed in v5. Use the --report_to flag to control the integrations used for logging result (for instance --report_to none).
+Using the `WANDB_DISABLED` environment variable is deprecated and will be removed in v5. Use the --report_to flag to control the integrations used for logging result (for instance --report_to none).
+Note: Environment variable`HF_TOKEN` is set and is the current active token independently from the token you've just configured.
+Note: Environment variable`HF_TOKEN` is set and is the current active token independently from the token you've just configured.
+Hugging Face authentication successful (using HF_TOKEN).
+Hugging Face authentication successful (using HF_TOKEN).
+Note: Environment variable`HF_TOKEN` is set and is the current active token independently from the token you've just configured.
+Hugging Face authentication successful (using HF_TOKEN).
+Note: Environment variable`HF_TOKEN` is set and is the current active token independently from the token you've just configured.
+Hugging Face authentication successful (using HF_TOKEN).
+Loading model on Local Rank: 2
+Loading model on Local Rank: 1
+Loading model on Local Rank: 0
+Loading model on Local Rank: 3
+`torch_dtype` is deprecated! Use `dtype` instead!
+`torch_dtype` is deprecated! Use `dtype` instead!
+`torch_dtype` is deprecated! Use `dtype` instead!
+`torch_dtype` is deprecated! Use `dtype` instead!
+[W1203 18:08:24.856140557 CUDAAllocatorConfig.h:28] Warning: expandable_segments not supported on this platform (function operator())
+[W1203 18:08:24.931516810 CUDAAllocatorConfig.h:28] Warning: expandable_segments not supported on this platform (function operator())
+[W1203 18:08:24.956835949 CUDAAllocatorConfig.h:28] Warning: expandable_segments not supported on this platform (function operator())
+[W1203 18:08:24.980920537 CUDAAllocatorConfig.h:28] Warning: expandable_segments not supported on this platform (function operator())
+nid007485:138023:138023 [0] NCCL INFO Bootstrap : Using nmn0:10.100.124.66<0>
+nid007485:138023:138023 [0] NCCL INFO NET/Plugin: No plugin found (libnccl-net.so)
+nid007485:138023:138023 [0] NCCL INFO NET/Plugin: Plugin load returned 2 : libnccl-net.so: cannot open shared object file: No such file or directory : when loading libnccl-net.so
+nid007485:138023:138023 [0] NCCL INFO NET/Plugin: Using internal network plugin.
+nid007485:138023:138023 [0] NCCL INFO cudaDriverVersion 12040
+NCCL version 2.21.5+cuda12.4
+nid007485:138026:138026 [3] NCCL INFO cudaDriverVersion 12040
+nid007485:138025:138025 [2] NCCL INFO cudaDriverVersion 12040
+nid007485:138024:138024 [1] NCCL INFO cudaDriverVersion 12040
+nid007485:138025:138025 [2] NCCL INFO Bootstrap : Using nmn0:10.100.124.66<0>
+nid007485:138026:138026 [3] NCCL INFO Bootstrap : Using nmn0:10.100.124.66<0>
+nid007485:138024:138024 [1] NCCL INFO Bootstrap : Using nmn0:10.100.124.66<0>
+nid007485:138025:138025 [2] NCCL INFO NET/Plugin: No plugin found (libnccl-net.so)
+nid007485:138025:138025 [2] NCCL INFO NET/Plugin: Plugin load returned 2 : libnccl-net.so: cannot open shared object file: No such file or directory : when loading libnccl-net.so
+nid007485:138025:138025 [2] NCCL INFO NET/Plugin: Using internal network plugin.
+nid007485:138026:138026 [3] NCCL INFO NET/Plugin: No plugin found (libnccl-net.so)
+nid007485:138024:138024 [1] NCCL INFO NET/Plugin: No plugin found (libnccl-net.so)
+nid007485:138026:138026 [3] NCCL INFO NET/Plugin: Plugin load returned 2 : libnccl-net.so: cannot open shared object file: No such file or directory : when loading libnccl-net.so
+nid007485:138026:138026 [3] NCCL INFO NET/Plugin: Using internal network plugin.
+nid007485:138024:138024 [1] NCCL INFO NET/Plugin: Plugin load returned 2 : libnccl-net.so: cannot open shared object file: No such file or directory : when loading libnccl-net.so
+nid007485:138024:138024 [1] NCCL INFO NET/Plugin: Using internal network plugin.
+nid007485:138025:138745 [2] NCCL INFO NET/IB : No device found.
+nid007485:138026:138746 [3] NCCL INFO NET/IB : No device found.
+nid007485:138023:138744 [0] NCCL INFO NET/IB : No device found.
+nid007485:138024:138747 [1] NCCL INFO NET/IB : No device found.
+nid007485:138024:138747 [1] NCCL INFO NET/Socket : Using [0]nmn0:10.100.124.66<0> [1]hsn0:172.28.44.92<0> [2]hsn2:172.28.44.94<0> [3]hsn3:172.28.44.95<0> [4]hsn1:172.28.44.93<0>
+nid007485:138025:138745 [2] NCCL INFO NET/Socket : Using [0]nmn0:10.100.124.66<0> [1]hsn0:172.28.44.92<0> [2]hsn2:172.28.44.94<0> [3]hsn3:172.28.44.95<0> [4]hsn1:172.28.44.93<0>
+nid007485:138023:138744 [0] NCCL INFO NET/Socket : Using [0]nmn0:10.100.124.66<0> [1]hsn0:172.28.44.92<0> [2]hsn2:172.28.44.94<0> [3]hsn3:172.28.44.95<0> [4]hsn1:172.28.44.93<0>
+nid007485:138026:138746 [3] NCCL INFO NET/Socket : Using [0]nmn0:10.100.124.66<0> [1]hsn0:172.28.44.92<0> [2]hsn2:172.28.44.94<0> [3]hsn3:172.28.44.95<0> [4]hsn1:172.28.44.93<0>
+nid007485:138025:138745 [2] NCCL INFO Using non-device net plugin version 0
+nid007485:138024:138747 [1] NCCL INFO Using non-device net plugin version 0
+nid007485:138025:138745 [2] NCCL INFO Using network Socket
+nid007485:138024:138747 [1] NCCL INFO Using network Socket
+nid007485:138026:138746 [3] NCCL INFO Using non-device net plugin version 0
+nid007485:138026:138746 [3] NCCL INFO Using network Socket
+nid007485:138023:138744 [0] NCCL INFO Using non-device net plugin version 0
+nid007485:138023:138744 [0] NCCL INFO Using network Socket
+nid007485:138026:138746 [3] NCCL INFO ncclCommInitRank comm 0xaaab0900c0d0 rank 3 nranks 4 cudaDev 3 nvmlDev 3 busId 3901000 commId 0x7491d2f97ef3b18d - Init START
+nid007485:138023:138744 [0] NCCL INFO ncclCommInitRank comm 0xaaaaffceadd0 rank 0 nranks 4 cudaDev 0 nvmlDev 0 busId 901000 commId 0x7491d2f97ef3b18d - Init START
+nid007485:138024:138747 [1] NCCL INFO ncclCommInitRank comm 0xaaab16f1c6d0 rank 1 nranks 4 cudaDev 1 nvmlDev 1 busId 1901000 commId 0x7491d2f97ef3b18d - Init START
+nid007485:138025:138745 [2] NCCL INFO ncclCommInitRank comm 0xaaab04001830 rank 2 nranks 4 cudaDev 2 nvmlDev 2 busId 2901000 commId 0x7491d2f97ef3b18d - Init START
+nid007485:138024:138747 [1] NCCL INFO NVLS multicast support is not available on dev 1
+nid007485:138025:138745 [2] NCCL INFO NVLS multicast support is not available on dev 2
+nid007485:138026:138746 [3] NCCL INFO NVLS multicast support is not available on dev 3
+nid007485:138023:138744 [0] NCCL INFO Setting affinity for GPU 0 to ffffffff,ffffffff
+nid007485:138023:138744 [0] NCCL INFO NVLS multicast support is not available on dev 0
+nid007485:138026:138746 [3] NCCL INFO comm 0xaaab0900c0d0 rank 3 nRanks 4 nNodes 1 localRanks 4 localRank 3 MNNVL 0
+nid007485:138025:138745 [2] NCCL INFO comm 0xaaab04001830 rank 2 nRanks 4 nNodes 1 localRanks 4 localRank 2 MNNVL 0
+nid007485:138024:138747 [1] NCCL INFO comm 0xaaab16f1c6d0 rank 1 nRanks 4 nNodes 1 localRanks 4 localRank 1 MNNVL 0
+nid007485:138023:138744 [0] NCCL INFO comm 0xaaaaffceadd0 rank 0 nRanks 4 nNodes 1 localRanks 4 localRank 0 MNNVL 0
+nid007485:138023:138744 [0] NCCL INFO Channel 00/24 :    0   1   2   3
+nid007485:138023:138744 [0] NCCL INFO Channel 01/24 :    0   1   3   2
+nid007485:138025:138745 [2] NCCL INFO Trees [0] 3/-1/-1->2->1 [1] 3/-1/-1->2->1 [2] 3/-1/-1->2->1 [3] 3/-1/-1->2->1 [4] 1/-1/-1->2->0 [5] 1/-1/-1->2->0 [6] 1/-1/-1->2->0 [7] 1/-1/-1->2->0 [8] -1/-1/-1->2->3 [9] -1/-1/-1->2->3 [10] -1/-1/-1->2->3 [11] -1/-1/-1->2->3 [12] 3/-1/-1->2->1 [13] 3/-1/-1->2->1 [14] 3/-1/-1->2->1 [15] 3/-1/-1->2->1 [16] 1/-1/-1->2->0 [17] 1/-1/-1->2->0 [18] 1/-1/-1->2->0 [19] 1/-1/-1->2->0 [20] -1/-1/-1->2->3 [21] -1/-1/-1->2->3 [22] -1/-1/-1->2->3 [23] -1/-1/-1->2->3
+nid007485:138023:138744 [0] NCCL INFO Channel 02/24 :    0   2   3   1
+nid007485:138024:138747 [1] NCCL INFO Trees [0] 2/-1/-1->1->0 [1] 2/-1/-1->1->0 [2] 2/-1/-1->1->0 [3] 2/-1/-1->1->0 [4] 3/-1/-1->1->2 [5] 3/-1/-1->1->2 [6] 3/-1/-1->1->2 [7] 3/-1/-1->1->2 [8] 0/-1/-1->1->-1 [9] 0/-1/-1->1->-1 [10] 0/-1/-1->1->-1 [11] 0/-1/-1->1->-1 [12] 2/-1/-1->1->0 [13] 2/-1/-1->1->0 [14] 2/-1/-1->1->0 [15] 2/-1/-1->1->0 [16] 3/-1/-1->1->2 [17] 3/-1/-1->1->2 [18] 3/-1/-1->1->2 [19] 3/-1/-1->1->2 [20] 0/-1/-1->1->-1 [21] 0/-1/-1->1->-1 [22] 0/-1/-1->1->-1 [23] 0/-1/-1->1->-1
+nid007485:138026:138746 [3] NCCL INFO Trees [0] -1/-1/-1->3->2 [1] -1/-1/-1->3->2 [2] -1/-1/-1->3->2 [3] -1/-1/-1->3->2 [4] -1/-1/-1->3->1 [5] -1/-1/-1->3->1 [6] -1/-1/-1->3->1 [7] -1/-1/-1->3->1 [8] 2/-1/-1->3->0 [9] 2/-1/-1->3->0 [10] 2/-1/-1->3->0 [11] 2/-1/-1->3->0 [12] -1/-1/-1->3->2 [13] -1/-1/-1->3->2 [14] -1/-1/-1->3->2 [15] -1/-1/-1->3->2 [16] -1/-1/-1->3->1 [17] -1/-1/-1->3->1 [18] -1/-1/-1->3->1 [19] -1/-1/-1->3->1 [20] 2/-1/-1->3->0 [21] 2/-1/-1->3->0 [22] 2/-1/-1->3->0 [23] 2/-1/-1->3->0
+nid007485:138023:138744 [0] NCCL INFO Channel 03/24 :    0   2   1   3
+nid007485:138023:138744 [0] NCCL INFO Channel 04/24 :    0   3   1   2
+nid007485:138024:138747 [1] NCCL INFO P2P Chunksize set to 524288
+nid007485:138023:138744 [0] NCCL INFO Channel 05/24 :    0   3   2   1
+nid007485:138026:138746 [3] NCCL INFO P2P Chunksize set to 524288
+nid007485:138025:138745 [2] NCCL INFO P2P Chunksize set to 524288
+nid007485:138023:138744 [0] NCCL INFO Channel 06/24 :    0   1   2   3
+nid007485:138023:138744 [0] NCCL INFO Channel 07/24 :    0   1   3   2
+nid007485:138023:138744 [0] NCCL INFO Channel 08/24 :    0   2   3   1
+nid007485:138023:138744 [0] NCCL INFO Channel 09/24 :    0   2   1   3
+nid007485:138023:138744 [0] NCCL INFO Channel 10/24 :    0   3   1   2
+nid007485:138023:138744 [0] NCCL INFO Channel 11/24 :    0   3   2   1
+nid007485:138023:138744 [0] NCCL INFO Channel 12/24 :    0   1   2   3
+nid007485:138023:138744 [0] NCCL INFO Channel 13/24 :    0   1   3   2
+nid007485:138023:138744 [0] NCCL INFO Channel 14/24 :    0   2   3   1
+nid007485:138023:138744 [0] NCCL INFO Channel 15/24 :    0   2   1   3
+nid007485:138023:138744 [0] NCCL INFO Channel 16/24 :    0   3   1   2
+nid007485:138023:138744 [0] NCCL INFO Channel 17/24 :    0   3   2   1
+nid007485:138023:138744 [0] NCCL INFO Channel 18/24 :    0   1   2   3
+nid007485:138023:138744 [0] NCCL INFO Channel 19/24 :    0   1   3   2
+nid007485:138023:138744 [0] NCCL INFO Channel 20/24 :    0   2   3   1
+nid007485:138023:138744 [0] NCCL INFO Channel 21/24 :    0   2   1   3
+nid007485:138023:138744 [0] NCCL INFO Channel 22/24 :    0   3   1   2
+nid007485:138023:138744 [0] NCCL INFO Channel 23/24 :    0   3   2   1
+nid007485:138023:138744 [0] NCCL INFO Trees [0] 1/-1/-1->0->-1 [1] 1/-1/-1->0->-1 [2] 1/-1/-1->0->-1 [3] 1/-1/-1->0->-1 [4] 2/-1/-1->0->-1 [5] 2/-1/-1->0->-1 [6] 2/-1/-1->0->-1 [7] 2/-1/-1->0->-1 [8] 3/-1/-1->0->1 [9] 3/-1/-1->0->1 [10] 3/-1/-1->0->1 [11] 3/-1/-1->0->1 [12] 1/-1/-1->0->-1 [13] 1/-1/-1->0->-1 [14] 1/-1/-1->0->-1 [15] 1/-1/-1->0->-1 [16] 2/-1/-1->0->-1 [17] 2/-1/-1->0->-1 [18] 2/-1/-1->0->-1 [19] 2/-1/-1->0->-1 [20] 3/-1/-1->0->1 [21] 3/-1/-1->0->1 [22] 3/-1/-1->0->1 [23] 3/-1/-1->0->1
+nid007485:138023:138744 [0] NCCL INFO P2P Chunksize set to 524288
+nid007485:138025:138745 [2] NCCL INFO Channel 00/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 00/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 00/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 00/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 03/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 01/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 02/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 04/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 06/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 06/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 06/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 06/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 09/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 07/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 10/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 08/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 12/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 12/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 12/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 12/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 15/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 13/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 16/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 14/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 18/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 18/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 18/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 21/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 18/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 19/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 22/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 20/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 02/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 02/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 01/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 01/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 03/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 04/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 03/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 04/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 08/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 08/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 07/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 07/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 09/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 10/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 09/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 10/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 14/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 14/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 13/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 13/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 15/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 16/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 15/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 20/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 16/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 20/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 19/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 21/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 19/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 22/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 21/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 22/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 01/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 02/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 04/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 03/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 05/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 05/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 05/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 05/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 07/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 08/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 10/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 09/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 11/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 11/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 11/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 11/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 13/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 14/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 16/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 15/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 17/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 17/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 17/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 17/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 19/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 20/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 22/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 21/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 23/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 23/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 23/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 23/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Connected all rings
+nid007485:138026:138746 [3] NCCL INFO Connected all rings
+nid007485:138023:138744 [0] NCCL INFO Connected all rings
+nid007485:138024:138747 [1] NCCL INFO Connected all rings
+nid007485:138023:138744 [0] NCCL INFO Channel 02/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 03/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 08/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 09/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 10/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 08/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 11/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 01/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 10/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 14/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 03/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 11/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 01/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 15/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 09/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 20/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 02/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 20/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 10/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 22/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 03/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 21/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 11/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 23/0 : 3[3] -> 0[0] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 05/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 22/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 13/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 07/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 23/0 : 0[0] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 15/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 13/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 21/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 14/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 22/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 15/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 23/0 : 2[2] -> 3[3] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 17/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 19/0 : 1[1] -> 2[2] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 04/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 05/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 05/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 06/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 06/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 04/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 07/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 07/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 05/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 17/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 16/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 06/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 18/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 05/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 17/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 16/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 19/0 : 3[3] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 06/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 18/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 17/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 17/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 19/0 : 0[0] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 18/0 : 1[1] -> 3[3] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 18/0 : 2[2] -> 0[0] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 00/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 02/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 03/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 08/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 09/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 10/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 12/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 08/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 14/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 09/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 15/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 00/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 20/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 20/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 01/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 00/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138023:138744 [0] NCCL INFO Channel 21/0 : 0[0] -> 3[3] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 03/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 21/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 01/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 09/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138026:138746 [3] NCCL INFO Channel 22/0 : 3[3] -> 2[2] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 02/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 10/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 04/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 12/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 06/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 13/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 07/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 15/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 12/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 21/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 13/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Channel 22/0 : 1[1] -> 0[0] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 14/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 16/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 18/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138025:138745 [2] NCCL INFO Channel 19/0 : 2[2] -> 1[1] via P2P/CUMEM
+nid007485:138024:138747 [1] NCCL INFO Connected all trees
+nid007485:138023:138744 [0] NCCL INFO Connected all trees
+nid007485:138025:138745 [2] NCCL INFO Connected all trees
+nid007485:138026:138746 [3] NCCL INFO Connected all trees
+nid007485:138024:138747 [1] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
+nid007485:138026:138746 [3] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
+nid007485:138025:138745 [2] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
+nid007485:138024:138747 [1] NCCL INFO 24 coll channels, 24 collnet channels, 0 nvls channels, 32 p2p channels, 16 p2p channels per peer
+nid007485:138026:138746 [3] NCCL INFO 24 coll channels, 24 collnet channels, 0 nvls channels, 32 p2p channels, 16 p2p channels per peer
+nid007485:138025:138745 [2] NCCL INFO 24 coll channels, 24 collnet channels, 0 nvls channels, 32 p2p channels, 16 p2p channels per peer
+nid007485:138023:138744 [0] NCCL INFO threadThresholds 8/8/64 | 32/8/64 | 512 | 512
+nid007485:138023:138744 [0] NCCL INFO 24 coll channels, 24 collnet channels, 0 nvls channels, 32 p2p channels, 16 p2p channels per peer
+nid007485:138024:138747 [1] NCCL INFO TUNER/Plugin: Plugin load returned 11 : libnccl-net.so: cannot open shared object file: No such file or directory : when loading libnccl-tuner.so
+nid007485:138026:138746 [3] NCCL INFO TUNER/Plugin: Plugin load returned 11 : libnccl-net.so: cannot open shared object file: No such file or directory : when loading libnccl-tuner.so
+nid007485:138023:138744 [0] NCCL INFO TUNER/Plugin: Plugin load returned 11 : libnccl-net.so: cannot open shared object file: No such file or directory : when loading libnccl-tuner.so
+nid007485:138025:138745 [2] NCCL INFO TUNER/Plugin: Plugin load returned 11 : libnccl-net.so: cannot open shared object file: No such file or directory : when loading libnccl-tuner.so
+nid007485:138024:138747 [1] NCCL INFO TUNER/Plugin: Using internal tuner plugin.
+nid007485:138026:138746 [3] NCCL INFO TUNER/Plugin: Using internal tuner plugin.
+nid007485:138023:138744 [0] NCCL INFO TUNER/Plugin: Using internal tuner plugin.
+nid007485:138025:138745 [2] NCCL INFO TUNER/Plugin: Using internal tuner plugin.
+nid007485:138024:138747 [1] NCCL INFO ncclCommInitRank comm 0xaaab16f1c6d0 rank 1 nranks 4 cudaDev 1 nvmlDev 1 busId 1901000 commId 0x7491d2f97ef3b18d - Init COMPLETE
+nid007485:138026:138746 [3] NCCL INFO ncclCommInitRank comm 0xaaab0900c0d0 rank 3 nranks 4 cudaDev 3 nvmlDev 3 busId 3901000 commId 0x7491d2f97ef3b18d - Init COMPLETE
+nid007485:138025:138745 [2] NCCL INFO ncclCommInitRank comm 0xaaab04001830 rank 2 nranks 4 cudaDev 2 nvmlDev 2 busId 2901000 commId 0x7491d2f97ef3b18d - Init COMPLETE
+nid007485:138023:138744 [0] NCCL INFO ncclCommInitRank comm 0xaaaaffceadd0 rank 0 nranks 4 cudaDev 0 nvmlDev 0 busId 901000 commId 0x7491d2f97ef3b18d - Init COMPLETE
+The model is already on multiple devices. Skipping the move to device specified in `args`.
+The model is already on multiple devices. Skipping the move to device specified in `args`.
+The model is already on multiple devices. Skipping the move to device specified in `args`.
+The model is already on multiple devices. Skipping the move to device specified in `args`.
+  0%|          | 0/5 [00:00<?, ?it/s] 20%|██        | 1/5 [00:07<00:31,  7.90s/it] 40%|████      | 2/5 [00:09<00:12,  4.11s/it] 60%|██████    | 3/5 [00:10<00:05,  2.88s/it] 80%|████████  | 4/5 [00:12<00:02,  2.26s/it]100%|██████████| 5/5 [00:13<00:00,  1.98s/it]Using the `WANDB_DISABLED` environment variable is deprecated and will be removed in v5. Use the --report_to flag to control the integrations used for logging result (for instance --report_to none).
+{'train_runtime': 14.4626, 'train_samples_per_second': 22.126, 'train_steps_per_second': 0.346, 'train_loss': 1.6898870468139648, 'entropy': 1.586771959066391, 'num_tokens': 304780.0, 'mean_token_accuracy': 0.6045699208974838, 'epoch': 0.02}
+                                             100%|██████████| 5/5 [00:14<00:00,  1.98s/it]100%|██████████| 5/5 [00:14<00:00,  2.89s/it]
+nid007485:138026:138797 [3] NCCL INFO [Service thread] Connection closed by localRank 3
+nid007485:138024:138796 [1] NCCL INFO [Service thread] Connection closed by localRank 1
+nid007485:138025:138794 [2] NCCL INFO [Service thread] Connection closed by localRank 2
+Training complete and model saved.
+
+=== SANITY CHECK: TEST GENERATION ===
+Test Input: <|im_start|>system
+You are a helpful AI assistant named SmolLM, trained by Hugging Face<|im_end|>
+<|im_start|>user
+Explain what a molecule is in one sentence.<|im_end|>
+<|im_start|>assistant
+
+`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+Caching is incompatible with gradient checkpointing in LlamaDecoderLayer. Setting `past_key_values=None`.
+nid007485:138026:138958 [3] NCCL INFO comm 0xaaab0900c0d0 rank 3 nranks 4 cudaDev 3 busId 3901000 - Abort COMPLETE
+nid007485:138025:138960 [2] NCCL INFO comm 0xaaab04001830 rank 2 nranks 4 cudaDev 2 busId 2901000 - Abort COMPLETE
+nid007485:138024:138959 [1] NCCL INFO comm 0xaaab16f1c6d0 rank 1 nranks 4 cudaDev 1 busId 1901000 - Abort COMPLETE
+Model Output:
+system
+You are a helpful AI assistant named SmolLM, trained by Hugging Face
+user
+Explain what a molecule is in one sentence.
+assistant
+A we the of
+. to the's31., with the
+ and you
+
+ the- and a the
+. it that the to of and
+,
+1 the1 to. a are and
+
+ and-
+2, and a.- of`. have4
+[rank0]:[W1203 18:09:08.717003139 ProcessGroupNCCL.cpp:1250] Warning: WARNING: process group has NOT been destroyed before we destruct ProcessGroupNCCL. On normal program exit, the application should call destroy_process_group to ensure that any pending NCCL operations have finished in this process. In rare cases this process can exit before this point and block the progress of another member of the process group. This constraint has always been present,  but this warning has only been added since PyTorch 2.4 (function operator())
+nid007485:138023:138795 [0] NCCL INFO [Service thread] Connection closed by localRank 0
+nid007485:138023:138976 [0] NCCL INFO comm 0xaaaaffceadd0 rank 0 nranks 4 cudaDev 0 busId 901000 - Abort COMPLETE
+--- DEBUG RUN FINISHED ---

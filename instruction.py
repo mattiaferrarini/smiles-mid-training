@@ -3,11 +3,11 @@ from datasets import load_dataset
 import argparse
 from utils.config import load_config, hf_auth 
 from pathlib import Path
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, PreTrainedTokenizerFast
 from peft import LoraConfig
 import os
 import torch
-
+from custom_tokenizers.hybrid_tokenizer import HybridTokenizer
 
 parser = argparse.ArgumentParser(description="Instruction-Tuning con SFTTrainer.")
 parser.add_argument("--config", type=str, required=True, help="Percorso del file di configurazione YAML.")
@@ -18,10 +18,30 @@ hf_auth()
 
 model_path = config['model']['name']
 data_path = config['data']['data_folder']
+# TODO: write specific tokenizer path
 
 dataset = load_dataset(data_path, split="train")
-tokenizer = AutoTokenizer.from_pretrained(model_path)
 
+# --- Tokenizer Setup ---
+print("Loading Base Tokenizer...")
+base_tokenizer = AutoTokenizer.from_pretrained(model_path)
+
+# Check for custom BPE tokenizer
+chem_tokenizer_path = "custom_tokenizers/smiles_bpe/tokenizer.json"
+if os.path.exists(chem_tokenizer_path):
+    print(f"Loading Chemical BPE Tokenizer from {chem_tokenizer_path}...")
+    chem_tokenizer = PreTrainedTokenizerFast(tokenizer_file=chem_tokenizer_path)
+    
+    print("Initializing Hybrid Tokenizer...")
+    tokenizer = HybridTokenizer(
+        base_tokenizer=base_tokenizer,
+        chem_tokenizer=chem_tokenizer,
+        chem_start="[START_SMILES]",
+        chem_end="[END_SMILES]"
+    )
+else:
+    print(f"Warning: Chemical tokenizer not found at {chem_tokenizer_path}. Using base tokenizer only.")
+    tokenizer = base_tokenizer
 
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token

@@ -1,9 +1,9 @@
-from transformers import PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizerBase, PreTrainedTokenizerFast
 from transformers import AutoTokenizer
 import os
 from dotenv import load_dotenv
 import re
-from .element_tokenizer import ElementTokenizer
+# from .element_tokenizer import ElementTokenizer # Removed dependency on ElementTokenizer
 
 class HybridTokenizer(PreTrainedTokenizerBase):
     def __init__(self, base_tokenizer, chem_tokenizer, chem_start, chem_end):
@@ -38,7 +38,9 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         
         # Map chemical tokenizer IDs to new unique IDs
         for token, idx in chem_vocab.items():
-            chem_vocab[token] = next_chem_id
+            # Avoid overwriting if token exists in base (optional, but safer to keep separate)
+            # For BPE, tokens might overlap (e.g. "C"). We map EVERYTHING from chem tokenizer to new IDs
+            # to ensure we use the chem-specific embedding/tokenization.
             chem_ids_map[idx] = next_chem_id
             next_chem_id += 1
 
@@ -69,6 +71,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
                 tokens.append(self.chem_end)
             elif token_id in reverse_chem_map:
                 original_chem_id = reverse_chem_map[token_id]
+                # Use chem_tokenizer to decode this specific ID
                 chem_token = self.chem_tokenizer.decode([original_chem_id])
                 tokens.append(chem_token)
             else:
@@ -81,46 +84,51 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         segments = re.split(f"({re.escape(self.chem_start)}.*?{re.escape(self.chem_end)})", text)
         input_ids = []
 
-        print("Segments after splitting:", segments)
+        # print("Segments after splitting:", segments)
 
         for i, segment in enumerate(segments):
             if not segment:  # Skip empty segments
                 continue
             if segment.startswith(self.chem_start) and segment.endswith(self.chem_end):
-                # Tokenize the chemical segment using the chemical tokenizer
-                chem_token_results = self.chem_tokenizer(segment[len(self.chem_start):-len(self.chem_end)])
-                print("Chemical tokenization results:", chem_token_results)
+                # Extract content between tags
+                content = segment[len(self.chem_start):-len(self.chem_end)]
+                
+                # Tokenize the chemical segment using the chemical tokenizer (BPE or Element)
+                # Note: PreTrainedTokenizerFast returns a BatchEncoding, we need input_ids
+                chem_token_results = self.chem_tokenizer(content, add_special_tokens=False)
                 chem_ids = chem_token_results["input_ids"]
+                
                 input_ids.append(self.chem_start_id)
                 for id in chem_ids:
                     if id not in self.chem_ids_map:
-                        raise ValueError(f"Token {id} not found in chemical vocabulary.")
+                        # This should theoretically not happen if vocab is mapped correctly
+                        # But if BPE produces a new token not in initial vocab (unlikely for static BPE), raise error
+                        raise ValueError(f"Token {id} not found in chemical vocabulary map.")
                     input_ids.append(self.chem_ids_map[id])
                 input_ids.append(self.chem_end_id)
             else:
                 # Tokenize the non-chemical segment using the base tokenizer
-                base_ids = self.base_tokenizer(segment)["input_ids"]
-                # Remove <bos> token from all segments except the first one
-                if i > 0 and len(base_ids) > 0 and base_ids[0] == self.base_tokenizer.bos_token_id:
-                    base_ids = base_ids[1:]
+                base_ids = self.base_tokenizer(segment, add_special_tokens=False)["input_ids"]
                 input_ids.extend(base_ids)
-
+        
+        # Add BOS/EOS if needed (usually handled by base tokenizer, but we split it manually)
+        
         return {"input_ids": input_ids}
 
 if __name__ == "__main__":
     load_dotenv()
     
     base_tokenizer = AutoTokenizer.from_pretrained("google/gemma-3-4b-it")
-    print(base_tokenizer("Hello, world!"))
-    print(type(base_tokenizer))
+    
+    # Example: Load your custom BPE tokenizer here
+    # chem_tokenizer = PreTrainedTokenizerFast(tokenizer_file="custom_tokenizers/smiles_bpe/tokenizer.json")
+    # For now, using base as placeholder or ElementTokenizer if available
+    from .element_tokenizer import ElementTokenizer
+    chem_tokenizer = ElementTokenizer()
 
-    test_string = "This is a test [CHEM]CH[/CHEM] with chemical formula."
+    test_string = "This is a test [START_SMILES]CH[END_SMILES] with chemical formula."
 
-    res = base_tokenizer(test_string)
-    print("Base tokenizer result:", res)
-    print("Base tokenizer decoded:", base_tokenizer.decode(res["input_ids"]))
-
-    tokenizer = HybridTokenizer(base_tokenizer, ElementTokenizer(), "[CHEM]", "[/CHEM]")
+    tokenizer = HybridTokenizer(base_tokenizer, chem_tokenizer, "[START_SMILES]", "[END_SMILES]")
     result = tokenizer(test_string)
     print("Tokenized IDs:", result)
     print("Decoded text:", tokenizer.decode(result["input_ids"]))

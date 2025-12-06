@@ -13,6 +13,8 @@
 # Check GPU state before starting
 # srun --ntasks=$SLURM_NTASKS --ntasks-per-node=$SLURM_NTASKS_PER_NODE bash -c 'nvidia-smi'
 
+CHEM_TYPE="character"
+
 export ENV_NAME=ml4science
 
 # Activate conda
@@ -79,7 +81,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 # Training settings
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval"
 # export MODEL_PATH="google/gemma-3-1b-it"
-export MODEL_PATH="/iopsstor/scratch/cscs/mattiaferrarini/finetuning/base_finetuning_20251203_175010"
+export MODEL_PATH="/iopsstor/scratch/cscs/lprunotto/finetuning/base_finetuning_1193622/final_model"
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -118,7 +120,7 @@ srun --ntasks-per-node=1 \
     --rdzv_id=$SLURM_JOB_ID \
     --rdzv_backend=c10d \
     --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
-    evaluate/likelihood_eval.py --model_path "$MODEL_PATH" --output_dir "$OUTPUT_DIR"
+    evaluate/likelihood_eval.py --model_path "$MODEL_PATH" --output_dir "$OUTPUT_DIR" --chem_tokenizer_type "$CHEM_TYPE"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

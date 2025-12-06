@@ -181,4 +181,3 @@ if __name__ == "__main__":
         assert len(tk) == len(loaded_tk)
         assert tk.encode(s) == loaded_tk.encode(s)
         print("SUCCESS: Tokenizer saved and loaded# filepath: c:/Users/luca_/OneDrive/Desktop/Unpoditutto/EPFL/ML/P02/smiles-mid-training/custom_tokenizers/character_tokenizer.py correctly!")
-

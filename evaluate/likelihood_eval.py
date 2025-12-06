@@ -3,14 +3,15 @@ import torch.distributed as dist
 from torch.nn import CrossEntropyLoss
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from dotenv import load_dotenv
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 import numpy as np
 from tqdm import tqdm
 import argparse
 import json
 import os
 
-DATASET = "jablonkagroup/ChemBench"
+DATASET = "/capstor/store/cscs/swissai/a131/ML4Science/datasets/chembench_mcq/"
+HF_DATASET = "jablonkagroup/ChemBench"
 
 configs = ['analytical_chemistry', 'chemical_preference', 'general_chemistry', 
            'inorganic_chemistry', 'materials_science', 'organic_chemistry', 
@@ -135,9 +136,11 @@ def process_example(example):
 
 
 def eval_config(model, tokenizer, config, debug=False):
-    # Filter for multiple choice questions
-    ds = load_dataset(DATASET, config)["train"]
-    ds = ds.filter(lambda x: x["metrics"] == ["multiple_choice_grade"])
+    if os.path.exists(DATASET):
+        ds = load_from_disk(DATASET)[config]
+    else:
+        ds = load_dataset(HF_DATASET, config)["train"]
+        ds = ds.filter(lambda x: x["metrics"] == ["multiple_choice_grade"])
     
     print(f"Evaluating {config}: {len(ds)} questions.")
     

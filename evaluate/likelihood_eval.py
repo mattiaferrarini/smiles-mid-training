@@ -1,16 +1,26 @@
+import os
+import sys
+from pathlib import Path
+
+# Add parent directory to Python path to enable imports from utils
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import torch
 import torch.distributed as dist
 from torch.nn import CrossEntropyLoss
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from dotenv import load_dotenv
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 import numpy as np
 from tqdm import tqdm
 import argparse
 import json
-import os
+from utils.config import load_config
+from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
-DATASET = "jablonkagroup/ChemBench"
+
+DATASET = "/capstor/store/cscs/swissai/a131/ML4Science/datasets/chembench_mcq/"
+HF_DATASET = "jablonkagroup/ChemBench"
 
 configs = ['analytical_chemistry', 'chemical_preference', 'general_chemistry', 
            'inorganic_chemistry', 'materials_science', 'organic_chemistry', 
@@ -135,9 +145,11 @@ def process_example(example):
 
 
 def eval_config(model, tokenizer, config, debug=False):
-    # Filter for multiple choice questions
-    ds = load_dataset(DATASET, config)["train"]
-    ds = ds.filter(lambda x: x["metrics"] == ["multiple_choice_grade"])
+    if os.path.exists(DATASET):
+        ds = load_from_disk(DATASET)[config]
+    else:
+        ds = load_dataset(HF_DATASET, config)["train"]
+        ds = ds.filter(lambda x: x["metrics"] == ["multiple_choice_grade"])
     
     print(f"Evaluating {config}: {len(ds)} questions.")
     
@@ -187,9 +199,7 @@ def eval_config(model, tokenizer, config, debug=False):
     return {"config": config, "accuracy": accuracy, "correct": correct_count, "total": total_count}
 
 
-def eval_path(model_path, local_rank, debug=False):
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    
+def eval_path(model_path, tokenizer, local_rank, debug=False):
     # Load model on the correct device
     device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
     
@@ -282,6 +292,30 @@ def log_all_results(all_results):
     log_path_results(best_result)
     
 
+def get_tokenizer_for_eval(model_path):
+    if os.path.exists(model_path) and os.path.isdir(model_path):
+        # Local directory
+        if os.path.exists(os.path.join(model_path, "config.json")):
+            # Single checkpoint folder: find config in parent
+            training_config_path = os.path.join(os.path.dirname(model_path), "training_config.yaml")    
+        else:
+            # Folder with multiple checkpoints
+            training_config_path = os.path.join(model_path, "training_config.yaml")
+        
+        if os.path.exists(training_config_path):
+            # Assemble tokenizer from training config
+            print(f"Assembling tokenizer from training config at: {training_config_path}")
+            tokenizer = assemble_tokenizer(load_config(training_config_path))
+        else:
+            raise ValueError(f"Training config not found for model at {model_path}")
+    else:
+        # Assume it's a model name on HuggingFace
+        print(f"Loading tokenizer from HuggingFace model: {model_path}")
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+    
+    return tokenizer
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_path", type=str, required=True, help="Path to the pretrained model or directory containing checkpoints")
@@ -318,11 +352,14 @@ if __name__ == "__main__":
     for cp in my_checkpoints:
         print(f"  Rank {rank}: {cp}")
 
+    # Get tokenizer
+    tokenizer = get_tokenizer_for_eval(model_path)
+
     # Each rank evaluates its assigned checkpoints
     local_results = []
     for checkpoint_path in my_checkpoints:
         print(f"\nRank {rank}: Evaluating checkpoint: {checkpoint_path}")
-        eval_results = eval_path(checkpoint_path, local_rank, debug=debug)
+        eval_results = eval_path(checkpoint_path, tokenizer, local_rank, debug=debug)
         log_path_results(eval_results)
         local_results.append(eval_results)
 

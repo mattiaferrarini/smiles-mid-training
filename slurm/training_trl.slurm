@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=64
 #SBATCH --time=12:00:00
 #SBATCH --partition=normal
-#SBATCH --nodes=8
+#SBATCH --nodes=16
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log

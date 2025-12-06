@@ -5,7 +5,7 @@ model:
   name: google/gemma-3-1b-pt
 
 data:
-  data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1_HF_FineWeb-chemV1
+  data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow"
   text_field: "text"
   portion_of_data_used: 0.5 # Portion of the main dataset to use
@@ -29,12 +29,12 @@ distributed:
 
 training:
   epochs: 1 
-  gradient_accumulation_steps: 2
-  learning_rate: 2.0e-5
+  gradient_accumulation_steps: 1
+  learning_rate: 1.0e-3
   max_steps: 20000 #50000
-  warmup_ratio: 0.03
+  warmup_ratio: 0.1
   lr_scheduler_type: "cosine"
-  weight_decay: 0.1
+  weight_decay: 0.05
   save_steps: 200
   logging_steps: 100
   resource_logging_steps: 100
@@ -56,3 +56,6 @@ training:
 tokenizer:
   type: base
   embedding_initialization: "random" 
+  special_tokens:
+    start_smiles: "[START_SMILES]"
+    end_smiles: "[END_SMILES]"

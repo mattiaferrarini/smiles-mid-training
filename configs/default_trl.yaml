@@ -56,3 +56,6 @@ training:
 tokenizer:
   type: base
   embedding_initialization: "random" 
+  special_tokens:
+    start_smiles: "[START_SMILES]"
+    end_smiles: "[END_SMILES]"

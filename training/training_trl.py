@@ -43,6 +43,7 @@ import argparse
 from utils.config import load_config
 from datetime import timedelta
 import json
+from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
 
 LOGGER = get_logger(__name__)
@@ -130,20 +131,8 @@ def prepare_training_args(config, output_dir):
 
 
 def build_tokenizer(config):
-    tokenizer = None
-    tokenizer_type = config["tokenizer"]["type"]
-
-    base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
-    if tokenizer_type == "base":
-        tokenizer = base_tokenizer
-    elif tokenizer_type == "base_special":
-        print("Including special SMILES tokens")
-        base_tokenizer.add_special_tokens({'additional_special_tokens': [START_SMILES, END_SMILES]})
-        tokenizer = base_tokenizer
-    else:
-        raise ValueError(f"Unknown tokenizer_type: {tokenizer_type}")
-
-    return tokenizer 
+    # Use utility function to assemble tokenizer
+    return assemble_tokenizer(config)
 
 
 def initialize_embeddings(model, tokenizer, config):

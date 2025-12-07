@@ -6,6 +6,7 @@ from .elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from .elementrings_tokenizer import ElementRingsTokenizer
 from .selfies_tokenizer import SelfiesTokenizer
 from .smiles_bpe_tokenizer import SmilesBpeTokenizer
+from .ape_tokenizer import APETokenizer
 from .hybrid_tokenizer import HybridTokenizer
 
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
@@ -26,9 +27,6 @@ def assemble_tokenizer(config):
         print("Including special SMILES tokens")
         base_tokenizer.add_special_tokens({'additional_special_tokens': [START_SMILES, END_SMILES]})
         tokenizer = base_tokenizer
-    elif tokenizer_type == "character":
-        # JUST FOR TEST, TO BE DELETED LATER
-        tokenizer = CharacterTokenizer()
     elif tokenizer_type == "hybrid":
         chem_type = config["tokenizer"].get("chem_type", "element")
         print(f"Assembling Hybrid Tokenizer with chem_type: {chem_type}")
@@ -56,7 +54,8 @@ def assemble_tokenizer(config):
                 "elementaromatics": ElementAromaticsTokenizer,
                 "elementnoparenthesis": ElementNoParenthesisTokenizer,
                 "elementrings": ElementRingsTokenizer,
-                "selfies": SelfiesTokenizer
+                "selfies": SelfiesTokenizer,
+                "ape": APETokenizer
             }
             
             if chem_type not in tokenizer_classes:

@@ -12,6 +12,7 @@ from elementrings_tokenizer import ElementRingsTokenizer
 from selfies_tokenizer import SelfiesTokenizer
 from smiles_bpe_tokenizer import SmilesBpeTokenizer
 from ape_tokenizer import APETokenizer
+from parallel_ape_tokenizer import ParallelAPETokenizer
 
 from utils.helpers import build_and_save_tokenizer
 from utils.config import load_config
@@ -55,26 +56,23 @@ Path(base_output_dir).mkdir(parents=True, exist_ok=True)
 tokenizerclass = None
 output_subdir_name = config["tokenizer"].get("output_subdir_name", f"{tokenizer_type}_tokenizer")
 
-if tokenizer_type == "character":
-    tokenizerclass = CharacterTokenizer
-elif tokenizer_type == "element":
-    tokenizerclass = ElementTokenizer
-elif tokenizer_type == "elementallparenthesis":
-    tokenizerclass = ElementAllParenthesisTokenizer
-elif tokenizer_type == "elementaromatics":
-    tokenizerclass = ElementAromaticsTokenizer
-elif tokenizer_type == "elementnoparenthesis":
-    tokenizerclass = ElementNoParenthesisTokenizer
-elif tokenizer_type == "elementrings":
-    tokenizerclass = ElementRingsTokenizer
-elif tokenizer_type == "selfies":
-    tokenizerclass = SelfiesTokenizer
-elif tokenizer_type == "smiles_bpe":
-    tokenizerclass = SmilesBpeTokenizer
-elif tokenizer_type == "ape":
-    tokenizerclass = APETokenizer
+tokenizer_classes = {
+    "character": CharacterTokenizer,
+    "element": ElementTokenizer,
+    "elementallparenthesis": ElementAllParenthesisTokenizer,
+    "elementaromatics": ElementAromaticsTokenizer,
+    "elementnoparenthesis": ElementNoParenthesisTokenizer,
+    "elementrings": ElementRingsTokenizer,
+    "selfies": SelfiesTokenizer,
+    "smiles_bpe": SmilesBpeTokenizer,
+    "ape": APETokenizer,
+    "parallel_ape": ParallelAPETokenizer,
+}
+
+if tokenizer_type in tokenizer_classes:
+    tokenizerclass = tokenizer_classes[tokenizer_type]
 else:
-    raise ValueError(f"Tipo di tokenizer non supportato nel file di configurazione: {tokenizer_type}")
+    raise ValueError(f"Unknown tokenizer type: {tokenizer_type}")
 
 
 import re

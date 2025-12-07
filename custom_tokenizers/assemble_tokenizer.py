@@ -7,6 +7,7 @@ from .elementrings_tokenizer import ElementRingsTokenizer
 from .selfies_tokenizer import SelfiesTokenizer
 from .smiles_bpe_tokenizer import SmilesBpeTokenizer
 from .ape_tokenizer import APETokenizer
+from .parallel_ape_tokenizer import ParallelAPETokenizer
 from .hybrid_tokenizer import HybridTokenizer
 
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
@@ -56,7 +57,8 @@ def assemble_tokenizer(config):
                 "elementnoparenthesis": ElementNoParenthesisTokenizer,
                 "elementrings": ElementRingsTokenizer,
                 "selfies": SelfiesTokenizer,
-                "ape": APETokenizer
+                "ape": APETokenizer,
+                "parallel_ape": ParallelAPETokenizer,
             }
             
             if chem_type not in tokenizer_classes:

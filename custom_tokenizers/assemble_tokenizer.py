@@ -33,7 +33,8 @@ def assemble_tokenizer(config):
         
         # Determine path to pre-built tokenizer
         base_output_dir = config["tokenizer"]["output_dir"]
-        tokenizer_dir = os.path.join(base_output_dir, f"{chem_type}_tokenizer")
+        output_subdir_name = config["tokenizer"].get("output_subdir_name", f"{chem_type}_tokenizer")
+        tokenizer_dir = os.path.join(base_output_dir, output_subdir_name)
         
         chem_tokenizer = None
         

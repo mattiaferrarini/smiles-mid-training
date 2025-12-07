@@ -55,6 +55,7 @@ training:
 
 tokenizer:
   type: base
+  chem_type: element 
   embedding_initialization: "random" 
   special_tokens:
     start_smiles: "[START_SMILES]"

@@ -95,7 +95,6 @@ def build_and_save_tokenizer(
     output_path.mkdir(parents=True, exist_ok=True)
     
     tk = TokenizerClass()
-    # TODO: either here or where the dataset is passed, filter it to only chem
     print("Preparazione del corpus di testo...")
     all_text = "".join(dataset[text_field])
     

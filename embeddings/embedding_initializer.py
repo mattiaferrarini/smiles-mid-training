@@ -26,34 +26,79 @@ def initialize_average_embeddings(model, hybrid_tokenizer):
     return model
 
 def initialize_elementwise_embeddings(model, hybrid_tokenizer):
-    symbol_name_map = {}
-    with open("json/periodic_table.json", "r") as f:
-        periodic_table = json.load(f)
-        for element in periodic_table:
-            symbol_name_map[element["Symbol"]] = element["Element"]
-    reverse_chem_vocab = {v: k for k, v in hybrid_tokenizer.get_chem_vocab().items()}
-    print(reverse_chem_vocab)
-
-    num_base_tokens = model.get_input_embeddings().weight.shape[0]
-    num_new_tokens = len(hybrid_tokenizer.get_chem_vocab())
-
+    import re
+    import json
+    from custom_tokenizers.element_tokenizer import ElementTokenizer
+    
+    # Load element symbol to name mapping
+    symbol_to_name = {}
+    json_path = os.path.join(os.path.dirname(__file__), '..', 'json', 'periodic_table.json')
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            periodic_table = json.load(f)
+            for entry in periodic_table:
+                sym = entry.get('Symbol', '').strip()
+                name = entry.get('Element', '').strip()
+                if sym and name:
+                    symbol_to_name[sym] = name
+    except FileNotFoundError:
+        print(f"Warning: Periodic Table JSON not found at {json_path}. Fallback to symbol tokenization.")
+    except Exception as e:
+        print(f"Warning: Error loading Periodic Table JSON: {e}")
+    
+    # Use the ELEMENTS list from ElementTokenizer for regex matching
+    elements_list = ElementTokenizer.ELEMENTS
+    # Ensure sorted by length to match longest first
+    elements_list = sorted(elements_list, key=lambda x: -len(x))
+    pattern = "|".join(elements_list)
+    
+    base_tokenizer = hybrid_tokenizer.base_tokenizer
+    chem_vocab = hybrid_tokenizer.get_chem_vocab()
+    chem_ids_map = hybrid_tokenizer.get_chem_ids_map()
+    
+    # Resize embeddings to accommodate new tokens
     model.resize_token_embeddings(len(hybrid_tokenizer))
-
-    for id in range(num_base_tokens + 2, num_base_tokens + 2 + num_new_tokens):
-        token = reverse_chem_vocab[id]
-        if token in symbol_name_map:
-            element_name = symbol_name_map[token]
-        else:
-            element_name = reverse_chem_vocab[id]
-
-        print("Initializing embedding for token:", token, "Element name:", element_name, "ID:", id)
-
-        ids = hybrid_tokenizer(element_name, add_special_tokens=False)["input_ids"]
-        print("Mapped to base token IDs:", ids)
-        embeddings = model.get_input_embeddings().weight[ids]
-        avg_embedding = embeddings.mean(dim=0)
-        with torch.no_grad():
-            model.get_input_embeddings().weight[id] = avg_embedding
+    embeddings = model.get_input_embeddings().weight
+    
+    print(f"Initializing {len(chem_ids_map)} chemical tokens using element names...")
+    
+    with torch.no_grad():
+        for token, chem_id in chem_vocab.items():
+            if chem_id not in chem_ids_map:
+                continue
+            
+            hybrid_id = chem_ids_map[chem_id]
+            
+            # Find all elements contained in the token
+            found_elements = re.findall(pattern, token)
+            
+            target_embeddings = []
+            
+            if found_elements:
+                for el in found_elements:
+                    # Get the full name of the element, fallback to symbol if not found
+                    el_name = symbol_to_name.get(el, el)
+                    
+                    # Tokenize the element name with the base tokenizer
+                    base_ids = base_tokenizer(el_name, add_special_tokens=False)["input_ids"]
+                    if base_ids:
+                        # Average the embeddings of the tokens making up this element name
+                        el_emb = embeddings[base_ids].mean(dim=0)
+                        target_embeddings.append(el_emb)
+            else:
+                # Fallback: No elements found (e.g. punctuation, numbers, bonds)
+                # Tokenize the raw token string with base tokenizer
+                base_ids = base_tokenizer(token, add_special_tokens=False)["input_ids"]
+                if base_ids:
+                    token_emb = embeddings[base_ids].mean(dim=0)
+                    target_embeddings.append(token_emb)
+            
+            if target_embeddings:
+                # Average all component embeddings
+                final_embedding = torch.stack(target_embeddings).mean(dim=0)
+                embeddings[hybrid_id] = final_embedding
+            else:
+                print(f"Warning: Could not initialize embedding for token '{token}' (no base tokens found)")
 
     return model
 

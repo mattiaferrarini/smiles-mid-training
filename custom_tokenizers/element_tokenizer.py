@@ -3,6 +3,11 @@ import re
 import json
 import os
 from typing import Optional, List, Dict, Any
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+
 import utils.helpers as helpers
 
 class ElementTokenizer(PreTrainedTokenizer):
@@ -18,7 +23,8 @@ class ElementTokenizer(PreTrainedTokenizer):
     ELEMENTS = sorted(ELEMENTS, key=lambda x: -len(x))  # longest first
 
     ELEMENT_PATTERN = "|".join(ELEMENTS)  # NO parentheses
-    ATOM_LEVEL_PATTERN = r"\[[^\]]+]|" + ELEMENT_PATTERN + r"|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9]"
+    # Modified pattern: Treat [ and ] as separate tokens, and tokenize content inside them element-wise
+    ATOM_LEVEL_PATTERN = r"\[|\]|" + ELEMENT_PATTERN + r"|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9]"
 
     vocab_files_names = {"vocab_file": "vocab.json"}
     model_input_names = ["input_ids", "attention_mask"]
@@ -102,7 +108,7 @@ if __name__ == "__main__":
     # small smoke test
     tk = ElementTokenizer()
     print("Initial vocab size:", len(tk))
-    s = "CNaC(=O)Oc1ccccc1C(=O)O"
+    s = "CNaC(=O)Oc1cc[NaO3+]ccc1C(=O)O"
     print("Tokens:", tk._tokenize(s))
     tk.create_vocabulary(s, append_to_existing_vocabulary=False)
     print("Vocab size after create:", len(tk))

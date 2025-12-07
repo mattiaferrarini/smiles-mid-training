@@ -133,32 +133,39 @@ class APETokenizer(PreTrainedTokenizerBase):
             min_freq_for_merge = self.min_freq_for_merge
             
         # Preprocessing: Tokenize and count word frequencies upfront
-        print("Pretokenizing", end="\r")
+        print(f"Starting tokenization training on {len(corpus)} sequences...")
+        print("Pretokenizing corpus...", end="\r")
         words = [word for sentence in corpus for word in self.pre_tokenize(sentence)]
         vocabulary_frequency = defaultdict(int)
         for word in words:
             vocabulary_frequency[word] += 1
         print(
-            f"Pretokenization complete, found {len(vocabulary_frequency)} tokens",
-            end="\r",
+            f"Pretokenization complete! Found {len(vocabulary_frequency)} initial tokens from {len(words)} total tokens"
         )
 
         merged_counter = len(vocabulary_frequency) + 1
+        iteration = 0
 
+        print(f"\nStarting merge iterations (target vocab size: {max_vocab_size}, min frequency: {min_freq_for_merge})...")
+        
         while True:
+            iteration += 1
+            
             if len(vocabulary_frequency) > self.max_vocab_size:
-                print("\rMax vocabulary achieved")
+                print(f"\n✓ Max vocabulary size reached: {len(vocabulary_frequency)} tokens")
                 break
 
             most_common_pair, freq = self.get_most_common_pair(words)
             if freq < self.min_freq_for_merge:
-                print("\rNot enough frequency found")
+                print(f"\n✓ Stopping: pair frequency ({freq}) below minimum threshold ({self.min_freq_for_merge})")
                 break
 
             merged_word = "".join(most_common_pair)
             if merged_word not in vocabulary_frequency.keys():
+                progress_pct = round(merged_counter / max_vocab_size * 100, 2)
                 print(
-                    f"New merge found: {merged_word} {merged_counter}/{max_vocab_size} {round(merged_counter / max_vocab_size * 100, 2)}%"
+                    f"Iteration {iteration}: Merging '{most_common_pair[0]}' + '{most_common_pair[1]}' → '{merged_word}' "
+                    f"(freq: {freq}) | Vocab: {merged_counter}/{max_vocab_size} ({progress_pct}%)"
                 )
                 merged_counter += 1
             merged_word_freq = vocabulary_frequency.get(merged_word, 0)
@@ -184,6 +191,9 @@ class APETokenizer(PreTrainedTokenizerBase):
                     new_words.append(words[i])
 
             words = new_words
+            
+            # Clear pair counts for next iteration
+            self.pair_counts.clear()
 
         # Convert vocabulary_frequency to a regular dictionary for final output
         self.vocabulary_frequency = dict(vocabulary_frequency)

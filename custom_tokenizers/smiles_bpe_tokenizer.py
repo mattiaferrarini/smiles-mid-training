@@ -97,8 +97,13 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
         )
         
         # Train on the provided text
-        # text is a single large string passed by build_tokenizer.py
-        tokenizer.train_from_iterator([text], trainer=trainer)
+        # text can be a single string or a list of strings
+        if isinstance(text, str):
+            iterator = [text]
+        else:
+            iterator = text
+            
+        tokenizer.train_from_iterator(iterator, trainer=trainer)
         
         # Update the underlying tokenizer of this instance
         self._tokenizer = tokenizer

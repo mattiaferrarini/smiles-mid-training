@@ -78,7 +78,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 
 # Training settings
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval"
-export MODEL_PATH="google/gemma-3-1b-pt"
+export MODEL_PATH="/iopsstor/scratch/cscs/$USER/finetuning/base_finetuning_1201162/"
 # export MODEL_PATH="/iopsstor/scratch/cscs/mattiaferrarini/finetuning/base_finetuning_20251203_175010"
 
 # Get master host address

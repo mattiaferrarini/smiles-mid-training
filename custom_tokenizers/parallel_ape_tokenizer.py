@@ -1,6 +1,6 @@
 '''
 Adapted and simplified from https://github.com/mikemayuare/apetokenizer.
-Parallelized for high-core-count clusters.
+Parallelized for high-core-count clusters with overridable tokenization and selection logic.
 '''
 
 from collections import defaultdict
@@ -9,38 +9,31 @@ import json
 import os
 from pathlib import Path
 from transformers import PreTrainedTokenizerBase
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Tuple
 import multiprocessing
 from functools import partial
 import sys
 
-# Add parent directory to path for utils import (preserving original logic)
+# Add parent directory to path for utils import
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import utils.helpers as helpers
 
 # -----------------------------------------------------------------------------
-# GLOBAL WORKER FUNCTIONS (Must be top-level for multiprocessing pickling)
+# GLOBAL WORKER FUNCTIONS
 # -----------------------------------------------------------------------------
 
-def _worker_pre_tokenize(chunk: List[str], tokenizer_pattern: str) -> List[List[str]]:
+def _worker_pre_tokenize(chunk: List[str], tokenizer) -> List[List[str]]:
     """
-    Worker: Tokenizes a list of molecule strings into lists of initial tokens.
-    Note: We pass the pattern string instead of the tokenizer object to reduce pickle overhead.
+    Worker: Tokenizes a chunk of text using the tokenizer instance's logic.
     """
-    results = []
-    for molecule in chunk:
-        # Re-implement pre_tokenize logic here to avoid passing self
-        words = re.findall(tokenizer_pattern, molecule)
-        results.append(words)
-    return results
+    return [tokenizer.pre_tokenize(text) for text in chunk]
 
 def _worker_count_pairs(chunk: List[List[str]]) -> Dict[Tuple[str, str], int]:
     """
-    Worker: Counts pairs in a chunk of tokenized sequences.
+    Worker: Counts adjacent pairs in a chunk of tokenized sequences.
     """
     local_counts = defaultdict(int)
     for sequence in chunk:
-        # Iterate through the sequence to find adjacent pairs
         for i in range(len(sequence) - 1):
             pair = (sequence[i], sequence[i + 1])
             local_counts[pair] += 1
@@ -48,7 +41,7 @@ def _worker_count_pairs(chunk: List[List[str]]) -> Dict[Tuple[str, str], int]:
 
 def _worker_merge_pair(chunk: List[List[str]], target_pair: Tuple[str, str], merged_token: str) -> List[List[str]]:
     """
-    Worker: Replaces all instances of `target_pair` with `merged_token` in the chunk.
+    Worker: Replaces all instances of `target_pair` with `merged_token`.
     """
     new_chunk = []
     p0, p1 = target_pair
@@ -57,10 +50,9 @@ def _worker_merge_pair(chunk: List[List[str]], target_pair: Tuple[str, str], mer
         new_sequence = []
         i = 0
         while i < len(sequence):
-            # Check for pair match
             if i < len(sequence) - 1 and sequence[i] == p0 and sequence[i+1] == p1:
                 new_sequence.append(merged_token)
-                i += 2  # Skip both parts of the pair
+                i += 2
             else:
                 new_sequence.append(sequence[i])
                 i += 1
@@ -85,6 +77,8 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
         self.min_freq_for_merge = config["tokenizer"]["params"].get("min_freq_for_merge", 0) if config else 0
         self.vocabulary_frequency = defaultdict(int)
         self.pair_counts = defaultdict(int)
+        
+        # Default regex pattern
         self.regex_pattern = r"(\[[^\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|\%[0-9]{2}|[0-9])"
         
         # Initialize vocabulary
@@ -143,37 +137,40 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
     def _convert_id_to_token(self, index):
         return self.decoder.get(index, self.unk_token)
 
-    def pre_tokenize(self, molecule):
+    def pre_tokenize(self, molecule: str) -> List[str]:
+        """
+        Splits a molecule string into initial tokens.
+        Override this to change initial splitting logic.
+        """
         words = re.findall(self.regex_pattern, molecule)
         return words
 
-    def get_most_common_pair(self, tokenized_chunks, pool=None):
+    def _aggregate_pair_counts(self, tokenized_chunks, pool=None):
         """
-        Identifies the most frequent pair of adjacent tokens across all chunks.
-        
-        Args:
-            tokenized_chunks: List of List of sequences (the distributed corpus).
-            pool: Multiprocessing pool instance. If None, runs sequentially (slow).
+        Internal method: Distribues the pair counting task to workers and
+        aggregates the results into self.pair_counts.
         """
         self.pair_counts.clear()
 
         if pool:
-            # Parallel Counting: Map to workers
+            # Parallel Counting
             results = pool.map(_worker_count_pairs, tokenized_chunks)
-            
-            # Reduce: Aggregate results in main process
-            # (Dict aggregation is fast relative to the counting)
+            # Aggregate
             for res in results:
                 for pair, count in res.items():
                     self.pair_counts[pair] += count
         else:
-            # Fallback for single-threaded usage
+            # Sequential Fallback
             for chunk in tokenized_chunks:
                 counts = _worker_count_pairs(chunk)
                 for pair, count in counts.items():
                     self.pair_counts[pair] += count
 
-        # Find the winner
+    def get_most_common_pair(self):
+        """
+        Selects the best pair from self.pair_counts.
+        Override this to change the selection strategy (e.g. to use a score instead of raw frequency).
+        """
         most_common_pair, freq = max(
             self.pair_counts.items(), key=lambda x: x[1], default=((None, None), 0)
         )
@@ -181,17 +178,15 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
 
     def _train(self, corpus, max_vocab_size: int = None, min_freq_for_merge: int = None):
         """
-        Parallelized training loop using multiprocessing.
+        Parallelized training loop.
         """
         if max_vocab_size is None:
             max_vocab_size = self.max_vocab_size
         if min_freq_for_merge is None:
             min_freq_for_merge = self.min_freq_for_merge
             
-        # Setup multiprocessing
-        # Leave one CPU for the main process to handle overhead/coordination
         num_workers = min(multiprocessing.cpu_count() - 1, 250)
-        print(f"Starting parallel tokenization training on {len(corpus)} sequences using {num_workers} workers...")
+        print(f"Starting parallel training on {len(corpus)} sequences using {num_workers} workers...")
 
         # 1. Chunk the corpus
         chunk_size = max(1, len(corpus) // num_workers)
@@ -201,11 +196,11 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
         
         # 2. Parallel Pre-tokenization
         with multiprocessing.Pool(num_workers) as pool:
-            # Partial allows us to pass the pattern constant
-            pre_tok_func = partial(_worker_pre_tokenize, tokenizer_pattern=self.regex_pattern)
+            # Pass 'self' so workers use the class's pre_tokenize method
+            pre_tok_func = partial(_worker_pre_tokenize, tokenizer=self)
             tokenized_chunks = pool.map(pre_tok_func, text_chunks)
             
-            # Calculate initial vocabulary frequency (for stopping criteria)
+            # Count initial vocabulary
             vocabulary_frequency = defaultdict(int)
             for chunk in tokenized_chunks:
                 for seq in chunk:
@@ -217,20 +212,23 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
             merged_counter = len(vocabulary_frequency) + 1
             iteration = 0
 
-            print(f"\nStarting merge iterations (target: {max_vocab_size}, min freq: {min_freq_for_merge})...")
+            print(f"\nStarting merge iterations...")
             
             while True:
                 iteration += 1
                 
                 if len(vocabulary_frequency) > self.max_vocab_size:
-                    print(f"\n✓ Max vocabulary size reached: {len(vocabulary_frequency)} tokens")
+                    print(f"\n✓ Max vocabulary size reached.")
                     break
 
-                # 3. Get Most Common Pair (Parallelized internally via passed pool)
-                most_common_pair, freq = self.get_most_common_pair(tokenized_chunks, pool=pool)
+                # 3. Aggregation (Heavy Lifting)
+                self._aggregate_pair_counts(tokenized_chunks, pool=pool)
+
+                # 4. Selection (Overridable Logic)
+                most_common_pair, freq = self.get_most_common_pair()
                 
                 if freq < self.min_freq_for_merge:
-                    print(f"\n✓ Stopping: pair frequency ({freq}) below minimum threshold ({self.min_freq_for_merge})")
+                    print(f"\n✓ Stopping: pair frequency ({freq}) below threshold.")
                     break
 
                 merged_word = "".join(most_common_pair)
@@ -238,20 +236,17 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
                 if merged_word not in vocabulary_frequency:
                     progress_pct = round(merged_counter / max_vocab_size * 100, 2)
                     print(
-                        f"Iter {iteration}: Merging '{most_common_pair[0]}' + '{most_common_pair[1]}' → '{merged_word}' "
+                        f"Iter {iteration}: Merging {most_common_pair} -> {merged_word} "
                         f"(freq: {freq}) | Vocab: {merged_counter}/{max_vocab_size} ({progress_pct}%)"
                     )
                     merged_counter += 1
                 
                 vocabulary_frequency[merged_word] = vocabulary_frequency.get(merged_word, 0) + freq
 
-                # 4. Parallel Merge (Rewrite sequences)
+                # 5. Parallel Merge
                 merge_func = partial(_worker_merge_pair, target_pair=most_common_pair, merged_token=merged_word)
                 tokenized_chunks = pool.map(merge_func, tokenized_chunks)
 
-        # End of Pool context (pool closes here)
-
-        # Finalize internal state
         self.vocabulary_frequency = dict(vocabulary_frequency)
         
         # Build final vocab
@@ -333,11 +328,9 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
             "max_vocab_size": self.max_vocab_size,
             "min_freq_for_merge": self.min_freq_for_merge,
         }
-        config_file = save_directory / "tokenizer_config.json"
-        with open(config_file, "w", encoding="utf-8") as f:
+        with open(save_directory / "tokenizer_config.json", "w", encoding="utf-8") as f:
             json.dump(config_dict, f, indent=4)
         
-        # Save training state if available
         if self.vocabulary_frequency:
             training_state = {
                 "vocabulary_frequency": {str(k): v for k, v in self.vocabulary_frequency.items()},
@@ -346,7 +339,7 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
                 json.dump(training_state, f, ensure_ascii=False, indent=4)
         
         print(f"Tokenizer saved in {save_directory}")
-        return str(save_directory / "vocab.json"), str(config_file)
+        return str(save_directory / "vocab.json"), str(save_directory / "tokenizer_config.json")
 
     @classmethod
     def from_pretrained(cls, pretrained_directory, **kwargs):

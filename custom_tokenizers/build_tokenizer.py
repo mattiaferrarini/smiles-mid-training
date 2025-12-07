@@ -11,6 +11,7 @@ from elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from elementrings_tokenizer import ElementRingsTokenizer
 from selfies_tokenizer import SelfiesTokenizer
 from smiles_bpe_tokenizer import SmilesBpeTokenizer
+from ape_tokenizer import APETokenizer
 
 from utils.helpers import build_and_save_tokenizer
 from utils.config import load_config
@@ -51,10 +52,8 @@ if (tokenizer_type == "base" or tokenizer_type == "hybrid") and "chem_type" in c
 
 Path(base_output_dir).mkdir(parents=True, exist_ok=True)
 
-
-
 tokenizerclass = None
-output_subdir_name = f"{tokenizer_type}_tokenizer"
+output_subdir_name = config["tokenizer"].get("output_subdir_name", f"{tokenizer_type}_tokenizer")
 
 if tokenizer_type == "character":
     tokenizerclass = CharacterTokenizer
@@ -72,6 +71,8 @@ elif tokenizer_type == "selfies":
     tokenizerclass = SelfiesTokenizer
 elif tokenizer_type == "smiles_bpe":
     tokenizerclass = SmilesBpeTokenizer
+elif tokenizer_type == "ape":
+    tokenizerclass = APETokenizer
 else:
     raise ValueError(f"Tipo di tokenizer non supportato nel file di configurazione: {tokenizer_type}")
 
@@ -106,9 +107,9 @@ if tokenizerclass:
     chem_dataset = dataset.map(
         extract_smiles_batch, 
         batched=True, 
-        batch_size=1000,
+        batch_size=10000,
         remove_columns=dataset.column_names,
-        num_proc=4
+        num_proc=64
     )
 
     print(f"\n[DEBUG] New dataset size: {len(chem_dataset)} rows.")
@@ -126,7 +127,8 @@ if tokenizerclass:
         TokenizerClass=tokenizerclass,
         dataset=chem_dataset, 
         text_field=text_field, 
-        output_dir=f"{base_output_dir}/{output_subdir_name}" 
+        output_dir=f"{base_output_dir}/{output_subdir_name}",
+        config=config
     )
 
     print("\nTokenizer built and saved.")

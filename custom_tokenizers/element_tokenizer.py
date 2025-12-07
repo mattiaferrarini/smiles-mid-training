@@ -36,6 +36,7 @@ class ElementTokenizer(PreTrainedTokenizer):
         pad_token="[PAD]", 
         bos_token="[BOS]", 
         eos_token="[EOS]", 
+        config=None,
         **kwargs
     ):
         self.vocab = {}

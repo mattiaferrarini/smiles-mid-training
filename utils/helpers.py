@@ -91,7 +91,8 @@ def build_and_save_tokenizer(
     TokenizerClass: Type[PreTrainedTokenizerBase], 
     dataset: Dataset, 
     text_field: str, # text field in the dataset
-    output_dir: str # output directory to save the tokenizer
+    output_dir: str, # output directory to save the tokenizer
+    config=None # optional config dict to pass to tokenizer
 ) -> PreTrainedTokenizerBase:
     """
     It learns the vocabulary of the tokenizer and saves it compatible with Huggingface.
@@ -99,7 +100,7 @@ def build_and_save_tokenizer(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
-    tk = TokenizerClass()
+    tk = TokenizerClass(config=config)
     print("Preparazione del corpus di testo...")
     # Pass the list of strings directly, do not join them
     # This prevents learning patterns across SMILES boundaries (e.g. "][")

@@ -45,6 +45,7 @@ from utils.config import load_config
 from datetime import timedelta
 import json
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
+from embeddings.embedding_initializer import initialize_embeddings as init_embeddings_fn
 
 
 LOGGER = get_logger(__name__)
@@ -137,11 +138,16 @@ def build_tokenizer(config):
 
 
 def initialize_embeddings(model, tokenizer, config):
-    initialization_strategy = config["tokenizer"]["embedding_initialization"]
-    model.resize_token_embeddings(len(tokenizer))
+    initialization_strategy = config["tokenizer"].get("embedding_initialization", "default")
     
     if initialization_strategy == "random":
-        pass # Rely on default random init
+        print("Initializing embeddings with strategy: random")
+        model.resize_token_embeddings(len(tokenizer))
+    else:
+        print(f"Initializing embeddings with strategy: {initialization_strategy}")
+        # Use the external initializer which handles default, average, and elementwise
+        model = init_embeddings_fn(model, tokenizer, strategy=initialization_strategy)
+        
     return model
 
 

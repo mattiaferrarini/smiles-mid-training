@@ -77,9 +77,24 @@ export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
 # Training settings
-export JOB_NAME="base_finetuning"
+if [ -z "$CONFIG_PATH" ]; then
+    export CONFIG_PATH=configs/default_trl.yaml
+fi
+
+# Extract config values for dynamic naming
+TOKENIZER_TYPE=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['tokenizer']['type'])")
+CHEM_TYPE=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['tokenizer'].get('chem_type', 'none'))")
+EMBEDDING_INIT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['tokenizer'].get('embedding_initialization', 'default'))")
+
+# Construct Job Name
+if [ "$TOKENIZER_TYPE" == "base" ] || [ "$TOKENIZER_TYPE" == "hybrid" ]; then
+    TOKENIZER_NAME="${TOKENIZER_TYPE}_${CHEM_TYPE}"
+else
+    TOKENIZER_NAME="$TOKENIZER_TYPE"
+fi
+
+export JOB_NAME="train_${TOKENIZER_NAME}_${EMBEDDING_INIT}"
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}_${SLURM_JOB_ID}"
-export CONFIG_PATH=configs/default_trl.yaml
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -95,6 +110,27 @@ srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/traini
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"
+
+# --- Submit Evaluation Job ---
+echo "=================================================================="
+echo "Submitting Evaluation Job..."
+
+EVAL_MODEL_PATH="${OUTPUT_DIR}/final_model"
+# We run evaluation WITHOUT annotation by default (USE_ANNOTATION="false")
+USE_ANNOTATION="false"
+EVAL_JOB_NAME="eval_${TOKENIZER_NAME}_${EMBEDDING_INIT}_annotated_${USE_ANNOTATION}_train_${SLURM_JOB_ID}"
+EVAL_OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval/${EVAL_JOB_NAME}"
+
+# Submit the job with dependency on the current training job
+sbatch --dependency=afterok:$SLURM_JOB_ID \
+       --job-name="$EVAL_JOB_NAME" \
+       --export=ALL,MODEL_PATH="$EVAL_MODEL_PATH",OUTPUT_DIR="$EVAL_OUTPUT_DIR",USE_ANNOTATION="$USE_ANNOTATION" \
+       slurm/base_likelihood_eval.slurm
+
+echo "Evaluation job submitted with dependency afterok:$SLURM_JOB_ID"
+echo "Evaluation Job Name: $EVAL_JOB_NAME"
+echo "=================================================================="
+
 # echo "--- Starting direct Python run for debugging (Job $SLURM_JOB_ID) ---"
 # srun --propagate=NONE --label "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 # echo "--- Python run finished ---"

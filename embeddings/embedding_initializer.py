@@ -121,6 +121,8 @@ def initialize_embeddings(model, hybrid_tokenizer, strategy="default"):
     assert new_shape[0] == len(hybrid_tokenizer), "Embedding layer size does not match tokenizer size."
     assert new_shape[0] == base_shape[0] + len(hybrid_tokenizer.get_chem_vocab()) + 2, "Number of embeddings does not match expected size."
     assert new_shape[1] == base_shape[1], "Embedding dimension size has changed."
+    
+    return model
 
 if __name__ == "__main__":
     load_dotenv()

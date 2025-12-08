@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=BuildTokenizer
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=64
-#SBATCH --time=01:00:00
+#SBATCH --cpus-per-task=270
+#SBATCH --time=12:00:00
 #SBATCH --partition=normal
 #SBATCH --nodes=1
 #SBATCH --exclusive

@@ -13,7 +13,7 @@ tokenizer:
   type: hybrid
   chem_type: ape
   output_dir: /users/$USER/json/tokenizers
-  output_subdir_name: ape_10000
+  output_subdir_name: ape_5000
   params:
-    max_vocab_size: 10000
+    max_vocab_size: 5000
     min_freq_for_merge: 0

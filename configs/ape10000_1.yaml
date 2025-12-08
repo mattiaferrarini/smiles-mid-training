@@ -7,13 +7,13 @@ data:
   data_files_pattern: "**/*.arrow" 
   text_field: text_annotated_v1tags
   count_field: text_annotated_v1tags_smiles_count
-  portion_of_data: 0.1
+  portion_of_data: 1.0
 
 tokenizer:
   type: hybrid
   chem_type: ape
   output_dir: /users/$USER/json/tokenizers
-  output_subdir_name: ape_10000
+  output_subdir_name: ape_10000_1
   params:
     max_vocab_size: 10000
     min_freq_for_merge: 0

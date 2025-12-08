@@ -3,7 +3,7 @@ Adapted and simplified from https://github.com/mikemayuare/apetokenizer.
 Parallelized for high-core-count clusters with overridable tokenization and selection logic.
 '''
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 import re
 import json
 import os
@@ -13,6 +13,7 @@ from typing import Optional, List, Dict, Tuple
 import multiprocessing
 from functools import partial
 import sys
+from datetime import datetime
 
 # Add parent directory to path for utils import
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -22,11 +23,22 @@ import utils.helpers as helpers
 # GLOBAL WORKER FUNCTIONS
 # -----------------------------------------------------------------------------
 
-def _worker_pre_tokenize(chunk: List[str], tokenizer) -> List[List[str]]:
+def _worker_pre_tokenize(chunk: List[str], tokenizer) -> Tuple[List[List[str]], Dict[str, int]]:
     """
-    Worker: Tokenizes a chunk of text using the tokenizer instance's logic.
+    Worker: 
+    1. Tokenizes a chunk of text using the tokenizer instance.
+    2. Counts the initial vocabulary frequency locally to avoid main-process bottlenecks.
     """
-    return [tokenizer.pre_tokenize(text) for text in chunk]
+    tokenized_chunk = []
+    local_freq = defaultdict(int)
+    
+    for text in chunk:
+        tokens = tokenizer.pre_tokenize(text)
+        tokenized_chunk.append(tokens)
+        for token in tokens:
+            local_freq[token] += 1
+            
+    return tokenized_chunk, dict(local_freq)
 
 def _worker_count_pairs(chunk: List[List[str]]) -> Dict[Tuple[str, str], int]:
     """
@@ -63,7 +75,7 @@ def _worker_merge_pair(chunk: List[List[str]], target_pair: Tuple[str, str], mer
 # MAIN CLASS
 # -----------------------------------------------------------------------------
 
-class ParallelAPETokenizer(PreTrainedTokenizerBase):
+class APETokenizer(PreTrainedTokenizerBase):
     def __init__(self, 
         vocab_file=None,
         unk_token="[UNK]",
@@ -169,7 +181,7 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
     def get_most_common_pair(self):
         """
         Selects the best pair from self.pair_counts.
-        Override this to change the selection strategy (e.g. to use a score instead of raw frequency).
+        Override this to change the selection strategy.
         """
         most_common_pair, freq = max(
             self.pair_counts.items(), key=lambda x: x[1], default=((None, None), 0)
@@ -185,34 +197,47 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
         if min_freq_for_merge is None:
             min_freq_for_merge = self.min_freq_for_merge
             
+        # Determine number of workers
         num_workers = min(multiprocessing.cpu_count() - 1, 250)
+        num_workers = max(1, num_workers)
+        
         print(f"Starting parallel training on {len(corpus)} sequences using {num_workers} workers...")
-
+        print("Starting at", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
         # 1. Chunk the corpus
         chunk_size = max(1, len(corpus) // num_workers)
         text_chunks = [corpus[i:i + chunk_size] for i in range(0, len(corpus), chunk_size)]
         
-        print("Pre-tokenizing corpus...", end="\r")
+        print(f"Divided corpus into {len(text_chunks)} chunks.")
         
-        # 2. Parallel Pre-tokenization
+        # 2. Parallel Pre-tokenization with Progress Logging
+        tokenized_chunks = []
+        vocabulary_frequency = defaultdict(int)
+        
         with multiprocessing.Pool(num_workers) as pool:
-            # Pass 'self' so workers use the class's pre_tokenize method
             pre_tok_func = partial(_worker_pre_tokenize, tokenizer=self)
-            tokenized_chunks = pool.map(pre_tok_func, text_chunks)
             
-            # Count initial vocabulary
-            vocabulary_frequency = defaultdict(int)
-            for chunk in tokenized_chunks:
-                for seq in chunk:
-                    for token in seq:
-                        vocabulary_frequency[token] += 1
+            # Use imap instead of map to track progress
+            total_chunks = len(text_chunks)
+            print(f"0/{total_chunks} chunks pre-tokenized...", end="\r", flush=True)
             
-            print(f"Pre-tokenization complete! Found {len(vocabulary_frequency)} initial tokens.")
+            for i, (chunk_result, chunk_vocab) in enumerate(pool.imap(pre_tok_func, text_chunks)):
+                tokenized_chunks.append(chunk_result)
+                
+                # Merge local vocab counts into global count immediately
+                for token, count in chunk_vocab.items():
+                    vocabulary_frequency[token] += count
+                    
+                # Log progress
+                if (i + 1) % max(1, total_chunks // 20) == 0 or (i + 1) == total_chunks:
+                    print(f"{i + 1}/{total_chunks} chunks pre-tokenized...", end="\r", flush=True)
+
+            print(f"\nPre-tokenization complete! Found {len(vocabulary_frequency)} initial tokens.")
 
             merged_counter = len(vocabulary_frequency) + 1
             iteration = 0
 
-            print(f"\nStarting merge iterations...")
+            print(f"Starting merge iterations...")
             
             while True:
                 iteration += 1
@@ -245,6 +270,9 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
 
                 # 5. Parallel Merge
                 merge_func = partial(_worker_merge_pair, target_pair=most_common_pair, merged_token=merged_word)
+                
+                # We overwrite the list with the new results
+                # Using map here is fine as we need synchronization before the next loop anyway
                 tokenized_chunks = pool.map(merge_func, tokenized_chunks)
 
         self.vocabulary_frequency = dict(vocabulary_frequency)
@@ -260,6 +288,7 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
         self.decoder = {v: k for k, v in self.vocab.items()}
         
         print("\nTraining complete.")
+        print("Ending at", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         return None
 
     def create_vocabulary(self, text, append_to_existing_vocabulary=False, vocab_path=None, save_vocabulary=False):
@@ -380,3 +409,4 @@ class ParallelAPETokenizer(PreTrainedTokenizerBase):
             )
 
         return tokenizer
+

@@ -2,7 +2,7 @@
 #SBATCH --job-name=BuildTokenizer
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
-#SBATCH --time=01:00:00
+#SBATCH --time=08:00:00
 #SBATCH --partition=normal
 #SBATCH --nodes=1
 #SBATCH --exclusive
@@ -36,8 +36,10 @@ echo "=================================================================="
 OUTPUT_DIR="/users/$USER/json/tokenizers"
 mkdir -p "$OUTPUT_DIR"
 
+export PYTHONUNBUFFERED=1
+
 echo "Running tokenizer build script..."
-srun "$PYTHON_EXEC" custom_tokenizers/build_tokenizer.py \
+srun "$PYTHON_EXEC" -u custom_tokenizers/build_tokenizer.py \
     --config configs/ape10000.yaml \
     --output-dir "$OUTPUT_DIR"
 EXIT_CODE=$?

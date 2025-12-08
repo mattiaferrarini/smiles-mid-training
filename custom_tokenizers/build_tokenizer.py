@@ -13,7 +13,9 @@ from elementrings_tokenizer import ElementRingsTokenizer
 from selfies_tokenizer import SelfiesTokenizer
 from smiles_bpe_tokenizer import SmilesBpeTokenizer
 from ape_tokenizer import APETokenizer
+from ape_hf_tokenizer import APEHFTokenizer
 from parallel_ape_tokenizer import ParallelAPETokenizer
+from ape_hf_tokenizer import APEHFTokenizer
 
 from utils.helpers import build_and_save_tokenizer
 from utils.config import load_config
@@ -62,6 +64,7 @@ def main():
         "smiles_bpe": SmilesBpeTokenizer,
         "ape": APETokenizer,
         "parallel_ape": ParallelAPETokenizer,
+        "ape_hf": APEHFTokenizer,
     }
 
     if tokenizer_type in tokenizer_classes:

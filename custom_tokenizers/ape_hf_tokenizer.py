@@ -33,39 +33,6 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
         Override this method to customize pre-tokenization behavior.
         """
         return r"(\[[^\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|\%[0-9]{2}|[0-9])"
-    
-    def pretokenize(self, pretok) -> List[Tuple[str, Tuple[int, int]]]:
-        """
-        Split SMILES using the APE regex pattern.
-        Override this method to customize pre-tokenization logic.
-        
-        Args:
-            pretok: Input text (NormalizedString or str)
-            
-        Returns:
-            List of tuples containing (token, (start, end))
-        """
-        pattern = self.get_pretokenization_pattern()
-        text = str(pretok)
-        
-        tokens = []
-        for match in re.finditer(pattern, text):
-            start = match.start()
-            end = match.end()
-            tokens.append((match.group(), (start, end)))
-        
-        return tokens
-    
-    def _create_pretokenizer_wrapper(self):
-        """Create a wrapper class that uses this tokenizer's pretokenize method"""
-        tokenizer_instance = self
-        
-        class SMILESPreTokenizer:
-            """Wrapper that delegates to the parent tokenizer's pretokenize method"""
-            def pre_tokenize(self, pretok):
-                return tokenizer_instance.pretokenize(pretok)
-        
-        return SMILESPreTokenizer()
 
     def __init__(
         self, 
@@ -107,8 +74,12 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
             # Initialize with BPE model for training
             tokenizer_object = Tokenizer(models.BPE())
             
-            # Set custom pre-tokenizer for SMILES
-            tokenizer_object.pre_tokenizer = pre_tokenizers.PreTokenizer.custom(self._create_pretokenizer_wrapper())
+            # Set pre-tokenizer using built-in Split pattern for SMILES
+            tokenizer_object.pre_tokenizer = pre_tokenizers.Split(
+                pattern=self.get_pretokenization_pattern(),
+                behavior="isolated",  # Keep matched tokens
+                invert=False  # Split by matches (not by separators)
+            )
             
             # Define special tokens
             special_tokens = [
@@ -143,7 +114,11 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
         
         # Initialize BPE Tokenizer with SMILES pre-tokenizer
         tokenizer = Tokenizer(models.BPE())
-        tokenizer.pre_tokenizer = pre_tokenizers.PreTokenizer.custom(self._create_pretokenizer_wrapper())
+        tokenizer.pre_tokenizer = pre_tokenizers.Split(
+            pattern=self.get_pretokenization_pattern(),
+            behavior="isolated",
+            invert=False
+        )
         
         # Define special tokens
         special_tokens = [
@@ -262,7 +237,11 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
     def reset_vocabulary(self):
         """Reset to a fresh BPE model with special tokens"""
         tokenizer_object = Tokenizer(models.BPE())
-        tokenizer_object.pre_tokenizer = pre_tokenizers.PreTokenizer.custom(self._create_pretokenizer_wrapper())
+        tokenizer_object.pre_tokenizer = pre_tokenizers.Split(
+            pattern=self.get_pretokenization_pattern(),
+            behavior="isolated",
+            invert=False
+        )
         
         special_tokens = [
             t for t in [self.unk_token, self.bos_token, self.eos_token, self.pad_token] 
@@ -272,3 +251,5 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
             tokenizer_object.add_special_tokens(special_tokens)
         
         self._tokenizer = tokenizer_object
+
+

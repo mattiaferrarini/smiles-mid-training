@@ -37,6 +37,16 @@ dataset = load_dataset(
     split="train",
 )
 
+
+# Optionally use only a portion of the data for building the tokenizer
+portion_of_data = config["data"].get("portion_of_data", 1.0)
+if portion_of_data < 1.0:
+    total_size = len(dataset)
+    new_size = int(total_size * portion_of_data)
+    print(f"[INFO] Using only {portion_of_data*100}% of the data: {new_size} out of {total_size} rows.")
+    dataset = dataset.select(range(new_size))
+
+
 # DEBUG: Limit to 100 rows for testing
 #print("!!! DEBUG MODE: Using only first 100 rows !!!")
 #dataset = dataset.select(range(100))

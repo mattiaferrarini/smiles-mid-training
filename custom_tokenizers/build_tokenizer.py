@@ -38,15 +38,6 @@ dataset = load_dataset(
 )
 
 
-# Optionally use only a portion of the data for building the tokenizer
-portion_of_data = config["data"].get("portion_of_data", 1.0)
-if portion_of_data < 1.0:
-    total_size = len(dataset)
-    new_size = int(total_size * portion_of_data)
-    print(f"[INFO] Using only {portion_of_data*100}% of the data: {new_size} out of {total_size} rows.")
-    dataset = dataset.select(range(new_size))
-
-
 # DEBUG: Limit to 100 rows for testing
 #print("!!! DEBUG MODE: Using only first 100 rows !!!")
 #dataset = dataset.select(range(100))
@@ -130,6 +121,12 @@ if tokenizerclass:
         print("The regex didn't match anything.")
     else:
         print(f"\n[INFO] Successfully extracted {len(chem_dataset)} SMILES segments.")
+
+    if "portion_of_data" in config["data"]:
+        portion = config["data"]["portion_of_data"]
+        num_rows = int(len(chem_dataset) * portion)
+        chem_dataset = chem_dataset.select(range(num_rows))
+        print(f"\n[INFO] Using portion_of_data={portion}. Reduced dataset to {num_rows} rows.")
 
     build_and_save_tokenizer(
         TokenizerClass=tokenizerclass,

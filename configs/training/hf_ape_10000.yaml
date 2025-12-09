@@ -46,7 +46,7 @@ training:
   gradient_checkpointing: true
   num_workers: 4
   preprocessing_num_workers: 64
-  preprocessing_batch_size: 10000
+  preprocessing_batch_size: 100
   prefetch_factor: 4
   per_device_batch_size: 4
   max_length: 4096

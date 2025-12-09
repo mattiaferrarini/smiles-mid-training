@@ -37,6 +37,25 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         # Create reverse map for faster decoding/conversion
         self.id_to_chem_map = {v: k for k, v in self.chem_ids_map.items()}
 
+    def save_pretrained(self, save_directory, **kwargs):
+        """
+        Delegates saving to the base tokenizer. 
+        """
+        return self.base_tokenizer.save_pretrained(save_directory, **kwargs)
+
+    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None):
+        """
+        Required by PreTrainedTokenizerBase.
+        """
+        return self.base_tokenizer.save_vocabulary(save_directory, filename_prefix)
+
+    @property
+    def added_tokens_decoder(self):
+        """
+        Required for handling special tokens during saving.
+        """
+        return self.base_tokenizer.added_tokens_decoder
+
     @property
     def vocab_size(self):
         """Returns the total size of the vocabulary"""

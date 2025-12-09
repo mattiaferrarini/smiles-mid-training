@@ -86,7 +86,8 @@ def build_and_save_tokenizer(
     TokenizerClass: Type[PreTrainedTokenizerBase], 
     dataset: Dataset, 
     text_field: str, # text field in the dataset
-    output_dir: str # output directory to save the tokenizer
+    output_dir: str, # output directory to save the tokenizer
+    **kwargs
 ) -> PreTrainedTokenizerBase:
     """
     It learns the vocabulary of the tokenizer and saves it compatible with Huggingface.
@@ -94,20 +95,18 @@ def build_and_save_tokenizer(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
-    tk = TokenizerClass()
     # TODO: either here or where the dataset is passed, filter it to only chem
     print("Preparazione del corpus di testo...")
-    all_text = "".join(dataset[text_field])
-    
+    keep_list = kwargs.pop('keep_list', False)
+    all_text = dataset[text_field] if keep_list else "".join(dataset[text_field])
+
+    tk = TokenizerClass(**kwargs)
     print(f"Avvio creazione vocabolario per {TokenizerClass.__name__}...")
+
     tk.create_vocabulary(all_text, save_vocabulary=False) 
-    
     print(f"Vocabolario creato con {tk.vocab_size} simboli.")
 
     tk.save_pretrained(output_path)
-    
     print(f"Tokenizer saved in: {output_path.resolve()}")
     
     return tk
-
-    

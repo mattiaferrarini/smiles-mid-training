@@ -5,16 +5,20 @@ from .elementaromatics_tokenizer import ElementAromaticsTokenizer
 from .elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from .elementrings_tokenizer import ElementRingsTokenizer
 from .selfies_tokenizer import SelfiesTokenizer
+from .kmer_tokenizer import KmerTokenizer
+from .hybrid_tokenizer import HybridTokenizer
 
 from transformers import AutoTokenizer
-
 
 def assemble_tokenizer(config):
     tokenizer = None
     tokenizer_type = config["tokenizer"]["type"]
 
-    START_SMILES = config["tokenizer"]["special_tokens"]["start_smiles"]
-    END_SMILES = config["tokenizer"]["special_tokens"]["end_smiles"]
+    tokenizer_params = config["tokenizer"].get("params", {})
+    tokenizer_path = config["tokenizer"].get("path")
+
+    START_SMILES = config["tokenizer"].get("special_tokens", {}).get("start_smiles", "[START_SMILES]")
+    END_SMILES = config["tokenizer"].get("special_tokens", {}).get("end_smiles", "[END_SMILES]")
     base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
 
     if tokenizer_type == "base":
@@ -26,6 +30,18 @@ def assemble_tokenizer(config):
     elif tokenizer_type == "character":
         # JUST FOR TEST, TO BE DELETED LATER
         tokenizer = CharacterTokenizer()
+    elif tokenizer_type == "kmer":
+        vocab_file = f"{tokenizer_path}/vocab.json"
+        print(f"Loading k-mer vocab from {vocab_file}")
+        chem_tokenizer = KmerTokenizer(vocab_file=vocab_file, **tokenizer_params)
+        
+        print("Assembling HybridTokenizer (Gemma + Kmer)...")
+        tokenizer = HybridTokenizer(
+            base_tokenizer=base_tokenizer,
+            chem_tokenizer=chem_tokenizer,
+            chem_start=START_SMILES,
+            chem_end=END_SMILES
+        )
     else:
         raise ValueError(f"Unknown tokenizer_type: {tokenizer_type}")
 

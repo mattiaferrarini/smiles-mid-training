@@ -102,6 +102,9 @@ def prepare_training_args(config, output_dir):
         "include_num_input_tokens_seen": True,
     }
 
+    if config["tokenizer"]["type"] != "base" and config["tokenizer"]["type"] != "base_special":
+        args_dict["dataset_num_proc"] = 1 #config["training"]["num_workers"]
+
     if strategy == "fsdp":
         # FSDP-specific arguments
         fsdp_conf = config["distributed"]["fsdp"]

@@ -76,7 +76,6 @@ def prepare_training_args(config, output_dir):
         "per_device_train_batch_size": config["training"]["per_device_batch_size"],
         "gradient_accumulation_steps": config["training"]["gradient_accumulation_steps"],
         "num_train_epochs": config["training"]["epochs"],
-        # "max_steps": config["training"]["max_steps"],
         "warmup_ratio": config["training"]["warmup_ratio"],
         "lr_scheduler_type": config["training"]["lr_scheduler_type"],
         "learning_rate": config["training"]["learning_rate"],
@@ -98,11 +97,11 @@ def prepare_training_args(config, output_dir):
             "dispatch_batches": False,
         },
         "dataloader_drop_last": True,
+        # --- FIX CRITICO QUI SOTTO: max_seq_length ---
         "max_length": config["training"]["max_length"],
         "include_tokens_per_second": True,
         "include_num_input_tokens_seen": True,
     }
-
     if strategy == "fsdp":
         # FSDP-specific arguments
         fsdp_conf = config["distributed"]["fsdp"]
@@ -140,12 +139,19 @@ def build_tokenizer(config):
 def initialize_embeddings(model, tokenizer, config):
     initialization_strategy = config["tokenizer"].get("embedding_initialization", "default")
     
+    # DEBUG: Verifica che tipo di tokenizer abbiamo
+    print(f"[DEBUG] initialize_embeddings called with tokenizer type: {type(tokenizer)}")
+    if hasattr(tokenizer, "chem_tokenizer"):
+        print("[DEBUG] Tokenizer is Hybrid (chem_tokenizer found).")
+    else:
+        print("[DEBUG] Tokenizer appears to be standard (NO chem_tokenizer found).")
+
     if initialization_strategy == "random":
         print("Initializing embeddings with strategy: random")
         model.resize_token_embeddings(len(tokenizer))
     else:
         print(f"Initializing embeddings with strategy: {initialization_strategy}")
-        # Use the external initializer which handles default, average, and elementwise
+        # Chiamata alla funzione esterna
         model = init_embeddings_fn(model, tokenizer, strategy=initialization_strategy)
         
     return model

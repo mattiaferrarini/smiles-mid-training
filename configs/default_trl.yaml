@@ -46,7 +46,7 @@ training:
   gradient_checkpointing: true
   num_workers: 4
   preprocessing_num_workers: 64
-  preprocessing_batch_size: 10000
+  preprocessing_batch_size: 100
   prefetch_factor: 4
   per_device_batch_size: 4
   max_length: 4096
@@ -54,9 +54,10 @@ training:
   report_to: "wandb"
 
 tokenizer:
-  type: base
+  type: hybrid
   chem_type: smiles_bpe 
   embedding_initialization: "elementwise" 
+  output_dir: /users/lprunotto/json/tokenizers
   special_tokens:
     start_smiles: "[START_SMILES]"
     end_smiles: "[END_SMILES]"

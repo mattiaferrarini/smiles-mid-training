@@ -1,4 +1,4 @@
-from transformers import PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizer
 from tokenizers import Tokenizer
 import re
 import json
@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 import utils.helpers as helpers
-class CharacterTokenizer(PreTrainedTokenizerBase):
+class CharacterTokenizer(PreTrainedTokenizer):
 
     CHAR_LEVEL_PATTERN = r"." 
 

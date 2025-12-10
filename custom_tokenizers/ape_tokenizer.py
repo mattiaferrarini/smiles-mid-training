@@ -25,7 +25,7 @@ class APETokenizer(PreTrainedTokenizerBase):
         **kwargs
     ):
         self.max_vocab_size = config["tokenizer"]["params"].get("max_vocab_size", 20000) if config else 20000
-        self.min_freq_for_merge = config["tokenizer"]["params"].get("min_freq_for_merge", 0) if config else 0
+        self.min_freq_for_merge = config["tokenizer"]["params"].get("min_freq_for_merge", 2) if config else 2
         self.vocabulary_frequency = defaultdict(int)
         self.pair_counts = defaultdict(int)
         
@@ -113,22 +113,67 @@ class APETokenizer(PreTrainedTokenizerBase):
         words = re.findall(pattern, molecule)
         return words
 
-    def get_most_common_pair(self, words):
-        for i in range(len(words) - 1):
-            pair = (words[i], words[i + 1])
-            self.pair_counts[pair] += 1
-
-        # Minimize lookups by using max function directly
+    def score_item(self, item):
+        """Score a pair item for ranking. Can be overridden by subclasses."""
+        return item[1]  # Default: just return frequency
+    
+    def get_most_common_pair(self):
+        """Get the most frequent pair from pre-computed pair counts"""
+        if not self.pair_counts:
+            return (None, None), 0
+        
         most_common_pair, freq = max(
             self.pair_counts.items(), key=self.score_item, default=((None, None), 0)
         )
         return most_common_pair, freq
     
-    def score_item(self, item):
-        return item[1]
+    def compute_pair_counts(self, words):
+        """Initial computation of all pair frequencies"""
+        pair_counts = defaultdict(int)
+        for i in range(len(words) - 1):
+            pair = (words[i], words[i + 1])
+            pair_counts[pair] += 1
+        return pair_counts
+    
+    def update_pair_counts(self, words, pair_to_merge, merged_word):
+        """Incrementally update pair counts after a merge"""
+        # Remove old pairs and add new pairs around merge positions
+        new_pairs = defaultdict(int)
+        old_pairs = defaultdict(int)
+        
+        i = 0
+        while i < len(words) - 1:
+            if words[i] == pair_to_merge[0] and words[i + 1] == pair_to_merge[1]:
+                # This pair will be merged
+                # Remove the pair being merged
+                old_pairs[pair_to_merge] += 1
+                
+                # Check for new pairs formed
+                if i > 0:
+                    # Left context changes
+                    old_pairs[(words[i - 1], pair_to_merge[0])] += 1
+                    new_pairs[(words[i - 1], merged_word)] += 1
+                
+                if i + 2 < len(words):
+                    # Right context changes
+                    old_pairs[(pair_to_merge[1], words[i + 2])] += 1
+                    new_pairs[(merged_word, words[i + 2])] += 1
+                
+                i += 2  # Skip the merged pair
+            else:
+                i += 1
+        
+        # Apply updates to pair_counts
+        for pair, count in old_pairs.items():
+            self.pair_counts[pair] -= count
+            if self.pair_counts[pair] <= 0:
+                del self.pair_counts[pair]
+        
+        for pair, count in new_pairs.items():
+            self.pair_counts[pair] += count
 
     def _train(self, corpus, max_vocab_size: int = None, min_freq_for_merge: int = None):
-        """Internal training method - original train logic"""
+        """Internal training method - optimized version"""
         if max_vocab_size is None:
             max_vocab_size = self.max_vocab_size
         if min_freq_for_merge is None:
@@ -145,6 +190,11 @@ class APETokenizer(PreTrainedTokenizerBase):
             f"Pretokenization complete! Found {len(vocabulary_frequency)} initial tokens from {len(words)} total tokens"
         )
 
+        # Initial pair count computation (done once)
+        print("Computing initial pair frequencies...", end="\r")
+        self.pair_counts = self.compute_pair_counts(words)
+        print(f"Initial pair count complete! Found {len(self.pair_counts)} unique pairs")
+
         merged_counter = len(vocabulary_frequency) + 1
         iteration = 0
 
@@ -157,7 +207,7 @@ class APETokenizer(PreTrainedTokenizerBase):
                 print(f"\n✓ Max vocabulary size reached: {len(vocabulary_frequency)} tokens")
                 break
 
-            most_common_pair, freq = self.get_most_common_pair(words)
+            most_common_pair, freq = self.get_most_common_pair()
             if freq < self.min_freq_for_merge:
                 print(f"\n✓ Stopping: pair frequency ({freq}) below minimum threshold ({self.min_freq_for_merge})")
                 break
@@ -173,29 +223,26 @@ class APETokenizer(PreTrainedTokenizerBase):
             merged_word_freq = vocabulary_frequency.get(merged_word, 0)
             vocabulary_frequency[merged_word] = merged_word_freq + freq
 
-            # Minimize dictionary lookups inside the loop
-            new_words = []
-            skip_next = False
-            for i in range(len(words)):
-                if skip_next:
-                    skip_next = False
-                    continue
+            # Update pair counts incrementally before merging words
+            self.update_pair_counts(words, most_common_pair, merged_word)
 
-                # Look ahead to minimize lookups
+            # Apply merge to words list
+            new_words = []
+            i = 0
+            while i < len(words):
+                # Look ahead to find pairs to merge
                 if (
                     i < len(words) - 1
                     and words[i] == most_common_pair[0]
                     and words[i + 1] == most_common_pair[1]
                 ):
                     new_words.append(merged_word)
-                    skip_next = True
+                    i += 2  # Skip both elements of the pair
                 else:
                     new_words.append(words[i])
+                    i += 1
 
             words = new_words
-            
-            # Clear pair counts for next iteration
-            self.pair_counts.clear()
 
         # Convert vocabulary_frequency to a regular dictionary for final output
         self.vocabulary_frequency = dict(vocabulary_frequency)

@@ -3,7 +3,8 @@ import re
 import json
 
 from dotenv import load_dotenv
-from typing import List, Optional, Tuple, Union, Dict
+from typing import List, Optional, Tuple, Union, Dict, Any
+from transformers.tokenization_utils import AddedToken
 from transformers import AutoTokenizer, BatchEncoding, PreTrainedTokenizerBase
 
 class HybridTokenizer(PreTrainedTokenizerBase):
@@ -15,6 +16,8 @@ class HybridTokenizer(PreTrainedTokenizerBase):
     def __init__(self, base_tokenizer, chem_tokenizer, chem_start, chem_end, **kwargs):
         super().__init__(**kwargs)
         
+        self.is_fast = False
+
         self.base_tokenizer = base_tokenizer
         self.chem_tokenizer = chem_tokenizer
         self.chem_start = chem_start
@@ -47,16 +50,16 @@ class HybridTokenizer(PreTrainedTokenizerBase):
 
         self.chem_vocab, self.chem_ids_map = self.create_chem_vocab()
         self.id_to_chem_token = {v: k for k, v in self.chem_vocab.items()}
-    
+
     def _add_tokens(self, new_tokens: Union[List[str], List[AddedToken]], special_tokens: bool = False) -> int:
         return self.base_tokenizer._add_tokens(new_tokens, special_tokens=special_tokens)
-    
+
     @property
     def added_tokens_encoder(self) -> Dict[str, int]:
         return self.base_tokenizer.added_tokens_encoder
 
     @property
-    def added_tokens_decoder(self) -> Dict[int, any]:
+    def added_tokens_decoder(self) -> Dict[int, Any]:
         return self.base_tokenizer.added_tokens_decoder
 
     def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
@@ -267,4 +270,3 @@ class HybridTokenizer(PreTrainedTokenizerBase):
                 tokens.append(base_token)
         
         return ''.join(tokens)
-    

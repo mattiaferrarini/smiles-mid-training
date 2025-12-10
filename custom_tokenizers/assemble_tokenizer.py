@@ -9,6 +9,7 @@ from .smiles_bpe_tokenizer import SmilesBpeTokenizer
 from .ape_tokenizer import APETokenizer
 from .ape_hf_tokenizer import APEHFTokenizer
 from .ape_wp_hf_tokenizer import APEWPHFTokenizer
+from .chem_ape import ChemAPETokenizer
 from .hybrid_tokenizer import HybridTokenizer
 
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
@@ -67,6 +68,7 @@ def assemble_tokenizer(config):
                 "ape": APETokenizer,
                 "ape_hf": APEHFTokenizer,
                 "ape_wp_hf": APEWPHFTokenizer,
+                "chem_ape": ChemAPETokenizer,
             }
             
             if chem_type not in tokenizer_classes:

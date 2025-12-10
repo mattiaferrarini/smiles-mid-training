@@ -10,6 +10,7 @@ from .ape_tokenizer import APETokenizer
 from .ape_hf_tokenizer import APEHFTokenizer
 from .smiles_bpe_tokenizer import SmilesBpeTokenizer
 from .ape_wp_hf_tokenizer import APEWPHFTokenizer
+from .chem_ape import ChemAPETokenizer
 
 __all__ = [
     "CharacterTokenizer",
@@ -24,4 +25,5 @@ __all__ = [
     "APEHFTokenizer",
     "SmilesBpeTokenizer",
     "APEWPHFTokenizer",
+    "ChemAPETokenizer",
 ]

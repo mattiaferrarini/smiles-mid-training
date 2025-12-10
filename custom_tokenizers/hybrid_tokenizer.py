@@ -47,7 +47,10 @@ class HybridTokenizer(PreTrainedTokenizerBase):
 
         self.chem_vocab, self.chem_ids_map = self.create_chem_vocab()
         self.id_to_chem_token = {v: k for k, v in self.chem_vocab.items()}
-
+    
+    def _add_tokens(self, new_tokens: Union[List[str], List[AddedToken]], special_tokens: bool = False) -> int:
+        return self.base_tokenizer._add_tokens(new_tokens, special_tokens=special_tokens)
+    
     @property
     def added_tokens_encoder(self) -> Dict[str, int]:
         return self.base_tokenizer.added_tokens_encoder

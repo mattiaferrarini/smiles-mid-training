@@ -111,7 +111,6 @@ class APETokenizer(PreTrainedTokenizerBase):
     def pre_tokenize(self, molecule):
         pattern = r"(\[[^\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|\%[0-9]{2}|[0-9])"
         words = re.findall(pattern, molecule)
-
         return words
 
     def get_most_common_pair(self, words):
@@ -121,9 +120,12 @@ class APETokenizer(PreTrainedTokenizerBase):
 
         # Minimize lookups by using max function directly
         most_common_pair, freq = max(
-            self.pair_counts.items(), key=lambda x: x[1], default=((None, None), 0)
+            self.pair_counts.items(), key=self.score_item, default=((None, None), 0)
         )
         return most_common_pair, freq
+    
+    def score_item(self, item):
+        return item[1]
 
     def _train(self, corpus, max_vocab_size: int = None, min_freq_for_merge: int = None):
         """Internal training method - original train logic"""

@@ -14,8 +14,7 @@ from selfies_tokenizer import SelfiesTokenizer
 from smiles_bpe_tokenizer import SmilesBpeTokenizer
 from ape_tokenizer import APETokenizer
 from ape_hf_tokenizer import APEHFTokenizer
-from parallel_ape_tokenizer import ParallelAPETokenizer
-from ape_hf_tokenizer import APEHFTokenizer
+from ape_wp_hf_tokenizer import APEWPHFTokenizer
 
 from utils.helpers import build_and_save_tokenizer
 from utils.config import load_config
@@ -33,6 +32,10 @@ def main():
 
     config = load_config(args.config)
 
+    print("Configuration Loaded:")
+    print(config)
+
+    print("Loading dataset...")
     dataset = load_dataset(
         "arrow", 
         data_dir=config["data"]["data_folder"],
@@ -52,6 +55,7 @@ def main():
     Path(base_output_dir).mkdir(parents=True, exist_ok=True)
 
     output_subdir_name = config["tokenizer"].get("output_subdir_name", f"{tokenizer_type}_tokenizer")
+    print(f"Output directory for tokenizer: {base_output_dir}/{output_subdir_name}")
 
     tokenizer_classes = {
         "character": CharacterTokenizer,
@@ -63,8 +67,8 @@ def main():
         "selfies": SelfiesTokenizer,
         "smiles_bpe": SmilesBpeTokenizer,
         "ape": APETokenizer,
-        "parallel_ape": ParallelAPETokenizer,
         "ape_hf": APEHFTokenizer,
+        "ape_wp_hf": APEWPHFTokenizer,
     }
 
     if tokenizer_type in tokenizer_classes:
@@ -121,6 +125,8 @@ def main():
             num_rows = int(len(chem_dataset) * portion)
             chem_dataset = chem_dataset.select(range(num_rows))
             print(f"\n[INFO] Using portion_of_data={portion}. Reduced dataset to {num_rows} rows.")
+
+        print(f"\nBuilding and saving tokenizer to {base_output_dir}/{output_subdir_name} ...")
 
         build_and_save_tokenizer(
             TokenizerClass=tokenizerclass,

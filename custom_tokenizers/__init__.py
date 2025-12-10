@@ -8,8 +8,8 @@ from .hybrid_tokenizer import HybridTokenizer
 from .selfies_tokenizer import SelfiesTokenizer
 from .ape_tokenizer import APETokenizer
 from .ape_hf_tokenizer import APEHFTokenizer
-from .parallel_ape_tokenizer import ParallelAPETokenizer
 from .smiles_bpe_tokenizer import SmilesBpeTokenizer
+from .ape_wp_hf_tokenizer import APEWPHFTokenizer
 
 __all__ = [
     "CharacterTokenizer",
@@ -22,6 +22,6 @@ __all__ = [
     "SelfiesTokenizer",
     "APETokenizer",
     "APEHFTokenizer",
-    "ParallelAPETokenizer",
     "SmilesBpeTokenizer",
+    "APEWPHFTokenizer",
 ]

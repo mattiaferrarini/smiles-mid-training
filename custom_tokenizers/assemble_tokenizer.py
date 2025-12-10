@@ -8,7 +8,7 @@ from .selfies_tokenizer import SelfiesTokenizer
 from .smiles_bpe_tokenizer import SmilesBpeTokenizer
 from .ape_tokenizer import APETokenizer
 from .ape_hf_tokenizer import APEHFTokenizer
-from .parallel_ape_tokenizer import ParallelAPETokenizer
+from .ape_wp_hf_tokenizer import APEWPHFTokenizer
 from .hybrid_tokenizer import HybridTokenizer
 
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
@@ -41,7 +41,7 @@ def assemble_tokenizer(config):
         chem_tokenizer = None
         
         # Handle BPE-based tokenizers (use tokenizer.json)
-        if chem_type in ["smiles_bpe", "ape_hf"]:
+        if chem_type in ["smiles_bpe", "ape_hf", "ape_wp_hf"]:
             tokenizer_file = os.path.join(tokenizer_dir, "tokenizer.json")
             if os.path.exists(tokenizer_file):
                 print(f"Loading {chem_type} tokenizer from {tokenizer_file}")
@@ -49,6 +49,8 @@ def assemble_tokenizer(config):
                     chem_tokenizer = SmilesBpeTokenizer(tokenizer_file=tokenizer_file)
                 elif chem_type == "ape_hf":
                     chem_tokenizer = APEHFTokenizer.from_pretrained(tokenizer_dir)
+                elif chem_type == "ape_wp_hf":
+                    chem_tokenizer = APEWPHFTokenizer.from_pretrained(tokenizer_dir)
             else:
                 raise FileNotFoundError(f"Tokenizer file not found at {tokenizer_file}. Please run build_tokenizer.py first.")
         
@@ -64,7 +66,7 @@ def assemble_tokenizer(config):
                 "selfies": SelfiesTokenizer,
                 "ape": APETokenizer,
                 "ape_hf": APEHFTokenizer,
-                "parallel_ape": ParallelAPETokenizer,
+                "ape_wp_hf": APEWPHFTokenizer,
             }
             
             if chem_type not in tokenizer_classes:

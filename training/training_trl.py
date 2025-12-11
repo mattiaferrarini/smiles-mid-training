@@ -46,6 +46,7 @@ from datetime import timedelta
 import json
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
+from embeddings.embedding_initializer import initialize_average_embeddings
 
 LOGGER = get_logger(__name__)
 
@@ -138,10 +139,12 @@ def build_tokenizer(config):
 
 def initialize_embeddings(model, tokenizer, config):
     initialization_strategy = config["tokenizer"]["embedding_initialization"]
-    model.resize_token_embeddings(len(tokenizer))
     
     if initialization_strategy == "random":
-        pass # Rely on default random init
+        model.resize_token_embeddings(len(tokenizer))
+    elif initialization_strategy == "average":
+        model = initialize_average_embeddings(model, tokenizer)
+
     return model
 
 

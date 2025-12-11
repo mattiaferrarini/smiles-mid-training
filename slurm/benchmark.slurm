@@ -59,6 +59,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 export TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/benchmarks/"
 export CONFIG_PATH=configs/default_ddp.yaml
+export MODEL_PATH="/users/monti/smiles-mid-training/results_gemma_strict/checkpoint-783/"
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -73,13 +74,13 @@ echo "Using Python at: $PYTHON_EXEC"
 # Run benchmarks
 echo "Running chembench..."
 srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py run-chembench \
-    --model-path "/iopsstor/scratch/cscs/$USER/artifacts/baselines/google-gemma-3-4b-it/" \
+    --model-path "$MODEL_PATH" \
     --output-path "$OUTPUT_DIR"
 
 # TODO: change the paths below accordingly
 echo "Running chemiq..."
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py run-chemiq \
-    --model-path "/iopsstor/scratch/cscs/$USER/artifacts/baselines/google-gemma-3-4b-it/" \
+srun --ntasks=1 $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py run-chemiq \
+    --model-path "$MODEL_PATH" \
     --chemiq-path "/users/$USER/smiles-mid-training/ChemIQ" \
     --output-path "$OUTPUT_DIR"
 

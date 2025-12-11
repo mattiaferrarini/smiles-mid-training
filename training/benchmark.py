@@ -1,69 +1,298 @@
 import os
+import sys
 import json
-from rdkit import RDLogger
+import torch
+from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from rdkit import RDLogger
+from datetime import timedelta
+from peft import PeftModel, PeftConfig
 from chembench.prompter import PrompterBuilder
 from chembench.types import Generation, Generations
+from accelerate import Accelerator, InitProcessGroupKwargs
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from ChemIQ.utils.parser import AnswerParser
 from ChemIQ.utils.answer_verifier import AnswerVerifier
 from chembench.utils import enable_caching, enable_logging
 from chembench.evaluate import ChemBenchmark, save_topic_reports
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+
+from utils.config import load_config
+from custom_tokenizers.hybrid_tokenizer import HybridTokenizer
+from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
+
+AutoTokenizer.register("HybridTokenizer", HybridTokenizer)
 
 # TODO: remove this and check parsing error
 RDLogger.DisableLog('rdApp.*')
 
+CHEMBENCH_TOPICS = [
+    'analytical_chemistry', 
+    'chemical_preference', 
+    'general_chemistry', 
+    'inorganic_chemistry', 
+    'materials_science', 
+    'organic_chemistry', 
+    'physical_chemistry', 
+    'technical_chemistry', 
+    'toxicity_and_safety'
+]
+
 class ModelWrapper:
-    def __init__(self, model_path):
+    def __init__(self, model_path, device=None):
+        self.device = device
+        device_map = {"": device} if device is not None else "auto"
+
+        print(f"Loading tokenizer from: {model_path}")
+        # self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+
+        config_path = None        
+        search_paths = [
+            os.path.join(model_path, "training_config.yaml"),
+            os.path.join(os.path.dirname(model_path), "training_config.yaml")
+        ]
+        
+        for path in search_paths:
+            if os.path.exists(path):
+                config_path = path
+                break
+        
+        self.tokenizer = None
+        if config_path:
+            print(f"Found training config at {config_path}, assembling tokenizer...")
+            try:
+                train_config = load_config(config_path)
+                self.tokenizer = assemble_tokenizer(train_config)
+            except Exception as e:
+                print(f"Failed to assemble tokenizer from config: {e}")
+
+        if self.tokenizer is None:
+            print(f"Falling back to AutoTokenizer.from_pretrained for {model_path}")
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+        self.tokenizer.padding_side = "left"
+
+        try:
+            config = PeftConfig.from_pretrained(model_path)
+            base_model_path = config.base_model_name_or_path
+            print(f"Found base model path from PEFT config: {base_model_path}")
+            is_peft = True
+        except Exception:
+            base_model_path = model_path
+            print(f"No PEFT config found, using full model: {base_model_path}")
+            is_peft = False
+
+        print(f"Loading base model weights...")
         self.model = AutoModelForCausalLM.from_pretrained(
-            model_path, 
-            device_map="cuda", 
-            torch_dtype="auto", 
+            base_model_path, 
+            device_map=device_map, 
+            torch_dtype=torch.bfloat16, 
             trust_remote_code=True
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        self.pipeline = pipeline(
-            "text-generation",
-            model=self.model,
-            tokenizer=self.tokenizer,
-        )
+
+        current_vocab_size = self.model.get_input_embeddings().weight.shape[0]
+        if len(self.tokenizer) > current_vocab_size:
+            print(f"Resizing model embeddings from {current_vocab_size} to {len(self.tokenizer)}")
+            self.model.resize_token_embeddings(len(self.tokenizer))
+
+        if is_peft:
+            print(f"Loading adapter weights from: {model_path}")
+            self.model = PeftModel.from_pretrained(self.model, model_path)
+
+        if not self.tokenizer.chat_template:
+            print("Chat template missing, applying gemma default template...")
+            self.tokenizer.chat_template = (
+                "{{ bos_token }}"
+                "{% for message in messages %}"
+                "{% if (message['role'] == 'user') %}"
+                "{{'<start_of_turn>user\n' + message['content'] | trim + '<end_of_turn>\n'}}"
+                "{% elif (message['role'] == 'assistant') or (message['role'] == 'model') %}"
+                "{{'<start_of_turn>model\n' + message['content'] | trim + '<end_of_turn>\n'}}"
+                "{% elif (message['role'] == 'system') %}"
+                "{{'<start_of_turn>user\n' + message['content'] | trim + '<end_of_turn>\n'}}"
+                "{% endif %}"
+                "{% endfor %}"
+                "{% if add_generation_prompt %}"
+                "{{'<start_of_turn>model\n'}}"
+                "{% endif %}"
+                "{% if not add_generation_prompt %}"
+                "{{ eos_token }}"
+                "{% endif %}"
+            )
 
     def format_prompt(self, messages):
         return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-    def generate_text(self, messages):
-        formatted_prompt = self.format_prompt(messages)
-        generation_args = {
-            "return_full_text": False,
-            "temperature": 0.0,
-            "do_sample": False,
-        }
-        output = self.pipeline(formatted_prompt, **generation_args)
-        return output[0]["generated_text"]
-
     def generate(self, prompts, **kwargs):
-        generations = []
+        if isinstance(prompts, str):
+            prompts = [prompts]
+        
+        formatted_prompts = []
         for prompt in prompts:
-            generation = self.generate_text(prompt)
-            generations.append([Generation(text=generation)])
+            if isinstance(prompt, str):
+                formatted_prompts.append(self.format_prompt([{"role": "user", "content": prompt}]))
+            elif isinstance(prompt, list):
+                formatted_prompts.append(self.format_prompt(prompt))
+        
+        inputs = self.tokenizer(
+            formatted_prompts, 
+            return_tensors="pt", 
+            padding=True, 
+            truncation=True
+        ).to(self.model.device)
 
-        return Generations(generations=generations)
+        terminators = [
+            self.tokenizer.eos_token_id,
+            self.tokenizer.convert_tokens_to_ids("<end_of_turn>")
+        ]
+
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=512,
+                do_sample=False,
+                temperature=0.0,
+                repetition_penalty=1.0,
+                pad_token_id=self.tokenizer.pad_token_id,
+                eos_token_id=terminators
+            )
+
+        input_len = inputs["input_ids"].shape[1]
+        generated_tokens = outputs[:, input_len:]
+        decoded_outputs = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+
+        cleaned_outputs = [text.strip() for text in decoded_outputs]
+        generations = [[Generation(text=text)] for text in cleaned_outputs]
+        return Generations(generations=generations)  
 
 def run_chembench(model_path, output_path):
-    # TODO: make sure this does not create problems when running benchmark on two different models
-    enable_caching() 
-    enable_logging()
+    if "SLURM_PROCID" in os.environ:
+        os.environ["RANK"] = os.environ["SLURM_PROCID"]
+        os.environ["LOCAL_RANK"] = os.environ["SLURM_LOCALID"]
+        os.environ["WORLD_SIZE"] = os.environ["SLURM_NTASKS"]
+
+    timeout = InitProcessGroupKwargs(timeout=timedelta(seconds=7200))
+    accelerator = Accelerator(kwargs_handlers=[timeout])
     
+    accelerator.wait_for_everyone()
+    print(f"[Init] Rank: {accelerator.process_index}/{accelerator.num_processes} | Device: {accelerator.device}", flush=True)
+
+    # enable_caching()
+    enable_logging()
+
+    model = ModelWrapper(model_path, device=accelerator.device)  
+    prompter = PrompterBuilder.from_model_object(model=model, prompt_type="instruction")
+
+    my_topics = [
+        topic for i, topic in enumerate(CHEMBENCH_TOPICS) 
+        if i % accelerator.num_processes == accelerator.process_index
+    ]
+    print(f"[Rank {accelerator.process_index}] Processing {len(my_topics)} topics: {my_topics}")
+
     benchmark = ChemBenchmark.from_huggingface()
+    if len(my_topics) > 0:
+        results = benchmark.bench(prompter, batch_size=8, topics=my_topics)
 
-    model = ModelWrapper(model_path)
-    prompter = PrompterBuilder.from_model_object(model=model)
-
-    results = benchmark.bench(prompter)
-
-    os.makedirs(output_path, exist_ok=True)
-    save_topic_reports(benchmark, results, output_path)
+        os.makedirs(output_path, exist_ok=True)
+        save_topic_reports(benchmark, results, output_path)
+    
+    accelerator.wait_for_everyone()
+    if accelerator.is_main_process:
+        print("All ranks are done")
 
     # benchmark.submit(results)
+
+# TODO: remove? not working, model copies context 
+# def get_few_shot_context(category):
+#     """Returns multi-shot examples to prevent answer copying."""
+    
+#     if category == "shortest_path":
+#         return (
+#             "Example 1:\n"
+#             "Question: Determine the number of bonds along the shortest path connecting the two dummy atoms (denoted by '*').\n"
+#             "*C1CCCCC1*\n"
+#             "Answer: \\boxed{1}\n\n"
+#             "Example 2:\n"
+#             "Question: Determine the number of bonds along the shortest path connecting the two dummy atoms (denoted by '*').\n"
+#             "*CC*C\n"
+#             "Answer: \\boxed{2}\n\n"
+#             "Example 3:\n"
+#             "Question: Determine the number of bonds along the shortest path connecting the two dummy atoms (denoted by '*').\n"
+#             "*C1CC(C*)CC1\n"
+#             "Answer: \\boxed{3}\n\n"
+#         )
+        
+#     elif category == "atom_mapping":
+#         return (
+#             "Example 1:\n"
+#             "Question: Determine the mapping of atoms from Molecule 1 to Molecule 2.\n"
+#             "Molecule 1: CO\n"
+#             "Molecule 2: OC\n"
+#             "Answer: \\boxed{[(0, 1), (1, 0)]}\n\n"
+#             "Example 2:\n"
+#             "Question: Determine the mapping of atoms from Molecule 1 to Molecule 2.\n"
+#             "Molecule 1: CCO\n"
+#             "Molecule 2: OCC\n"
+#             "Answer: \\boxed{[(0, 2), (1, 1), (2, 0)]}\n\n"
+#         )
+
+#     elif category == "nmr_elucidation":
+#         return (
+#             "Example 1:\n"
+#             "Question: Write the SMILES string of the molecule consistent with this data.\n"
+#             "Formula: C2H6O\n"
+#             "1H NMR: ...\n"
+#             "Answer: \\boxed{CCO}\n\n"
+#             "Example 2:\n"
+#             "Question: Write the SMILES string of the molecule consistent with this data.\n"
+#             "Formula: C6H6\n"
+#             "1H NMR: ...\n"
+#             "Answer: \\boxed{c1ccccc1}\n\n"
+#             "Example 3:\n"
+#             "Question: Write the SMILES string of the molecule consistent with this data.\n"
+#             "Formula: C3H6O\n"
+#             "1H NMR: ...\n"
+#             "Answer: \\boxed{CC(C)=O}\n\n"
+#         )
+
+#     elif category == "smiles_to_iupac":
+#         return (
+#             "Example 1:\n"
+#             "Question: Write the IUPAC name of this molecule:\n"
+#             "CC(=O)O\n"
+#             "Answer: \\boxed{acetic acid}\n\n"
+#             "Example 2:\n"
+#             "Question: Write the IUPAC name of this molecule:\n"
+#             "c1ccccc1\n"
+#             "Answer: \\boxed{benzene}\n\n"
+#             "Example 3:\n"
+#             "Question: Write the IUPAC name of this molecule:\n"
+#             "CCO\n"
+#             "Answer: \\boxed{ethanol}\n\n"
+#         )
+    
+#     elif "counting" in category:
+#         return (
+#             "Example 1:\n"
+#             "Question: How many carbon atoms are in the molecule:\n"
+#             "CC\n"
+#             "Answer: \\boxed{2}\n\n"
+#             "Example 2:\n"
+#             "Question: How many carbon atoms are in the molecule:\n"
+#             "c1ccccc1\n"
+#             "Answer: \\boxed{6}\n\n"
+#             "Example 3:\n"
+#             "Question: How many carbon atoms are in the molecule:\n"
+#             "C(C)C\n"
+#             "Answer: \\boxed{3}\n\n"
+#         )
+
+#     return ""
 
 def run_chemiq(model_path, chemiq_path, output_path):
     questions = []
@@ -72,26 +301,49 @@ def run_chemiq(model_path, chemiq_path, output_path):
         for line in f:
             questions.append(json.loads(line))
 
-    # TODO: process additional smiles-iupac questions?
-
-    model = ModelWrapper(model_path)
+    model = ModelWrapper(model_path, device="cuda:0")
+    parser = AnswerParser(jsonl_path) 
     verifier = AnswerVerifier(jsonl_path)
-        
+
     os.makedirs(output_path, exist_ok=True)
     results_file = os.path.join(output_path, "chemiq_results.jsonl")
 
+    # system_instruction = (
+    #     "\nIMPORTANT: You must strictly follow the format requirements. "
+    #     "Do not provide explanations or reasoning. "
+    #     "Your final answer must be wrapped in \\boxed{}, for example \\boxed{answer}."
+    # )
+
     results = []
-    for _, question in enumerate(questions):
+    for i, question in enumerate(questions):
         id = question.get("uuid")
         prompt = question.get("prompt")
+
+        # category = question.get("question_category")
         messages = [{"role": "user", "content": prompt}]
 
+        # few_shot_text = get_few_shot_context(category)
+        # full_prompt = few_shot_text + "Question: " + prompt + system_instruction
+        # messages = [{"role": "user", "content": full_prompt}]
+
+        print(f"Processing ChemiQ question ({i}/{len(questions)}) {id}...")
         try:
-            try:
-                answer = model.generate_text(messages)
-            except Exception as e:
-                answer = None
-                print(f"Failed to generate answer for {id}: {e}")
+            generations = model.generate([messages])
+            
+            raw_answer = None
+            if generations and hasattr(generations, 'generations') and len(generations.generations) > 0:
+                first_gen = generations.generations[0]
+                if first_gen and len(first_gen) > 0:
+                    raw_answer = first_gen[0].text
+            
+            if not raw_answer:
+                print(f"Warning: Model generated empty output for {id}")
+                raw_answer = ""
+
+            if raw_answer:
+                parsed_answer = parser.parse(id, raw_answer)
+            else:
+                parsed_answer = None
 
             record = {
                 "uuid": id,
@@ -100,52 +352,37 @@ def run_chemiq(model_path, chemiq_path, output_path):
                 "prompt": prompt,
                 "expected_answer": question.get("answer"),
                 "verification_method": question.get("verification_method"),
-                "model_answer": answer,
+                "model_answer": raw_answer,
             }
 
-            if answer is not None:
+            if parsed_answer:
                 try:
-                    check = verifier.check_answer(id, answer)
+                    check = verifier.check_answer(id, parsed_answer)
                     record.update(check)
                 except Exception as e:
                     print(f"Failed to verify answer for {id}: {e}")
                     record.update({"is_correct": False, "opsin_smiles": None})
             else:
-                record.update({"is_correct": None, "opsin_smiles": None})
+                record.update({"is_correct": False if raw_answer else None, "opsin_smiles": None})
 
             results.append(record)
             with open(results_file, 'a') as f:
                 f.write(json.dumps(record) + "\n")
         
         except Exception as e:
-            fail_record = {
-                "uuid": id,
-                "question_category": question.get("question_category"),
-                "sub_category": question.get("sub_category"),
-                "prompt": prompt,
-                "expected_answer": question.get("answer"),
-                "verification_method": question.get("verification_method"),
-                "model_answer": None,
-                "is_correct": None,
-                "opsin_smiles": None,
-            }
-            results.append(fail_record)
-            with open(results_file, 'a') as f:
-                f.write(json.dumps(fail_record) + "\n")
+            print(f"CRITICAL ERROR on question {id}: {e}")
+            continue
 
-    # TODO: is this all we care about?
     summary = {
         "num_questions": len(questions),
         "num_processed": len(results),
         "num_attempted": sum(1 for r in results if r.get("is_correct") is not None),
         "num_correct": sum(1 for r in results if r.get("is_correct") is True),
-        "accuracy": None,
+        "accuracy": 0.0,
     }
 
     if summary["num_attempted"] > 0:
         summary["accuracy"] = summary["num_correct"] / summary["num_attempted"]
-    else:
-        summary["accuracy"] = 0.0
 
     summary_path = os.path.join(output_path, "chemiq_summary.json")
     with open(summary_path, 'w') as f:

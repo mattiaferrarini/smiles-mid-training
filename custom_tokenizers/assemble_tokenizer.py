@@ -7,8 +7,11 @@ from .elementrings_tokenizer import ElementRingsTokenizer
 from .selfies_tokenizer import SelfiesTokenizer
 from .kmer_tokenizer import KmerTokenizer
 from .hybrid_tokenizer import HybridTokenizer
+from .ape_wordpiece import APEWordPieceTokenizer
 
 from transformers import AutoTokenizer
+
+import os
 
 def assemble_tokenizer(config):
     tokenizer = None
@@ -36,6 +39,26 @@ def assemble_tokenizer(config):
         chem_tokenizer = KmerTokenizer(vocab_file=vocab_file, **tokenizer_params)
         
         print("Assembling HybridTokenizer (Gemma + Kmer)...")
+        tokenizer = HybridTokenizer(
+            base_tokenizer=base_tokenizer,
+            chem_tokenizer=chem_tokenizer,
+            chem_start=START_SMILES,
+            chem_end=END_SMILES
+        )
+    elif tokenizer_type == "ape_wordpiece":
+        tokenizer_json = os.path.join(tokenizer_path, "tokenizer.json")
+        vocab_file = os.path.join(tokenizer_path, "vocab.json")
+
+        print(f"Loading ape_wordpiece tokenizer from {tokenizer_path}")
+
+        if os.path.exists(tokenizer_json):
+            chem_tokenizer = APEWordPieceTokenizer(tokenizer_file=tokenizer_json, **tokenizer_params)
+        elif os.path.exists(vocab_file):
+            chem_tokenizer = APEWordPieceTokenizer(vocab_file=vocab_file, **tokenizer_params)
+        else:
+            raise Exception(f"Failed to find tokenizer files in {tokenizer_path}")
+        
+        print("Assembling HybridTokenizer (Gemma + APE WordPiece)...")
         tokenizer = HybridTokenizer(
             base_tokenizer=base_tokenizer,
             chem_tokenizer=chem_tokenizer,

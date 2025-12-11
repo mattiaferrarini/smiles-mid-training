@@ -1,3 +1,4 @@
+import re
 import argparse
 from pathlib import Path
 from datasets import load_dataset
@@ -11,6 +12,7 @@ from elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from elementrings_tokenizer import ElementRingsTokenizer
 from selfies_tokenizer import SelfiesTokenizer
 from kmer_tokenizer import KmerTokenizer
+from ape_wordpiece import APEWordPieceTokenizer
 
 from utils.helpers import build_and_save_tokenizer 
 from utils.config import load_config
@@ -55,16 +57,18 @@ elif tokenizer_type == "selfies":
     tokenizerclass = SelfiesTokenizer
 elif tokenizer_type == "kmer":
     tokenizerclass = KmerTokenizer
+elif tokenizer_type == "ape_wordpiece":
+    tokenizerclass = APEWordPieceTokenizer
 else:
     raise ValueError(f"Tipo di tokenizer non supportato nel file di configurazione: {tokenizer_type}")
 
 
 if tokenizerclass:
-    if tokenizer_type == "kmer":
-        print("Extracting smiles for KmerTokenizer...")
+    if tokenizer_type in ["kmer", "ape_wordpiece"]:
+        print(f"Extracting smiles for {tokenizer_type}...")
         smiles_list = []
         pattern = re.compile(r"\[START_SMILES\](.*?)\[END_SMILES\]")
-        
+      
         for item in dataset:
             text = item[text_field]
             matches = pattern.findall(text)

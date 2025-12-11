@@ -1,6 +1,14 @@
-from ape_tokenizer import APETokenizer
+try:
+    from .ape_tokenizer import APETokenizer
+except ImportError:
+    from ape_tokenizer import APETokenizer
+
 import re
-from scorers.chem_scorer import ChemScorer
+
+try:
+    from .scorers.chem_scorer import ChemScorer
+except ImportError:
+    from scorers.chem_scorer import ChemScorer
 
 ELEMENTS = ["H","He","Li","Be","B","C","N","O","F","Ne","Na","Mg","Al","Si","P","S","Cl","Ar",
             "K","Ca","Sc","Ti","V","Cr","Mn","Fe","Co","Ni","Cu","Zn","Ga","Ge","As","Se","Br",
@@ -21,16 +29,16 @@ class ChemAPETokenizer(APETokenizer):
         super().__init__(*args, **kwargs)
         config = kwargs.get("config")
         self.scorer = ChemScorer(
-            base_score=config["scorer"]["params"].get("base_score", 1.0) if config else 1.0,
-            bonus_pattern=config["scorer"]["params"].get("bonus_pattern", 1.1) if config else 1.1,
-            bonus_valid=config["scorer"]["params"].get("bonus_valid", 1.2) if config else 1.2
+            base_score=config["tokenizer"]["params"].get("base_score", 1.0) if config else 1.0,
+            bonus_pattern=config["tokenizer"]["params"].get("bonus_pattern", 1.1) if config else 1.1,
+            bonus_valid=config["tokenizer"]["params"].get("bonus_valid", 1.2) if config else 1.2
         )
-
+    ''' 
     def pre_tokenize(self, molecule):
         pattern = re.compile(ATOM_LEVEL_PATTERN)
         tokens = pattern.findall(molecule)
         return tokens
-    
+    '''
     def score_item(self, item):
         merged_word = "".join(item[0])
         multiplier = self.scorer.get_merge_multiplier(merged_word)

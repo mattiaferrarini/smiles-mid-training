@@ -55,9 +55,9 @@ training:
 
 tokenizer:
   type: hybrid
-  chem_type: ape_hf
-  output_dir: /users/mattiaferrarini/smiles-mid-training/json/tokenizers
-  output_subdir_name: ape_hf_20000
+  chem_type: "ape_wp_hf"
+  output_dir: "/users/mattiaferrarini/smiles-mid-training/json/tokenizers"
+  output_subdir_name: "ape_wp_hf_20000"
   embedding_initialization: "random" 
   special_tokens:
     start_smiles: "[START_SMILES]"

@@ -45,10 +45,12 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
         **kwargs
     ):
         # Get config parameters
-        self.max_vocab_size = config["tokenizer"]["params"].get("max_vocab_size", 20000) if config else 20000
-        self.min_freq_for_merge = config["tokenizer"]["params"].get("min_freq_for_merge", 2) if config else 2
-
-        print(f"Initializing APE-WP-HF Tokenizer with max_vocab_size={self.max_vocab_size}, min_freq_for_merge={self.min_freq_for_merge}")
+        if config and isinstance(config, dict) and "tokenizer" in config:
+            self.max_vocab_size = config["tokenizer"]["params"].get("max_vocab_size", 20000)
+            self.min_freq_for_merge = config["tokenizer"]["params"].get("min_freq_for_merge", 2)
+        else:
+            self.max_vocab_size = kwargs.get("max_vocab_size", 20000)
+            self.min_freq_for_merge = kwargs.get("min_freq_for_merge", 2)
         
         # If loading from files
         if tokenizer_file and os.path.exists(tokenizer_file):
@@ -197,6 +199,16 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
         """Load tokenizer from HuggingFace-compatible format"""
         pretrained_directory = Path(pretrained_directory)
         
+        # Load config if exists to ensure we get custom parameters
+        config_file = pretrained_directory / "tokenizer_config.json"
+        if config_file.is_file():
+            with open(config_file, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            # Add config parameters to kwargs if not already present
+            for key, value in config.items():
+                if key not in kwargs:
+                    kwargs[key] = value
+        
         # Try loading tokenizer.json first (full serialization)
         tokenizer_file = pretrained_directory / "tokenizer.json"
         if tokenizer_file.is_file():
@@ -211,19 +223,8 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
                 f"Expected either tokenizer.json or vocab.txt"
             )
         
-        # Load config if exists
-        config_file = pretrained_directory / "tokenizer_config.json"
-        config = {}
-        if config_file.is_file():
-            with open(config_file, "r", encoding="utf-8") as f:
-                config = json.load(f)
-        
         return cls(
             vocab_file=str(vocab_file),
-            unk_token=config.get("unk_token", "[UNK]"),
-            pad_token=config.get("pad_token", "[PAD]"),
-            bos_token=config.get("bos_token", "[BOS]"),
-            eos_token=config.get("eos_token", "[EOS]"),
             **kwargs
         )
 
@@ -250,3 +251,4 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
             tokenizer_object.add_special_tokens(special_tokens)
         
         self._tokenizer = tokenizer_object
+

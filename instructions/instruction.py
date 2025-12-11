@@ -1,5 +1,6 @@
 import os
 import sys
+import time  # Added for wait loops
 import shutil
 from pathlib import Path
 
@@ -20,12 +21,20 @@ from datasets import load_dataset, interleave_datasets
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
+import networkx as nx
+from rdkit import Chem
+from rdkit.Chem import rdmolops
+
 def prepare_sciq(output, target_count=15000):
     print(f"Downloading SciQ dataset...")
     dataset = load_dataset("allenai/sciq", split="train")
 
     print(f"Processing up to {target_count} examples into strict format...")
-    with open(output, 'w') as out:
+    
+    # Write to a temporary file first for atomic operation
+    tmp_output = output + ".tmp"
+    
+    with open(tmp_output, 'w') as out:
         count = 0
         for row in dataset:
             if count >= target_count:
@@ -66,13 +75,17 @@ def prepare_sciq(output, target_count=15000):
             out.write(json.dumps(example) + "\n")
 
     print(f"Generated {count} examples, saving to {output}...")
+    shutil.move(tmp_output, output) # Atomic move
 
 def prepare_metamathqa(output, target_count=15000):
     print(f"Downloading MetaMathQA dataset...")
     dataset = load_dataset("meta-math/MetaMathQA", split="train")
 
     print(f"Processing up to {target_count} examples into strict format...")
-    with open(output, 'w') as out:
+    
+    tmp_output = output + ".tmp"
+    
+    with open(tmp_output, 'w') as out:
         count = 0
         for row in dataset:
             if count >= target_count:
@@ -102,35 +115,212 @@ def prepare_metamathqa(output, target_count=15000):
                 out.write(json.dumps(example) + "\n")
 
     print(f"Generated {count} examples, saving to {output}...")
+    shutil.move(tmp_output, output) # Atomic move
+
+def prepare_chemiq_synthetic(output, source_file="chemiq_training_smiles.txt", target_count=20000):
+    print(f"Generating synthetic ChemiQ data from {source_file}...")
+    
+    if not os.path.exists(source_file):
+        print(f"Error: {source_file} not found. Skipping ChemiQ generation.")
+        return
+
+    with open(source_file, 'r', encoding='utf-8', errors='ignore') as f:
+        smiles_list = [line.strip() for line in f if line.strip()]
+    
+    random.shuffle(smiles_list)
+
+    # Write to a temporary file first for atomic operation
+    tmp_output = output + ".tmp"
+
+    # Open with buffering=1 (line buffering) to ensure writes happen
+    with open(tmp_output, 'w', encoding='utf-8') as out:
+        count = 0
+        for smi in smiles_list:
+            if count >= target_count: break
+            
+            try:
+                # Sanitization: Ensure SMILES is a clean string
+                smi = str(smi)
+                
+                mol = Chem.MolFromSmiles(smi)
+                if not mol: continue
+
+                # CLEANUP: Handle salts
+                frags = rdmolops.GetMolFrags(mol, asMols=True)
+                if len(frags) > 1:
+                    mol = max(frags, key=lambda m: m.GetNumAtoms())
+                
+                if mol.GetNumAtoms() < 6: continue
+
+                json_record = None
+
+                # ---------------------------------------------------------
+                # TASK 1: SHORTEST PATH
+                # ---------------------------------------------------------
+                if random.random() < 0.33:
+                    atoms = list(range(mol.GetNumAtoms()))
+                    a1, a2 = random.sample(atoms, 2)
+                    
+                    dist_matrix = rdmolops.GetDistanceMatrix(mol)
+                    dist = int(dist_matrix[a1, a2])
+                    
+                    if dist > 1000: continue
+
+                    mol_copy = Chem.Mol(mol)
+                    mol_copy.GetAtomWithIdx(a1).SetIsotope(99)
+                    mol_copy.GetAtomWithIdx(a2).SetIsotope(98)
+                    
+                    tagged_smi = Chem.MolToSmiles(mol_copy, canonical=False)
+                    # Safe regex replacement
+                    prompt_smi = re.sub(r'\[9[89].*?\]', '*', tagged_smi)
+                    
+                    if prompt_smi.count('*') == 2:
+                        prompt = (
+                            "Determine the number of bonds along the shortest path connecting the two dummy atoms (denoted by '*'). "
+                            "Count each bond equally, including those directly attached to the dummy atoms.\n\n"
+                            f"{prompt_smi}\n\n"
+                            "Give your answer as an integer. Do not write any comments."
+                        )
+                        response = f"\\boxed{{{dist}}}"
+                        
+                        json_record = {
+                            "messages": [
+                                {"role": "user", "content": prompt},
+                                {"role": "assistant", "content": response}
+                            ]
+                        }
+
+                # ---------------------------------------------------------
+                # TASK 2: ATOM MAPPING
+                # ---------------------------------------------------------
+                elif random.random() < 0.66:
+                    smi1 = Chem.MolToSmiles(mol, canonical=False, doRandom=True)
+                    smi2 = Chem.MolToSmiles(mol, canonical=False, doRandom=True)
+                    
+                    m1 = Chem.MolFromSmiles(smi1)
+                    m2 = Chem.MolFromSmiles(smi2)
+                    
+                    if m1 and m2:
+                        matches = m1.GetSubstructMatch(m2)
+                        if matches and len(matches) == m1.GetNumAtoms():
+                            # Strictly format list of tuples as string
+                            mapping_str = "[" + ", ".join([f"({i}, {match_idx})" for i, match_idx in enumerate(matches)]) + "]"
+                            
+                            prompt = (
+                                "You are given two SMILES strings for the same molecule. Atoms are numbered from left to right, "
+                                "with the first atom having index 0. Only heavy atoms are numbered and mapped.\n\n"
+                                f"Molecule 1: {smi1}\n"
+                                f"Molecule 2: {smi2}\n\n"
+                                "Determine the mapping of atoms from Molecule 1 to Molecule 2. "
+                                "Provide your answer as a list of tuples."
+                            )
+                            response = f"\\boxed{{{mapping_str}}}"
+                            
+                            json_record = {
+                                "messages": [
+                                    {"role": "user", "content": prompt},
+                                    {"role": "assistant", "content": response}
+                                ]
+                            }
+
+                # ---------------------------------------------------------
+                # TASK 3: CARBON COUNTING
+                # ---------------------------------------------------------
+                else:
+                    num_c = int(sum(1 for atom in mol.GetAtoms() if atom.GetSymbol() == 'C'))
+                    random_smi = Chem.MolToSmiles(mol, canonical=False, doRandom=True)
+                    
+                    prompt = (
+                        "How many carbon atoms are in the molecule:\n\n"
+                        f"{random_smi}\n\n"
+                        "Give your answer as an integer. Do not write any comments."
+                    )
+                    response = f"\\boxed{{{num_c}}}"
+                    
+                    json_record = {
+                        "messages": [
+                            {"role": "user", "content": prompt},
+                            {"role": "assistant", "content": response}
+                        ]
+                    }
+
+                # --- SAFE WRITE ---
+                if json_record:
+                    # ensure_ascii=True escapes all non-ASCII chars to \uXXXX, preventing PyArrow parse errors
+                    # separators=(',', ':') removes unnecessary whitespace which can sometimes confuse strict parsers
+                    json_line = json.dumps(json_record, ensure_ascii=True, separators=(',', ':'))
+                    
+                    # Double check it is valid JSON
+                    try:
+                        json.loads(json_line)
+                        out.write(json_line + "\n")
+                        count += 1
+                    except Exception:
+                        continue
+        
+            except Exception:
+                continue
+
+    print(f"Successfully generated {count} valid synthetic ChemiQ examples.")
+    shutil.move(tmp_output, output) # Atomic move
 
 def prepare_datasets(config):
     print("Loading datasets for mixing...")
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
 
     chat_dataset = load_dataset("trl-lib/Capybara", split="train")
     print(f"Loaded {len(chat_dataset)} samples from chat dataset")
 
+    # --- SCIQ HANDLING ---
     sciq_path = config.get('data', {}).get('sciq_path', 'sciq.jsonl')
     print(f"Using sciq path: {sciq_path}")
-    if not os.path.exists(sciq_path):
+    
+    # Only Rank 0 generates data
+    if local_rank == 0 and not os.path.exists(sciq_path):
         print(f"{sciq_path} not found, generating from sciq...")
         prepare_sciq(sciq_path)
     
+    # Other ranks wait
+    if local_rank != 0:
+        while not os.path.exists(sciq_path):
+            time.sleep(1)
+            
     sciq_dataset = load_dataset("json", data_files=sciq_path, split="train")
     print(f"Loaded {len(sciq_dataset)} samples from sciq dataset")
 
+    # --- METAMATHQA HANDLING ---
     metamathqa_path = config.get('data', {}).get('metamathqa_path', 'metamathqa.jsonl')
     print(f"Using methamathqa path: {metamathqa_path}")
-    if not os.path.exists(metamathqa_path):
+    
+    if local_rank == 0 and not os.path.exists(metamathqa_path):
         print(f"{metamathqa_path} not found, generating from methamathqa...")
         prepare_metamathqa(metamathqa_path)
+        
+    if local_rank != 0:
+        while not os.path.exists(metamathqa_path):
+            time.sleep(1)
 
     metamathqa_dataset = load_dataset("json", data_files=metamathqa_path, split="train")
     print(f"Loaded {len(metamathqa_dataset)} samples from metamathqa dataset")
 
+    # --- CHEMIQ HANDLING ---
+    chemiq_path = "chemiq_synthetic.jsonl"
+    
+    if local_rank == 0 and not os.path.exists(chemiq_path):
+        print(f"{chemiq_path} not found, generating synthetic ChemiQ dataset...")
+        prepare_chemiq_synthetic(chemiq_path, source_file="chemiq_training_smiles.txt", target_count=20000)
+
+    if local_rank != 0:
+        while not os.path.exists(chemiq_path):
+            time.sleep(1)
+    
+    chemiq_dataset = load_dataset("json", data_files=chemiq_path, split="train")
+    print(f"Loaded {len(chemiq_dataset)} samples from synthetic ChemiQ dataset")
+
     print("Creating final dataset...")
     final_dataset = interleave_datasets(
-        [chat_dataset, sciq_dataset, metamathqa_dataset], 
-        probabilities=[0.4, 0.3, 0.3], 
+        [chat_dataset, sciq_dataset, metamathqa_dataset, chemiq_dataset], 
+        probabilities=[0.3, 0.25, 0.25, 0.2], 
         seed=42,
         stopping_strategy="first_exhausted"
     )
@@ -256,11 +446,6 @@ def train(config, model, tokenizer, dataset, base_config):
         else:
             print(f"Failed to find training_config.yaml, instruction-tuning might fail...")
 
-        # config_save_path = os.path.join(final_dir, "training_config.yaml")
-        # with open(config_save_path, "w") as f:
-        #     yaml.dump(config, f, default_flow_style=False)
-        # print(f"Saved training config to {config_save_path}")
-
         trainer.model.generation_config.eos_token_id = [
             tokenizer.eos_token_id,
             tokenizer.convert_tokens_to_ids("<end_of_turn>")
@@ -314,3 +499,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

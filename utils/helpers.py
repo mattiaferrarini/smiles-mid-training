@@ -42,7 +42,7 @@ def load_vocabulary(vocab_path="../json/vocab_symbol_to_number.json"):
         print("Json file not found or could not be loaded:", e)
         return reset_vocabulary()
     
-def create_vocabulary( text, _tokenize, append_to_existing_vocabulary=False, vocab_path="../json/vocab_symbol_to_number.json", save_vocabulary=False, vocab = {'[UNK]': 0}):
+def create_vocabulary(text, _tokenize, append_to_existing_vocabulary=False, vocab_path="../json/vocab_symbol_to_number.json", save_vocabulary=False, vocab = {'[UNK]': 0}):
     if append_to_existing_vocabulary:
         try:
             vocab_file = _load_vocab_from_json(vocab_path)
@@ -52,19 +52,24 @@ def create_vocabulary( text, _tokenize, append_to_existing_vocabulary=False, voc
         except Exception as e:
             print("Json file not found or could not be loaded:", e)
     
-    tokens = _tokenize(text)
+    # Handle both single string and list of strings
+    if isinstance(text, str):
+        text_iter = [text]
+    else:
+        text_iter = text
+
     max_id = max(vocab.values()) if vocab else -1
     next_id = max_id + 1        
-    for token in tokens:
-        if token not in vocab:
-            vocab[token] = next_id
-            next_id += 1
-    # Save updated vocabulary to JSON
-    if save_vocabulary:
-        with open(vocab_path, 'w', encoding='utf-8') as fh:
-            import json
-            json.dump(vocab, fh, ensure_ascii=False, indent=2)
+    
+    for chunk in text_iter:
+        tokens = _tokenize(chunk)
+        for token in tokens:
+            if token not in vocab:
+                vocab[token] = next_id
+                next_id += 1
+                
     return vocab
+
 
 def save_tokenizer_files(save_directory: Path, vocab_dict: dict, config_dict: dict):
 
@@ -95,9 +100,10 @@ def build_and_save_tokenizer(
     output_path.mkdir(parents=True, exist_ok=True)
     
     tk = TokenizerClass()
-    # TODO: either here or where the dataset is passed, filter it to only chem
     print("Preparazione del corpus di testo...")
-    all_text = "".join(dataset[text_field])
+    # Pass the list of strings directly, do not join them
+    # This prevents learning patterns across SMILES boundaries (e.g. "][")
+    all_text = dataset[text_field]
     
     print(f"Avvio creazione vocabolario per {TokenizerClass.__name__}...")
     tk.create_vocabulary(all_text, save_vocabulary=False) 

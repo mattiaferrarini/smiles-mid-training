@@ -133,6 +133,11 @@ def annotate_smiles(text):
     new_tokens = []
     smiles_count = 0
     for i, token in enumerate(tokens):
+        # If already annotated, keep as is
+        if "[START_SMILES]" in token and "[END_SMILES]" in token:
+            new_tokens.append(token)
+            continue
+
         previous_word = tokens[i-1] if i > 0 else None
 
         # Check if the token (or stripped version) is a SMILES

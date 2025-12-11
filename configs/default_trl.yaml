@@ -7,7 +7,7 @@ model:
 data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow"
-  text_field: "text"
+  text_field: "text_annotated_v1tags"
   portion_of_data_used: 0.5 # Portion of the main dataset to use
 
 data_mix:
@@ -46,7 +46,7 @@ training:
   gradient_checkpointing: true
   num_workers: 4
   preprocessing_num_workers: 64
-  preprocessing_batch_size: 10000
+  preprocessing_batch_size: 100
   prefetch_factor: 4
   per_device_batch_size: 4
   max_length: 4096
@@ -54,8 +54,10 @@ training:
   report_to: "wandb"
 
 tokenizer:
-  type: base
-  embedding_initialization: "random" 
+  type: hybrid
+  chem_type: smiles_bpe 
+  embedding_initialization: "elementwise" 
+  output_dir: /users/lprunotto/json/tokenizers
   special_tokens:
     start_smiles: "[START_SMILES]"
     end_smiles: "[END_SMILES]"

@@ -28,6 +28,16 @@ source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded An
 #  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
 # fi
 
+# Allow overriding USE_ANNOTATION from environment
+if [ -z "$USE_ANNOTATION" ]; then
+    USE_ANNOTATION="false"
+fi
+
+if [ "$USE_ANNOTATION" = "true" ]; then
+    ANNOTATION_FLAG="--annotate_smiles"
+else
+    ANNOTATION_FLAG=""
+fi
 # Activate conda environment
 conda activate "$ENV_NAME"
 
@@ -77,8 +87,13 @@ export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
 # Training settings
-export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval"
-export MODEL_PATH="google/gemma-3-1b-pt"
+if [ -z "$OUTPUT_DIR" ]; then
+    export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval/use_annotation_${USE_ANNOTATION}_job_${SLURM_JOB_ID}/"
+fi
+
+if [ -z "$MODEL_PATH" ]; then
+    export MODEL_PATH="/iopsstor/scratch/cscs/$USER/finetuning/base_finetuning_1202267/"
+fi
 # export MODEL_PATH="/iopsstor/scratch/cscs/mattiaferrarini/finetuning/base_finetuning_20251203_175010"
 
 # Get master host address
@@ -118,7 +133,7 @@ srun --ntasks-per-node=1 \
     --rdzv_id=$SLURM_JOB_ID \
     --rdzv_backend=c10d \
     --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
-    evaluate/likelihood_eval.py --model_path "$MODEL_PATH" --output_dir "$OUTPUT_DIR"
+    evaluate/likelihood_eval.py --model_path "$MODEL_PATH" --output_dir "$OUTPUT_DIR" $ANNOTATION_FLAG
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

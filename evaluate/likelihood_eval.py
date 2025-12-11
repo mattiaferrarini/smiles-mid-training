@@ -18,6 +18,8 @@ import json
 from utils.config import load_config
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
+from custom_tokenizers.hybrid_tokenizer import HybridTokenizer
+AutoTokenizer.register("HybridTokenizer", HybridTokenizer)
 
 DATASET = "/capstor/store/cscs/swissai/a131/ML4Science/datasets/chembench_mcq/"
 HF_DATASET = "jablonkagroup/ChemBench"
@@ -307,7 +309,7 @@ def get_tokenizer_for_eval(model_path):
             print(f"Assembling tokenizer from training config at: {training_config_path}")
             tokenizer = assemble_tokenizer(load_config(training_config_path))
         else:
-            raise ValueError(f"Training config not found for model at {model_path}")
+            tokenizer = AutoTokenizer.from_pretrained(model_path)
     else:
         # Assume it's a model name on HuggingFace
         print(f"Loading tokenizer from HuggingFace model: {model_path}")

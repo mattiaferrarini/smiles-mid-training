@@ -13,7 +13,7 @@ tokenizer:
   type: hybrid
   chem_type: ape_wp_hf
   output_dir: /users/mattiaferrarini/smiles-mid-training/json/tokenizers
-  output_subdir_name: ape_wp_hf_5000
+  output_subdir_name: ape_wp_hf_20000
   params:
-    max_vocab_size: 5000
+    max_vocab_size: 20000
     min_freq_for_merge: 2

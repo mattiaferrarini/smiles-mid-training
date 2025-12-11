@@ -38,6 +38,7 @@ def assemble_tokenizer(config):
         base_output_dir = config["tokenizer"]["output_dir"]
         output_subdir_name = config["tokenizer"].get("output_subdir_name", f"{chem_type}_tokenizer")
         tokenizer_dir = os.path.join(base_output_dir, output_subdir_name)
+        print("Tokenizer dir:", tokenizer_dir)        
         
         chem_tokenizer = None
         
@@ -53,9 +54,9 @@ def assemble_tokenizer(config):
                 elif chem_type == "ape_wp_hf":
                     chem_tokenizer = APEWPHFTokenizer.from_pretrained(tokenizer_dir)
             else:
-                raise FileNotFoundError(f"Tokenizer file not found at {tokenizer_file}. Please run build_tokenizer.py first.")
-        
+                raise FileNotFoundError(f"Tokenizer file not found at {tokenizer_file}. Please run build_tokenizer.py first.") 
         else:
+            raise ValueError("Fuck")
             # Map type to class
             tokenizer_classes = {
                 "character": CharacterTokenizer,

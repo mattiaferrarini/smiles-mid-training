@@ -7,6 +7,7 @@ from .elementrings_tokenizer import ElementRingsTokenizer
 from .selfies_tokenizer import SelfiesTokenizer
 from .smiles_bpe_tokenizer import SmilesBpeTokenizer
 from .hybrid_tokenizer import HybridTokenizer
+from .apewordpiece_tokenizer import APEWordPieceTokenizer
 
 from transformers import AutoTokenizer
 import os
@@ -55,7 +56,8 @@ def assemble_tokenizer(config):
                 "elementaromatics": ElementAromaticsTokenizer,
                 "elementnoparenthesis": ElementNoParenthesisTokenizer,
                 "elementrings": ElementRingsTokenizer,
-                "selfies": SelfiesTokenizer
+                "selfies": SelfiesTokenizer,
+                "ape_wordpiece": APEWordPieceTokenizer
             }
             
             if chem_type not in tokenizer_classes:

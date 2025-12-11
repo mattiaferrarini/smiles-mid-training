@@ -12,6 +12,7 @@ from elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from elementrings_tokenizer import ElementRingsTokenizer
 from selfies_tokenizer import SelfiesTokenizer
 from smiles_bpe_tokenizer import SmilesBpeTokenizer
+from apewordpiece_tokenizer import APEWordPieceTokenizer
 
 from utils.helpers import build_and_save_tokenizer
 from utils.config import load_config
@@ -24,7 +25,8 @@ TOKENIZER_CLASSES = {
     "elementnoparenthesis": ElementNoParenthesisTokenizer,
     "elementrings": ElementRingsTokenizer,
     "selfies": SelfiesTokenizer,
-    "smiles_bpe": SmilesBpeTokenizer
+    "smiles_bpe": SmilesBpeTokenizer,
+    "ape_wordpiece": APEWordPieceTokenizer
 }
 
 CONFIG_PATH = "configs/tokenizer.yaml" 

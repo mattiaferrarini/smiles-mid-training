@@ -33,7 +33,7 @@ echo "=================================================================="
 echo "STARTING TOKENIZER BUILD JOB at $(date)"
 echo "=================================================================="
 
-OUTPUT_DIR="/users/$USER/json/tokenizers"
+OUTPUT_DIR="/users/$USER/smiles-mid-training/json/tokenizers"
 mkdir -p "$OUTPUT_DIR"
 
 BUILD_ALL="false"

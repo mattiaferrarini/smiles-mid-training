@@ -1,9 +1,8 @@
 import argparse
-import os  # Added to check cpu count safely
+import os
+import re
 from pathlib import Path
 from datasets import load_dataset
-
-# 1. Import all tokenizer classes
 from character_tokenizer import CharacterTokenizer 
 from element_tokenizer import ElementTokenizer
 from elementallparenthesis_tokenizer import ElementAllParenthesisTokenizer
@@ -19,11 +18,24 @@ from chem_ape import ChemAPETokenizer
 
 from utils.helpers import build_and_save_tokenizer
 from utils.config import load_config
-import re
+
+TOKENIZER_CLASSES = {
+    "character": CharacterTokenizer,
+    "element": ElementTokenizer,
+    "elementallparenthesis": ElementAllParenthesisTokenizer,
+    "elementaromatics": ElementAromaticsTokenizer,
+    "elementnoparenthesis": ElementNoParenthesisTokenizer,
+    "elementrings": ElementRingsTokenizer,
+    "selfies": SelfiesTokenizer,
+    "smiles_bpe": SmilesBpeTokenizer,
+    "ape": APETokenizer,
+    "ape_hf": APEHFTokenizer,
+    "ape_wp_hf": APEWPHFTokenizer,
+    "chem_ape": ChemAPETokenizer,
+}
+
 
 def main():
-    CONFIG_PATH = "configs/tokenizer.yaml" 
-
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Build tokenizer")
     parser.add_argument("--output-dir", type=str, required=True, help="Directory where to save the tokenizer")
@@ -58,23 +70,8 @@ def main():
     output_subdir_name = config["tokenizer"].get("output_subdir_name", f"{tokenizer_type}_tokenizer")
     print(f"Output directory for tokenizer: {base_output_dir}/{output_subdir_name}")
 
-    tokenizer_classes = {
-        "character": CharacterTokenizer,
-        "element": ElementTokenizer,
-        "elementallparenthesis": ElementAllParenthesisTokenizer,
-        "elementaromatics": ElementAromaticsTokenizer,
-        "elementnoparenthesis": ElementNoParenthesisTokenizer,
-        "elementrings": ElementRingsTokenizer,
-        "selfies": SelfiesTokenizer,
-        "smiles_bpe": SmilesBpeTokenizer,
-        "ape": APETokenizer,
-        "ape_hf": APEHFTokenizer,
-        "ape_wp_hf": APEWPHFTokenizer,
-        "chem_ape": ChemAPETokenizer,
-    }
-
-    if tokenizer_type in tokenizer_classes:
-        tokenizerclass = tokenizer_classes[tokenizer_type]
+    if tokenizer_type in TOKENIZER_CLASSES:
+        tokenizerclass = TOKENIZER_CLASSES[tokenizer_type]
     else:
         raise ValueError(f"Unknown tokenizer type: {tokenizer_type}")
 
@@ -99,8 +96,6 @@ def main():
         for i in range(min(3, len(dataset))):
             print(f"Example {i}: {dataset[i][text_field]}...")
 
-        # FIX: Lower num_proc significantly to prevent OOM
-        # Using a safer number like 8, or os.cpu_count() if you have enough RAM
         safe_num_proc = min(8, os.cpu_count() or 1)
         print(f"[INFO] Using num_proc={safe_num_proc} for processing")
 
@@ -109,7 +104,7 @@ def main():
             batched=True, 
             batch_size=10000,
             remove_columns=dataset.column_names,
-            num_proc=safe_num_proc  # CHANGED FROM 64
+            num_proc=safe_num_proc 
         )
 
         print(f"\n[DEBUG] New dataset size: {len(chem_dataset)} rows.")
@@ -142,4 +137,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -45,6 +45,7 @@ from utils.config import load_config
 from datetime import timedelta
 import json
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
+from embeddings.embedding_initializer import initialize_embeddings as init_embeddings_fn
 
 
 LOGGER = get_logger(__name__)
@@ -75,7 +76,6 @@ def prepare_training_args(config, output_dir):
         "per_device_train_batch_size": config["training"]["per_device_batch_size"],
         "gradient_accumulation_steps": config["training"]["gradient_accumulation_steps"],
         "num_train_epochs": config["training"]["epochs"],
-        # "max_steps": config["training"]["max_steps"],
         "warmup_ratio": config["training"]["warmup_ratio"],
         "lr_scheduler_type": config["training"]["lr_scheduler_type"],
         "learning_rate": config["training"]["learning_rate"],
@@ -97,13 +97,14 @@ def prepare_training_args(config, output_dir):
             "dispatch_batches": False,
         },
         "dataloader_drop_last": True,
+        # --- FIX CRITICO QUI SOTTO: max_seq_length ---
         "max_length": config["training"]["max_length"],
         "include_tokens_per_second": True,
         "include_num_input_tokens_seen": True,
     }
 
-    if config["tokenizer"]["type"] != "base" and config["tokenizer"]["type"] != "base_special":
-        args_dict["dataset_num_proc"] = 1 #config["training"]["num_workers"]
+    if config["tokenizer"]["type"] == "hybrid":
+        args_dict["dataset_num_proc"] = 1 
 
     if strategy == "fsdp":
         # FSDP-specific arguments
@@ -140,11 +141,23 @@ def build_tokenizer(config):
 
 
 def initialize_embeddings(model, tokenizer, config):
-    initialization_strategy = config["tokenizer"]["embedding_initialization"]
-    model.resize_token_embeddings(len(tokenizer))
+    initialization_strategy = config["tokenizer"].get("embedding_initialization", "default")
     
+    # DEBUG: Verifica che tipo di tokenizer abbiamo
+    print(f"[DEBUG] initialize_embeddings called with tokenizer type: {type(tokenizer)}")
+    if hasattr(tokenizer, "chem_tokenizer"):
+        print("[DEBUG] Tokenizer is Hybrid (chem_tokenizer found).")
+    else:
+        print("[DEBUG] Tokenizer appears to be standard (NO chem_tokenizer found).")
+
     if initialization_strategy == "random":
-        pass # Rely on default random init
+        print("Initializing embeddings with strategy: random")
+        model.resize_token_embeddings(len(tokenizer))
+    else:
+        print(f"Initializing embeddings with strategy: {initialization_strategy}")
+        # Chiamata alla funzione esterna
+        model = init_embeddings_fn(model, tokenizer, strategy=initialization_strategy)
+        
     return model
 
 

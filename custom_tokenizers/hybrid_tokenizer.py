@@ -264,4 +264,3 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             data["overflow_to_sample_mapping"] = overflow_to_sample_mapping
 
         return BatchEncoding(data, tensor_type=return_tensors)
-

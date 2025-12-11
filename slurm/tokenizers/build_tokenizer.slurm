@@ -33,13 +33,22 @@ echo "=================================================================="
 echo "STARTING TOKENIZER BUILD JOB at $(date)"
 echo "=================================================================="
 
-OUTPUT_DIR="/users/$USER/json/tokenizers"
+OUTPUT_DIR="/users/$USER/smiles-mid-training/json/tokenizers"
 mkdir -p "$OUTPUT_DIR"
+
+BUILD_ALL="false"
+
+if [ "$BUILD_ALL" = "true" ]; then
+    ALL_FLAG="--all"
+else
+    ALL_FLAG=""
+fi
 
 echo "Running tokenizer build script..."
 srun "$PYTHON_EXEC" custom_tokenizers/build_tokenizer.py \
     --config configs/tokenizer.yaml \
-    --output-dir "$OUTPUT_DIR"
+    --output-dir "$OUTPUT_DIR" \
+    $ALL_FLAG
 EXIT_CODE=$?
 
 echo "=================================================================="

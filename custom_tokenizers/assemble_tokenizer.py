@@ -11,30 +11,30 @@ from .ape_hf_tokenizer import APEHFTokenizer
 from .ape_wp_hf_tokenizer import APEWPHFTokenizer
 from .chem_ape import ChemAPETokenizer
 from .hybrid_tokenizer import HybridTokenizer
-
-from transformers import AutoTokenizer, PreTrainedTokenizerFast
+from transformers import AutoTokenizer
 import os
 
-
 def assemble_tokenizer(config):
-    tokenizer = None
+    # Recupera i valori dal config
     tokenizer_type = config["tokenizer"]["type"]
-
-    START_SMILES = config["tokenizer"]["special_tokens"]["start_smiles"]
-    END_SMILES = config["tokenizer"]["special_tokens"]["end_smiles"]
+    special_tokens = config["tokenizer"].get("special_tokens", {})
+    START_SMILES = special_tokens.get("start_smiles", "[START_SMILES]")
+    END_SMILES = special_tokens.get("end_smiles", "[END_SMILES]")
+    
+    print(f"Assembling tokenizer of type: {tokenizer_type}")
+    
     base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
 
     if tokenizer_type == "base":
-        tokenizer = base_tokenizer
+        return base_tokenizer
     elif tokenizer_type == "base_special":
         print("Including special SMILES tokens")
         base_tokenizer.add_special_tokens({'additional_special_tokens': [START_SMILES, END_SMILES]})
-        tokenizer = base_tokenizer
+        return base_tokenizer
     elif tokenizer_type == "hybrid":
         chem_type = config["tokenizer"].get("chem_type", "element")
         print(f"Assembling Hybrid Tokenizer with chem_type: {chem_type}")
         
-        # Determine path to pre-built tokenizer
         base_output_dir = config["tokenizer"]["output_dir"]
         output_subdir_name = config["tokenizer"].get("output_subdir_name", f"{chem_type}_tokenizer")
         tokenizer_dir = os.path.join(base_output_dir, output_subdir_name)
@@ -56,7 +56,7 @@ def assemble_tokenizer(config):
                 raise FileNotFoundError(f"Tokenizer file not found at {tokenizer_file}. Please run build_tokenizer.py first.")
         
         else:
-            # Map type to class
+            # Mappa classi standard
             tokenizer_classes = {
                 "character": CharacterTokenizer,
                 "element": ElementTokenizer,
@@ -84,13 +84,15 @@ def assemble_tokenizer(config):
                 print(f"Warning: Pre-built vocab not found at {vocab_file}. Initializing default {chem_type} tokenizer.")
                 chem_tokenizer = TokenizerClass()
             
-        tokenizer = HybridTokenizer(
+        # Creazione Istanza Ibrida
+        hybrid_tokenizer = HybridTokenizer(
             base_tokenizer=base_tokenizer,
             chem_tokenizer=chem_tokenizer,
             chem_start=START_SMILES,
             chem_end=END_SMILES
         )
+        # IMPORTANTE: Restituisci l'istanza ibrida, non quella base!
+        return hybrid_tokenizer
+    
     else:
         raise ValueError(f"Unknown tokenizer_type: {tokenizer_type}")
-
-    return tokenizer 

@@ -6,6 +6,11 @@ from .elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from .elementrings_tokenizer import ElementRingsTokenizer
 from .hybrid_tokenizer import HybridTokenizer
 from .selfies_tokenizer import SelfiesTokenizer
+from .ape_tokenizer import APETokenizer
+from .ape_hf_tokenizer import APEHFTokenizer
+from .smiles_bpe_tokenizer import SmilesBpeTokenizer
+from .ape_wp_hf_tokenizer import APEWPHFTokenizer
+from .chem_ape import ChemAPETokenizer
 
 __all__ = [
     "CharacterTokenizer",
@@ -16,4 +21,9 @@ __all__ = [
     "ElementRingsTokenizer",
     "HybridTokenizer",
     "SelfiesTokenizer",
+    "APETokenizer",
+    "APEHFTokenizer",
+    "SmilesBpeTokenizer",
+    "APEWPHFTokenizer",
+    "ChemAPETokenizer",
 ]

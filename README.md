@@ -1,3 +1,59 @@
+# Project 2, Machine Learning (CS433), Fall 2025
+
+## Authors 
+- Mattia Ferrarini (407144)
+- Francesco Monti (405682)
+- Luca Prunotto (405496)
+
+## Overview
+Standard open-source LLMs often struggle with chemistry tasks. A primary reason is that they process chemical representations (such as SMILES strings) using general-purpose tokenizers, which frequently split molecules into semantically meaningless tokens
+
+The goal of this project is to improve the chemical reasoning and understanding of LLMs through:
+- Novel Tokenization Schemes: treating chemical entities such as atoms, functional groups, substructures... as distinct semantic units
+- Mid-Stage Training: aligning the model's latent space with chemical concepts using large domain-specific datasets
+- Smart Embedding Initialization: utilizing chemical priors like element properties to initialize new tokens
+
+We validate these strategies by fine-tuning open-source models like gemma-3-1b and benchmarking them against industry standards like ChemBench for general chemistry and ChemIQ for structural reasoning 
+
+### Repository Structure
+```text
+smiles-mid-training/
+    ChemIQ/                 # ChemIQ benchmark dataset, verifiers, and analysis notebooks
+    configs/                # YAML configurations for training, tokenizers, and evaluation
+    custom_tokenizers/      # Implementations of different tokenizers
+    embeddings/             # Logic for chemically-aware embedding initialization
+    evaluate/               # Scripts for running ChemBench and likelihood-based evaluations
+    json/                   # Vocabulary files, periodic table data, and tokenizer artifacts
+    slurm/                  # SLURM scripts for distributed training on CSCS clusters
+    training/               # Training scripts
+    utils/                  # Helper functions for logging, config parsing, and SMILES processing
+    main.py                 # Unified entry point - Typer CLI
+    requirements.txt        # Project dependencies
+```
+
+### Tokenization
+
+We implement specialized tokenizers to better represent molecular strings
+
+TODO
+
+### Embeddings & Initialization
+
+TODO
+
+### Fine-Tuning
+We use the trl and accelerate libraries to perform continued pre-training and supervised fine-tuning 
+
+TODO
+
+### Instruction-Tuning
+
+### Evaluation & Benchmarking
+
+## Project Setup and Usage Guide
+
+#
+Old Stuff below:
 # smiles-mid-training
 
 Create a virtual environment:

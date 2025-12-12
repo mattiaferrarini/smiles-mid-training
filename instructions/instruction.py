@@ -117,152 +117,152 @@ def prepare_metamathqa(output, target_count=15000):
     print(f"Generated {count} examples, saving to {output}...")
     shutil.move(tmp_output, output) # Atomic move
 
-def prepare_chemiq_synthetic(output, source_file="chemiq_training_smiles.txt", target_count=20000):
-    print(f"Generating synthetic ChemiQ data from {source_file}...")
+# def prepare_chemiq_synthetic(output, source_file="chemiq_training_smiles.txt", target_count=20000):
+#     print(f"Generating synthetic ChemiQ data from {source_file}...")
     
-    if not os.path.exists(source_file):
-        print(f"Error: {source_file} not found. Skipping ChemiQ generation.")
-        return
+#     if not os.path.exists(source_file):
+#         print(f"Error: {source_file} not found. Skipping ChemiQ generation.")
+#         return
 
-    with open(source_file, 'r', encoding='utf-8', errors='ignore') as f:
-        smiles_list = [line.strip() for line in f if line.strip()]
+#     with open(source_file, 'r', encoding='utf-8', errors='ignore') as f:
+#         smiles_list = [line.strip() for line in f if line.strip()]
     
-    random.shuffle(smiles_list)
+#     random.shuffle(smiles_list)
 
-    # Write to a temporary file first for atomic operation
-    tmp_output = output + ".tmp"
+#     # Write to a temporary file first for atomic operation
+#     tmp_output = output + ".tmp"
 
-    # Open with buffering=1 (line buffering) to ensure writes happen
-    with open(tmp_output, 'w', encoding='utf-8') as out:
-        count = 0
-        for smi in smiles_list:
-            if count >= target_count: break
+#     # Open with buffering=1 (line buffering) to ensure writes happen
+#     with open(tmp_output, 'w', encoding='utf-8') as out:
+#         count = 0
+#         for smi in smiles_list:
+#             if count >= target_count: break
             
-            try:
-                # Sanitization: Ensure SMILES is a clean string
-                smi = str(smi)
+#             try:
+#                 # Sanitization: Ensure SMILES is a clean string
+#                 smi = str(smi)
                 
-                mol = Chem.MolFromSmiles(smi)
-                if not mol: continue
+#                 mol = Chem.MolFromSmiles(smi)
+#                 if not mol: continue
 
-                # CLEANUP: Handle salts
-                frags = rdmolops.GetMolFrags(mol, asMols=True)
-                if len(frags) > 1:
-                    mol = max(frags, key=lambda m: m.GetNumAtoms())
+#                 # CLEANUP: Handle salts
+#                 frags = rdmolops.GetMolFrags(mol, asMols=True)
+#                 if len(frags) > 1:
+#                     mol = max(frags, key=lambda m: m.GetNumAtoms())
                 
-                if mol.GetNumAtoms() < 6: continue
+#                 if mol.GetNumAtoms() < 6: continue
 
-                json_record = None
+#                 json_record = None
 
-                # ---------------------------------------------------------
-                # TASK 1: SHORTEST PATH
-                # ---------------------------------------------------------
-                if random.random() < 0.33:
-                    atoms = list(range(mol.GetNumAtoms()))
-                    a1, a2 = random.sample(atoms, 2)
+#                 # ---------------------------------------------------------
+#                 # TASK 1: SHORTEST PATH
+#                 # ---------------------------------------------------------
+#                 if random.random() < 0.33:
+#                     atoms = list(range(mol.GetNumAtoms()))
+#                     a1, a2 = random.sample(atoms, 2)
                     
-                    dist_matrix = rdmolops.GetDistanceMatrix(mol)
-                    dist = int(dist_matrix[a1, a2])
+#                     dist_matrix = rdmolops.GetDistanceMatrix(mol)
+#                     dist = int(dist_matrix[a1, a2])
                     
-                    if dist > 1000: continue
+#                     if dist > 1000: continue
 
-                    mol_copy = Chem.Mol(mol)
-                    mol_copy.GetAtomWithIdx(a1).SetIsotope(99)
-                    mol_copy.GetAtomWithIdx(a2).SetIsotope(98)
+#                     mol_copy = Chem.Mol(mol)
+#                     mol_copy.GetAtomWithIdx(a1).SetIsotope(99)
+#                     mol_copy.GetAtomWithIdx(a2).SetIsotope(98)
                     
-                    tagged_smi = Chem.MolToSmiles(mol_copy, canonical=False)
-                    # Safe regex replacement
-                    prompt_smi = re.sub(r'\[9[89].*?\]', '*', tagged_smi)
+#                     tagged_smi = Chem.MolToSmiles(mol_copy, canonical=False)
+#                     # Safe regex replacement
+#                     prompt_smi = re.sub(r'\[9[89].*?\]', '*', tagged_smi)
                     
-                    if prompt_smi.count('*') == 2:
-                        prompt = (
-                            "Determine the number of bonds along the shortest path connecting the two dummy atoms (denoted by '*'). "
-                            "Count each bond equally, including those directly attached to the dummy atoms.\n\n"
-                            f"{prompt_smi}\n\n"
-                            "Give your answer as an integer. Do not write any comments."
-                        )
-                        response = f"\\boxed{{{dist}}}"
+#                     if prompt_smi.count('*') == 2:
+#                         prompt = (
+#                             "Determine the number of bonds along the shortest path connecting the two dummy atoms (denoted by '*'). "
+#                             "Count each bond equally, including those directly attached to the dummy atoms.\n\n"
+#                             f"{prompt_smi}\n\n"
+#                             "Give your answer as an integer. Do not write any comments."
+#                         )
+#                         response = f"\\boxed{{{dist}}}"
                         
-                        json_record = {
-                            "messages": [
-                                {"role": "user", "content": prompt},
-                                {"role": "assistant", "content": response}
-                            ]
-                        }
+#                         json_record = {
+#                             "messages": [
+#                                 {"role": "user", "content": prompt},
+#                                 {"role": "assistant", "content": response}
+#                             ]
+#                         }
 
-                # ---------------------------------------------------------
-                # TASK 2: ATOM MAPPING
-                # ---------------------------------------------------------
-                elif random.random() < 0.66:
-                    smi1 = Chem.MolToSmiles(mol, canonical=False, doRandom=True)
-                    smi2 = Chem.MolToSmiles(mol, canonical=False, doRandom=True)
+#                 # ---------------------------------------------------------
+#                 # TASK 2: ATOM MAPPING
+#                 # ---------------------------------------------------------
+#                 elif random.random() < 0.66:
+#                     smi1 = Chem.MolToSmiles(mol, canonical=False, doRandom=True)
+#                     smi2 = Chem.MolToSmiles(mol, canonical=False, doRandom=True)
                     
-                    m1 = Chem.MolFromSmiles(smi1)
-                    m2 = Chem.MolFromSmiles(smi2)
+#                     m1 = Chem.MolFromSmiles(smi1)
+#                     m2 = Chem.MolFromSmiles(smi2)
                     
-                    if m1 and m2:
-                        matches = m1.GetSubstructMatch(m2)
-                        if matches and len(matches) == m1.GetNumAtoms():
-                            # Strictly format list of tuples as string
-                            mapping_str = "[" + ", ".join([f"({i}, {match_idx})" for i, match_idx in enumerate(matches)]) + "]"
+#                     if m1 and m2:
+#                         matches = m1.GetSubstructMatch(m2)
+#                         if matches and len(matches) == m1.GetNumAtoms():
+#                             # Strictly format list of tuples as string
+#                             mapping_str = "[" + ", ".join([f"({i}, {match_idx})" for i, match_idx in enumerate(matches)]) + "]"
                             
-                            prompt = (
-                                "You are given two SMILES strings for the same molecule. Atoms are numbered from left to right, "
-                                "with the first atom having index 0. Only heavy atoms are numbered and mapped.\n\n"
-                                f"Molecule 1: {smi1}\n"
-                                f"Molecule 2: {smi2}\n\n"
-                                "Determine the mapping of atoms from Molecule 1 to Molecule 2. "
-                                "Provide your answer as a list of tuples."
-                            )
-                            response = f"\\boxed{{{mapping_str}}}"
+#                             prompt = (
+#                                 "You are given two SMILES strings for the same molecule. Atoms are numbered from left to right, "
+#                                 "with the first atom having index 0. Only heavy atoms are numbered and mapped.\n\n"
+#                                 f"Molecule 1: {smi1}\n"
+#                                 f"Molecule 2: {smi2}\n\n"
+#                                 "Determine the mapping of atoms from Molecule 1 to Molecule 2. "
+#                                 "Provide your answer as a list of tuples."
+#                             )
+#                             response = f"\\boxed{{{mapping_str}}}"
                             
-                            json_record = {
-                                "messages": [
-                                    {"role": "user", "content": prompt},
-                                    {"role": "assistant", "content": response}
-                                ]
-                            }
+#                             json_record = {
+#                                 "messages": [
+#                                     {"role": "user", "content": prompt},
+#                                     {"role": "assistant", "content": response}
+#                                 ]
+#                             }
 
-                # ---------------------------------------------------------
-                # TASK 3: CARBON COUNTING
-                # ---------------------------------------------------------
-                else:
-                    num_c = int(sum(1 for atom in mol.GetAtoms() if atom.GetSymbol() == 'C'))
-                    random_smi = Chem.MolToSmiles(mol, canonical=False, doRandom=True)
+#                 # ---------------------------------------------------------
+#                 # TASK 3: CARBON COUNTING
+#                 # ---------------------------------------------------------
+#                 else:
+#                     num_c = int(sum(1 for atom in mol.GetAtoms() if atom.GetSymbol() == 'C'))
+#                     random_smi = Chem.MolToSmiles(mol, canonical=False, doRandom=True)
                     
-                    prompt = (
-                        "How many carbon atoms are in the molecule:\n\n"
-                        f"{random_smi}\n\n"
-                        "Give your answer as an integer. Do not write any comments."
-                    )
-                    response = f"\\boxed{{{num_c}}}"
+#                     prompt = (
+#                         "How many carbon atoms are in the molecule:\n\n"
+#                         f"{random_smi}\n\n"
+#                         "Give your answer as an integer. Do not write any comments."
+#                     )
+#                     response = f"\\boxed{{{num_c}}}"
                     
-                    json_record = {
-                        "messages": [
-                            {"role": "user", "content": prompt},
-                            {"role": "assistant", "content": response}
-                        ]
-                    }
+#                     json_record = {
+#                         "messages": [
+#                             {"role": "user", "content": prompt},
+#                             {"role": "assistant", "content": response}
+#                         ]
+#                     }
 
-                # --- SAFE WRITE ---
-                if json_record:
-                    # ensure_ascii=True escapes all non-ASCII chars to \uXXXX, preventing PyArrow parse errors
-                    # separators=(',', ':') removes unnecessary whitespace which can sometimes confuse strict parsers
-                    json_line = json.dumps(json_record, ensure_ascii=True, separators=(',', ':'))
+#                 # --- SAFE WRITE ---
+#                 if json_record:
+#                     # ensure_ascii=True escapes all non-ASCII chars to \uXXXX, preventing PyArrow parse errors
+#                     # separators=(',', ':') removes unnecessary whitespace which can sometimes confuse strict parsers
+#                     json_line = json.dumps(json_record, ensure_ascii=True, separators=(',', ':'))
                     
-                    # Double check it is valid JSON
-                    try:
-                        json.loads(json_line)
-                        out.write(json_line + "\n")
-                        count += 1
-                    except Exception:
-                        continue
+#                     # Double check it is valid JSON
+#                     try:
+#                         json.loads(json_line)
+#                         out.write(json_line + "\n")
+#                         count += 1
+#                     except Exception:
+#                         continue
         
-            except Exception:
-                continue
+#             except Exception:
+#                 continue
 
-    print(f"Successfully generated {count} valid synthetic ChemiQ examples.")
-    shutil.move(tmp_output, output) # Atomic move
+#     print(f"Successfully generated {count} valid synthetic ChemiQ examples.")
+#     shutil.move(tmp_output, output) # Atomic move
 
 def prepare_datasets(config):
     print("Loading datasets for mixing...")
@@ -303,28 +303,36 @@ def prepare_datasets(config):
     metamathqa_dataset = load_dataset("json", data_files=metamathqa_path, split="train")
     print(f"Loaded {len(metamathqa_dataset)} samples from metamathqa dataset")
 
-    # --- CHEMIQ HANDLING ---
-    chemiq_path = "chemiq_synthetic.jsonl"
+    # # --- CHEMIQ HANDLING ---
+    # chemiq_path = "chemiq_synthetic.jsonl"
     
-    if local_rank == 0 and not os.path.exists(chemiq_path):
-        print(f"{chemiq_path} not found, generating synthetic ChemiQ dataset...")
-        prepare_chemiq_synthetic(chemiq_path, source_file="chemiq_training_smiles.txt", target_count=20000)
+    # if local_rank == 0 and not os.path.exists(chemiq_path):
+    #     print(f"{chemiq_path} not found, generating synthetic ChemiQ dataset...")
+    #     prepare_chemiq_synthetic(chemiq_path, source_file="chemiq_training_smiles.txt", target_count=20000)
 
-    if local_rank != 0:
-        while not os.path.exists(chemiq_path):
-            time.sleep(1)
+    # if local_rank != 0:
+    #     while not os.path.exists(chemiq_path):
+    #         time.sleep(1)
     
-    chemiq_dataset = load_dataset("json", data_files=chemiq_path, split="train")
-    print(f"Loaded {len(chemiq_dataset)} samples from synthetic ChemiQ dataset")
+    # chemiq_dataset = load_dataset("json", data_files=chemiq_path, split="train")
+    # print(f"Loaded {len(chemiq_dataset)} samples from synthetic ChemiQ dataset")
 
     print("Creating final dataset...")
     final_dataset = interleave_datasets(
-        [chat_dataset, sciq_dataset, metamathqa_dataset, chemiq_dataset], 
-        probabilities=[0.3, 0.25, 0.25, 0.2], 
+        # [chat_dataset, sciq_dataset, metamathqa_dataset, chemiq_dataset], 
+        # probabilities=[0.3, 0.25, 0.25, 0.2], 
+        [chat_dataset, sciq_dataset, metamathqa_dataset],
+        probabilities=[0.4, 0.3, 0.3],
         seed=42,
         stopping_strategy="first_exhausted"
     )
-    return final_dataset
+
+    # Adding validation set
+    # return final_dataset
+    dataset_splits = combined_dataset.train_test_split(test_size=0.05, seed=42)
+    
+    print(f"Train size: {len(dataset_splits['train'])}, Validation size: {len(dataset_splits['test'])}")
+    return dataset_splits
 
 def setup_tokenizer_and_model(config, args):
     model_path = args.model_path if args.model_path is not None else config['model']['name']
@@ -403,6 +411,24 @@ def train(config, model, tokenizer, dataset, base_config):
         task_type="CAUSAL_LM",
     )
 
+    # training_args = SFTConfig(
+    #     output_dir=config['training']['output_dir'],
+    #     num_train_epochs=config['training']['epochs'],
+    #     per_device_train_batch_size=config['training']['batch_size'],
+    #     gradient_accumulation_steps=config['training']['gradient_accumulation_steps'],
+    #     learning_rate=float(config['training']['learning_rate']),
+    #     logging_steps=config['training']['logging_steps'],
+    #     save_steps=config['training']['save_steps'],
+    #     bf16=config['training']['bf16'],
+    #     fp16=config['training']['fp16'],
+    #     dataset_text_field="messages", 
+    #     packing=False,
+    #     # max_steps=config['training']['max_steps'],
+    #     max_length=2048,
+    #     report_to=config['training'].get('report_to', 'none'), 
+    #     ddp_find_unused_parameters=False,
+    #     gradient_checkpointing=True
+    # )
     training_args = SFTConfig(
         output_dir=config['training']['output_dir'],
         num_train_epochs=config['training']['epochs'],
@@ -419,12 +445,26 @@ def train(config, model, tokenizer, dataset, base_config):
         max_length=2048,
         report_to=config['training'].get('report_to', 'none'), 
         ddp_find_unused_parameters=False,
-        gradient_checkpointing=True
+        gradient_checkpointing=True,
+        
+        # for validation
+        evaluation_strategy="steps",
+        eval_steps=config['training']['save_steps'],
+        per_device_eval_batch_size=config['training']['batch_size'],
+        do_eval=True
     )
 
+    # trainer = SFTTrainer(
+    #     model=model,
+    #     train_dataset=dataset,
+    #     args=training_args,
+    #     peft_config=peft_config,
+    #     processing_class=tokenizer
+    # )
     trainer = SFTTrainer(
         model=model,
-        train_dataset=dataset,
+        train_dataset=dataset_splits['train'],
+        eval_dataset=dataset_splits['test'],
         args=training_args,
         peft_config=peft_config,
         processing_class=tokenizer

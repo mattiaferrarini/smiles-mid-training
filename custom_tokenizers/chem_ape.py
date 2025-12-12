@@ -23,7 +23,17 @@ ATOM_LEVEL_PATTERN = r"\[|\]|" + ELEMENT_PATTERN + r"|b|c|n|o|s|p|\(|\)|\.|=|#|-
 
 
 class ChemAPETokenizer(APETokenizer):
+    """
+    Chemical APE tokenizer that uses chemical validity and patterns to score merges.
+    """
     def __init__(self, *args, **kwargs):
+        """
+        Initializes the ChemAPETokenizer.
+
+        Args:
+            *args: Variable length argument list passed to APETokenizer.
+            **kwargs: Arbitrary keyword arguments passed to APETokenizer.
+        """
         super().__init__(*args, **kwargs)
         config = kwargs.get("config")
         self.scorer = ChemScorer(
@@ -38,6 +48,15 @@ class ChemAPETokenizer(APETokenizer):
         return tokens
     '''
     def score_item(self, item):
+        """
+        Scores a candidate merge item based on frequency and chemical validity.
+
+        Args:
+            item (tuple): A tuple containing the merge candidate and its frequency.
+
+        Returns:
+            float: The calculated score.
+        """
         merged_word = "".join(item[0])
         multiplier = self.scorer.get_merge_multiplier(merged_word)
         freq = item[1]

@@ -3,6 +3,9 @@ from transformers import PreTrainedTokenizerFast
 from tokenizers import decoders, models, pre_tokenizers, trainers, Tokenizer
 
 class SmilesBpeTokenizer(PreTrainedTokenizerFast):
+    """
+    BPE tokenizer trained specifically on SMILES strings.
+    """
     
     vocab_files_names = {
         "vocab_file": "vocab.json",
@@ -23,6 +26,20 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
         config=None,
         **kwargs
     ):
+        """
+        Initializes the SmilesBpeTokenizer.
+
+        Args:
+            vocab_file (str, optional): Path to a JSON file containing the vocabulary mapping.
+            merges_file (str, optional): Path to a merges.txt file.
+            tokenizer_file (str, optional): Path to a tokenizer.json file.
+            unk_token (str): The unknown token. Defaults to "[UNK]".
+            pad_token (str): The padding token. Defaults to "[PAD]".
+            bos_token (str): The beginning of sequence token. Defaults to "[BOS]".
+            eos_token (str): The end of sequence token. Defaults to "[EOS]".
+            config (dict, optional): A dictionary containing tokenizer configuration parameters.
+            **kwargs: Additional keyword arguments passed to `PreTrainedTokenizerFast`.
+        """
         # If loading from files
         if tokenizer_file:
             super().__init__(
@@ -69,6 +86,12 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
     def create_vocabulary(self, text, save_vocabulary=False, vocab_size=2000, min_frequency=2):
         """
         Trains the BPE tokenizer on the provided text.
+
+        Args:
+            text (iterator): An iterator over the training data.
+            save_vocabulary (bool): Whether to save the vocabulary. Defaults to False.
+            vocab_size (int): The desired vocabulary size. Defaults to 2000.
+            min_frequency (int): The minimum frequency for a token to be included. Defaults to 2.
         """
         print("Training BPE tokenizer...")
         
@@ -110,6 +133,16 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
         return self.get_vocab()
 
     def save_vocabulary(self, save_directory, filename_prefix=None):
+        """
+        Saves the vocabulary to a file.
+
+        Args:
+            save_directory (str): The directory to save the vocabulary.
+            filename_prefix (str, optional): Prefix for the vocabulary file name.
+
+        Returns:
+            tuple: Path to the saved vocabulary file.
+        """
         if not os.path.isdir(save_directory):
             os.makedirs(save_directory, exist_ok=True)
             
@@ -120,6 +153,9 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
         return tuple(files)
     
     def reset_vocabulary(self):
+        """
+        Resets the vocabulary to an empty state.
+        """
         # Reset to a fresh BPE model with special tokens
         tokenizer_object = Tokenizer(models.BPE())
         special_tokens = [
@@ -131,4 +167,8 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
 
     @property
     def vocab_size(self):
+        """
+        Returns:
+            int: The size of the vocabulary.
+        """
         return self._tokenizer.get_vocab_size()

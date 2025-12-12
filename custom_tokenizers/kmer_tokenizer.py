@@ -8,6 +8,9 @@ from transformers import PreTrainedTokenizer
 from SmilesPE.pretokenizer import kmer_tokenizer
 
 class KmerTokenizer(PreTrainedTokenizer):
+    """
+    Tokenizer that splits text into k-mers (n-grams).
+    """
     vocab_files_names = {"vocab_file": "vocab.json"}
     model_input_names = ["input_ids", "attention_mask"]
 
@@ -23,6 +26,20 @@ class KmerTokenizer(PreTrainedTokenizer):
         max_vocab_size=None,
         **kwargs
     ):
+        """
+        Initializes the KmerTokenizer.
+
+        Args:
+            vocab_file (str, optional): Path to a JSON file containing the vocabulary mapping.
+            unk_token (str): The unknown token. Defaults to "[UNK]".
+            pad_token (str): The padding token. Defaults to "[PAD]".
+            bos_token (str): The beginning of sequence token. Defaults to "[BOS]".
+            eos_token (str): The end of sequence token. Defaults to "[EOS]".
+            ngram (int): The size of the k-mer. Defaults to 4.
+            stride (int): The stride for sliding window. Defaults to 1.
+            max_vocab_size (int, optional): Maximum vocabulary size.
+            **kwargs: Additional keyword arguments passed to `PreTrainedTokenizer`.
+        """
         self.vocab = {}
         self.decoder = {}
         self.ngram = ngram
@@ -50,18 +67,59 @@ class KmerTokenizer(PreTrainedTokenizer):
 
     @property
     def vocab_size(self):
+        """
+        Returns:
+            int: The size of the vocabulary.
+        """
         return len(self.vocab)
 
     def _tokenize(self, text):
+        """
+        Splits text into k-mers.
+
+        Args:
+            text (str): The input text.
+
+        Returns:
+            list: A list of k-mer tokens.
+        """
         return kmer_tokenizer(text, ngram=self.ngram, stride=self.stride)
 
     def _convert_token_to_id(self, token):
+        """
+        Converts a token to its corresponding ID.
+
+        Args:
+            token (str): The token to convert.
+
+        Returns:
+            int: The token ID.
+        """
         return self.vocab.get(token, self.vocab.get(self.unk_token))
 
     def _convert_id_to_token(self, index):
+        """
+        Converts an ID to its corresponding token.
+
+        Args:
+            index (int): The token ID.
+
+        Returns:
+            str: The token.
+        """
         return self.decoder.get(index, self.unk_token)
 
     def save_vocabulary(self, save_directory, filename_prefix=None):
+        """
+        Saves the vocabulary to a file.
+
+        Args:
+            save_directory (str): The directory to save the vocabulary.
+            filename_prefix (str, optional): Prefix for the vocabulary file name.
+
+        Returns:
+            tuple: Path to the saved vocabulary file.
+        """
         if filename_prefix:
             vocab_file = f"{filename_prefix}-vocab.json"
         else:
@@ -72,9 +130,27 @@ class KmerTokenizer(PreTrainedTokenizer):
         return (path,)
 
     def get_vocab(self):
+        """
+        Returns the vocabulary dictionary.
+
+        Returns:
+            dict: The vocabulary mapping tokens to IDs.
+        """
         return self.vocab
         
     def create_vocabulary(self, text_iterator, append_to_existing_vocabulary=False, vocab_path="../json/vocab_symbol_to_number.json", save_vocabulary=False):
+        """
+        Creates a vocabulary from the provided text iterator.
+
+        Args:
+            text_iterator (iterator): An iterator over the training data.
+            append_to_existing_vocabulary (bool): Whether to append to an existing vocabulary. Defaults to False.
+            vocab_path (str, optional): Path to load/save the vocabulary.
+            save_vocabulary (bool): Whether to save the vocabulary. Defaults to False.
+
+        Returns:
+            dict: The created vocabulary.
+        """
         print(f"Counting k-mers (ngram={self.ngram}, limit={self.max_vocab_size})...")
         counter = collections.Counter()
         
@@ -114,4 +190,13 @@ class KmerTokenizer(PreTrainedTokenizer):
         return self.vocab
         
     def _load_vocab_from_json(self, path, append_to_existing_vocabulary=False):
+        """
+        Loads a vocabulary from a JSON file.
+
+        Args:
+            path (str): Path to the JSON vocabulary file.
+
+        Returns:
+            dict: The loaded vocabulary.
+        """
         return helpers._load_vocab_from_json(path, append_to_existing_vocabulary, self.vocab)

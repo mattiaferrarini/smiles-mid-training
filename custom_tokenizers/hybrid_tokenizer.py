@@ -1,15 +1,23 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 import os
 import re
 import json
 from transformers import BatchEncoding, PreTrainedTokenizerBase
 
 class HybridTokenizer(PreTrainedTokenizerBase):
+    """
+    Tokenizer that combines a base tokenizer (e.g., for natural language) with a chemical tokenizer.
+    """
     def __init__(self, base_tokenizer, chem_tokenizer, chem_start, chem_end, **kwargs):
+        """
+        Initializes the HybridTokenizer.
+
+        Args:
+            base_tokenizer (PreTrainedTokenizerBase): The base tokenizer for non-chemical text.
+            chem_tokenizer (PreTrainedTokenizerBase): The tokenizer for chemical text.
+            chem_start (str): The token marking the start of a chemical sequence.
+            chem_end (str): The token marking the end of a chemical sequence.
+            **kwargs: Additional keyword arguments passed to `PreTrainedTokenizerBase`.
+        """
         # 1. Sync special tokens from base_tokenizer if not provided in kwargs
         # This prevents eos_token or pad_token from being None
         for token_attr in ["pad_token", "eos_token", "bos_token", "unk_token"]:
@@ -61,11 +69,28 @@ class HybridTokenizer(PreTrainedTokenizerBase):
 
     def save_pretrained(self, save_directory, **kwargs):
         """
-        Delegates saving to the base tokenizer. 
+        Saves the tokenizer vocabulary and configuration to the specified directory.
+
+        Args:
+            save_directory (str): The directory to save the tokenizer files.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            tuple: Paths to the saved files.
         """
         return self.base_tokenizer.save_pretrained(save_directory, **kwargs)
     
     def save_vocabulary(self, save_directory, filename_prefix=None):
+        """
+        Saves the vocabulary to a file.
+
+        Args:
+            save_directory (str): The directory to save the vocabulary.
+            filename_prefix (str, optional): Prefix for the vocabulary file name.
+
+        Returns:
+            tuple: Path to the saved vocabulary file.
+        """
         base_files = self.base_tokenizer.save_vocabulary(save_directory, filename_prefix)
         
         if filename_prefix:
@@ -81,11 +106,21 @@ class HybridTokenizer(PreTrainedTokenizerBase):
     @property
     def added_tokens_decoder(self):
         """
+        Returns the added tokens decoder.
         Required for handling special tokens during saving.
+
+        Returns:
+            dict: The added tokens decoder.
         """
         return self.base_tokenizer.added_tokens_decoder
     
     def create_chem_vocab(self):
+        """
+        Creates the chemical vocabulary and ID mapping.
+
+        Returns:
+            tuple: A tuple containing the chemical vocabulary and the ID mapping.
+        """
         base_vocab = self.base_tokenizer.get_vocab().copy()
         chem_vocab = self.chem_tokenizer.get_vocab().copy()
         chem_ids_map = {}
@@ -110,15 +145,28 @@ class HybridTokenizer(PreTrainedTokenizerBase):
     
     @property
     def vocab_size(self):
-        """Returns the total size of the vocabulary"""
+        """
+        Returns:
+            int: The size of the vocabulary.
+        """
         return len(self.base_tokenizer) + len(self.chem_ids_map)
 
     def __len__(self):
-        """Required for len(tokenizer) calls"""
+        """
+        Returns the total size of the vocabulary.
+
+        Returns:
+            int: The size of the vocabulary.
+        """
         return self.vocab_size
     
     def get_vocab(self):
-        """Required by PreTrainedTokenizerBase"""
+        """
+        Returns the vocabulary dictionary.
+
+        Returns:
+            dict: The vocabulary mapping tokens to IDs.
+        """
         vocab = self.base_tokenizer.get_vocab().copy()
         # Add chem tokens with their new IDs
         reverse_chem_vocab = {v: k for k, v in self.chem_tokenizer.get_vocab().items()}
@@ -130,7 +178,16 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         return vocab
     
     def convert_ids_to_tokens(self, ids, skip_special_tokens=False):
-        """Converts a single index or a list of indices to token(s)."""
+        """
+        Converts a single index or a list of indices to token(s).
+
+        Args:
+            ids (int or list): The token ID or list of IDs.
+            skip_special_tokens (bool): Whether to skip special tokens. Defaults to False.
+
+        Returns:
+            str or list: The token or list of tokens.
+        """
         if isinstance(ids, int):
             return self._convert_id_to_token_single(ids, skip_special_tokens)
         return [self._convert_id_to_token_single(i, skip_special_tokens) for i in ids]
@@ -151,7 +208,15 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         return self.base_tokenizer.convert_ids_to_tokens(index)
     
     def convert_tokens_to_ids(self, tokens):
-        """Converts a token string (or list of strings) to a single integer ID (or list of IDs)."""
+        """
+        Converts a token string (or list of strings) to a single integer ID (or list of IDs).
+
+        Args:
+            tokens (str or list): The token or list of tokens.
+
+        Returns:
+            int or list: The token ID or list of IDs.
+        """
         # FIX: Handle None input (which happens if pad_token is missing)
         if tokens is None:
             return None
@@ -162,6 +227,15 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         return [self._convert_token_to_id_single(t) for t in tokens]
     
     def _convert_token_to_id_single(self, token):
+        """
+        Converts a single token to its ID.
+
+        Args:
+            token (str): The token to convert.
+
+        Returns:
+            int: The token ID.
+        """
         # 1. Check special tokens
         if token == self.chem_start:
             return self.chem_start_id
@@ -182,6 +256,16 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         return self.base_tokenizer.unk_token_id
     
     def decode(self, token_ids, **kwargs):
+        """
+        Decodes a sequence of IDs back to a string.
+
+        Args:
+            token_ids (int or list): The token ID or list of IDs.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            str: The decoded string.
+        """
         tokens = []
         reverse_chem_map = {v: k for k, v in self.chem_ids_map.items()}
         
@@ -204,7 +288,15 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         return ''.join(tokens)
     
     def _tokenize_single_text(self, text):
-        """Helper to tokenize a single string into a list of IDs"""
+        """
+        Helper to tokenize a single string into a list of IDs.
+
+        Args:
+            text (str): The input text.
+
+        Returns:
+            list: A list of token IDs.
+        """
         segments = re.split(f"({re.escape(self.chem_start)}.*?{re.escape(self.chem_end)})", text)
         input_ids = []
 
@@ -241,7 +333,17 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         return input_ids
 
     def __call__(self, text, text_pair=None, **kwargs):
+        """
+        Tokenizes and encodes the input text.
 
+        Args:
+            text (str or list): The input text or list of texts.
+            text_pair (str or list, optional): A second input text or list of texts.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            BatchEncoding: The encoded output.
+        """
         if text is None:
             return None
         

@@ -18,6 +18,15 @@ from .ape_wordpiece import APEWordPieceTokenizer
 from .character_tokenizer import CharacterTokenizer
 
 def assemble_tokenizer(config):
+    """
+    Assembles a tokenizer based on the provided configuration.
+
+    Args:
+        config (dict): A dictionary containing tokenizer configuration parameters.
+
+    Returns:
+        PreTrainedTokenizerBase: The assembled tokenizer instance.
+    """
     # Recupera i valori dal config
     tokenizer_type = config["tokenizer"]["type"]
     special_tokens = config["tokenizer"].get("special_tokens", {})
@@ -89,14 +98,13 @@ def assemble_tokenizer(config):
                 print(f"Warning: Pre-built vocab not found at {vocab_file}. Initializing default {chem_type} tokenizer.")
                 chem_tokenizer = TokenizerClass()
             
-        # Creazione Istanza Ibrida
+        # Assemble HybridTokenizer
         hybrid_tokenizer = HybridTokenizer(
             base_tokenizer=base_tokenizer,
             chem_tokenizer=chem_tokenizer,
             chem_start=START_SMILES,
             chem_end=END_SMILES
         )
-        # IMPORTANTE: Restituisci l'istanza ibrida, non quella base!
         return hybrid_tokenizer
     
     else:

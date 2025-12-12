@@ -23,8 +23,11 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
 
     def get_pretokenization_pattern(self):
         """
-        Returns the regex pattern for pre-tokenization.
-        Override this method to customize pre-tokenization behavior.
+        This pattern is designed to split SMILES strings into chemically meaningful units
+        (atoms, bonds, rings, branches) before the WordPiece algorithm is applied.
+
+        Returns:
+            str: The regex pattern string.
         """
         return r"(\[[^\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|\%[0-9]{2}|[0-9])"
 
@@ -39,6 +42,19 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
         config=None,
         **kwargs
     ):
+        """
+        Initializes the APEWPHFTokenizer.
+
+        Args:
+            vocab_file (str, optional): Path to a JSON file containing the vocabulary mapping.
+            tokenizer_file (str, optional): Path to a tokenizer.json file.
+            unk_token (str): The unknown token. Defaults to "[UNK]".
+            pad_token (str): The padding token. Defaults to "[PAD]".
+            bos_token (str): The beginning of sequence token. Defaults to "[BOS]".
+            eos_token (str): The end of sequence token. Defaults to "[EOS]".
+            config (dict, optional): A dictionary containing tokenizer configuration parameters.
+            **kwargs: Additional keyword arguments passed to `PreTrainedTokenizerFast`.
+        """
         # Get config parameters
         if config and isinstance(config, dict) and "tokenizer" in config:
             self.max_vocab_size = config["tokenizer"]["params"].get("max_vocab_size", 20000)
@@ -153,7 +169,16 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
         return self.get_vocab()
 
     def save_vocabulary(self, save_directory, filename_prefix=None):
-        """Save vocabulary files (vocab.txt for WordPiece)"""
+        """
+        Save vocabulary files
+        
+        Args:
+            save_directory (str): The directory where the vocabulary will be saved.
+            filename_prefix (str, optional): A prefix to add to the file names.
+
+        Returns:
+            Tuple[str]: A tuple containing the paths to the saved files.
+        """
         if not os.path.isdir(save_directory):
             os.makedirs(save_directory, exist_ok=True)
             
@@ -163,7 +188,16 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
         return tuple(files)
     
     def save_pretrained(self, save_directory, **kwargs):
-        """Save tokenizer in HuggingFace-compatible format"""
+        """
+        Saves tokenizer in HuggingFace-compatible format
+        
+        Args:
+            save_directory (str): The directory where the files will be saved.
+            **kwargs: Additional keyword arguments passed to the parent `save_pretrained`.
+
+        Returns:
+            Tuple[str, str]: Paths to the `tokenizer.json` and `tokenizer_config.json` files.
+        """
         save_directory = Path(save_directory)
         save_directory.mkdir(parents=True, exist_ok=True)
         
@@ -191,7 +225,22 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
 
     @classmethod
     def from_pretrained(cls, pretrained_directory, **kwargs):
-        """Load tokenizer from HuggingFace-compatible format"""
+        """
+        Loads tokenizer from HuggingFace-compatible format
+
+        It attempts to load `tokenizer.json` first. If not found, it attempts to load 
+        from `vocab.json` (or `vocab.txt`) and `tokenizer_config.json`.
+
+        Args:
+            pretrained_directory (str): The directory containing the tokenizer files.
+            **kwargs: Additional keyword arguments passed to the constructor.
+
+        Returns:
+            APEWordPieceTokenizer: The loaded tokenizer instance.
+
+        Raises:
+            FileNotFoundError: If `tokenizer.json` and `vocab.json` are not found.
+        """
         pretrained_directory = Path(pretrained_directory)
         
         # Load config if exists to ensure we get custom parameters
@@ -225,11 +274,16 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
 
     @property
     def vocab_size(self):
-        """Return vocabulary size"""
+        """
+        Returns:
+            int: The size of the vocabulary.
+        """
         return self._tokenizer.get_vocab_size()
 
     def reset_vocabulary(self):
-        """Reset to a fresh WordPiece model with special tokens"""
+        """
+        Reset to a fresh BPE model with special tokens
+        """
         unk_token = self.unk_token if self.unk_token else "[UNK]"
         tokenizer_object = Tokenizer(models.WordPiece(unk_token=unk_token))
         tokenizer_object.pre_tokenizer = pre_tokenizers.Split(

@@ -4,7 +4,18 @@ from rdkit import RDLogger
 RDLogger.DisableLog('rdApp.*')
 
 class ChemScorer:
+    """
+    Scorer for chemical validity and patterns to guide token merging.
+    """
     def __init__(self, base_score=1.0, bonus_pattern=1.1, bonus_valid=1.2):
+        """
+        Initializes the ChemScorer.
+
+        Args:
+            base_score (float): The base score for a merge. Defaults to 1.0.
+            bonus_pattern (float): The score multiplier for a valid SMARTS pattern. Defaults to 1.1.
+            bonus_valid (float): The score multiplier for a valid SMILES molecule. Defaults to 1.2.
+        """
         self.BASE_SCORE = base_score
         self.BONUS_PATTERN = bonus_pattern
         self.BONUS_VALID = bonus_valid

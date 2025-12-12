@@ -1,9 +1,13 @@
-from transformers import PreTrainedTokenizer
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import os
 import re
 import json
-import os
-from typing import Optional, List, Dict, Any
 import utils.helpers as helpers
+from transformers import PreTrainedTokenizer
 
 class SelfiesTokenizer(PreTrainedTokenizer):
 

@@ -1,15 +1,14 @@
-from transformers import PreTrainedTokenizer
-from tokenizers import Tokenizer
-import re
-import json
-from pathlib import Path
-from typing import Optional, List, Dict, Any
-import os
 import sys
+from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-
+import os
+import re
+import json
 import utils.helpers as helpers
+from transformers import PreTrainedTokenizer
+
 class CharacterTokenizer(PreTrainedTokenizer):
 
     CHAR_LEVEL_PATTERN = r"." 
@@ -138,9 +137,6 @@ class CharacterTokenizer(PreTrainedTokenizer):
             json.dump(self.vocab, f, ensure_ascii=False, indent=2)
             
         return (path,)
-    
-    def get_vocab(self):
-        return self.vocab
 
     def load_vocabulary(self, vocab_path="../json/vocab_symbol_to_number.json"):
         self.vocab = helpers.load_vocabulary(vocab_path)

@@ -3,16 +3,11 @@ Optimized APE (Atom Pair Encoding) tokenizer using HuggingFace's fast BPE implem
 This replaces the slow custom BPE training with tokenizers library for significant speedup.
 '''
 
-from transformers import PreTrainedTokenizerFast
-from tokenizers import Tokenizer, models, trainers, pre_tokenizers, normalizers
-from tokenizers.pre_tokenizers import PreTokenizer
-from tokenizers.normalizers import Normalizer
-import json
 import os
-import re
-from typing import Optional, Tuple, List
+import json
 from pathlib import Path
-
+from transformers import PreTrainedTokenizerFast
+from tokenizers import models, pre_tokenizers, trainers, Tokenizer
 
 class APEHFTokenizer(PreTrainedTokenizerFast):
     """

@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import re
 import json
-import yaml
 import torch
 import random
 import argparse
@@ -21,12 +20,9 @@ from datasets import load_dataset, interleave_datasets
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
-import networkx as nx
-from rdkit import Chem
-from rdkit.Chem import rdmolops
 
 def prepare_sciq(output, target_count=15000):
-    print(f"Downloading SciQ dataset...")
+    print("Downloading SciQ dataset...")
     dataset = load_dataset("allenai/sciq", split="train")
 
     print(f"Processing up to {target_count} examples into strict format...")
@@ -78,7 +74,7 @@ def prepare_sciq(output, target_count=15000):
     shutil.move(tmp_output, output) # Atomic move
 
 def prepare_metamathqa(output, target_count=15000):
-    print(f"Downloading MetaMathQA dataset...")
+    print("Downloading MetaMathQA dataset...")
     dataset = load_dataset("meta-math/MetaMathQA", split="train")
 
     print(f"Processing up to {target_count} examples into strict format...")
@@ -329,7 +325,7 @@ def prepare_datasets(config):
 
     # Adding validation set
     # return final_dataset
-    dataset_splits = combined_dataset.train_test_split(test_size=0.05, seed=42)
+    dataset_splits = final_dataset.train_test_split(test_size=0.05, seed=42)
     
     print(f"Train size: {len(dataset_splits['train'])}, Validation size: {len(dataset_splits['test'])}")
     return dataset_splits
@@ -401,7 +397,8 @@ def setup_tokenizer_and_model(config, args):
     )    
     return tokenizer, model, config_found
 
-def train(config, model, tokenizer, dataset, base_config):
+# def train(config, model, tokenizer, dataset, base_config):
+def train(config, model, tokenizer, dataset_splits, base_config):
     peft_config = LoraConfig(
         r=config['peft']['lora_r'],
         lora_alpha=config['peft']['lora_alpha'],
@@ -484,7 +481,7 @@ def train(config, model, tokenizer, dataset, base_config):
             shutil.copyfile(base_config, dest)
             print(f"Copied training_config.yaml to {dest}")
         else:
-            print(f"Failed to find training_config.yaml, instruction-tuning might fail...")
+            print("Failed to find training_config.yaml, instruction-tuning might fail...")
 
         trainer.model.generation_config.eos_token_id = [
             tokenizer.eos_token_id,
@@ -512,9 +509,12 @@ def main():
     config = load_config(args.config) 
     hf_auth() 
 
-    dataset = prepare_datasets(config)
+    # dataset = prepare_datasets(config)
+    dataset_splits = prepare_datasets(config)
+
     tokenizer, model, base_config = setup_tokenizer_and_model(config, args)
-    trainer = train(config, model, tokenizer, dataset, base_config)
+    # trainer = train(config, model, tokenizer, dataset, base_config)
+    trainer = train(config, model, tokenizer, dataset_splits, base_config)
 
     print("\n=== SANITY CHECK: TEST GENERATION ===")
     test_messages = [{"role": "user", "content": "Explain what a molecule is in one sentence."}]

@@ -2,15 +2,11 @@
 Optimized APE (Atom Pair Encoding) tokenizer using HuggingFace's fast WordPiece implementation.
 '''
 
-from transformers import PreTrainedTokenizerFast
-from tokenizers import Tokenizer, models, trainers, pre_tokenizers, normalizers
-from tokenizers.models import WordPiece
-from tokenizers.trainers import WordPieceTrainer
-import json
 import os
-from typing import Optional, Tuple
+import json
 from pathlib import Path
-
+from transformers import PreTrainedTokenizerFast
+from tokenizers import models, pre_tokenizers, trainers, Tokenizer
 
 class APEWordPieceTokenizer(PreTrainedTokenizerFast):
     """

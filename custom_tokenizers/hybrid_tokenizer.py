@@ -1,9 +1,12 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import os
 import re
 import json
-
-from typing import List, Union, Dict, Optional, Tuple, Any
-from transformers import AutoTokenizer, BatchEncoding, PreTrainedTokenizerBase
+from transformers import BatchEncoding, PreTrainedTokenizerBase
 
 class HybridTokenizer(PreTrainedTokenizerBase):
     def __init__(self, base_tokenizer, chem_tokenizer, chem_start, chem_end, **kwargs):

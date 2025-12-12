@@ -1,8 +1,5 @@
 import json
 from pathlib import Path
-from datasets import Dataset
-from transformers import PreTrainedTokenizerBase
-from typing import Type
 
 def _load_vocab_from_json(path, append_to_existing_vocabulary=False, self_vocab=None):
     p = Path(path)

@@ -1,8 +1,5 @@
 import sys
-import os
 import logging
-import pprint
-import re
 from datasets import load_dataset
 from utils.create_smiles import annotate_smiles
 
@@ -39,7 +36,7 @@ try:
     shuffled_dataset = dataset.shuffle(seed=RANDOM_SEED)
     random_samples = shuffled_dataset.take(20)
     
-    logging.info(f"--- DATASET INSPECTION ---")
+    logging.info("--- DATASET INSPECTION ---")
     logging.info(f"Source: {DATA_FOLDER}")
     logging.info(f"Pattern: {DATA_FILES_PATTERN}")
 

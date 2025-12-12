@@ -4,7 +4,6 @@ import collections
 import utils.helpers as helpers
 
 from tqdm import tqdm
-from typing import Optional
 from transformers import PreTrainedTokenizer
 from SmilesPE.pretokenizer import kmer_tokenizer
 

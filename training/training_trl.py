@@ -25,10 +25,6 @@ from accelerate import Accelerator, InitProcessGroupKwargs
 from trl import SFTTrainer, SFTConfig
 from transformers import (
     AutoModelForCausalLM,
-    AutoTokenizer,
-    DataCollatorForLanguageModeling,
-    Trainer,
-    TrainingArguments,
     TrainerCallback
 )
 
@@ -38,7 +34,6 @@ from dotenv import load_dotenv
 import wandb
 import torch
 import torch.distributed as dist
-import time
 from utils.logging import get_logger
 import argparse
 from utils.config import load_config
@@ -47,7 +42,6 @@ import json
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 from embeddings.embedding_initializer import initialize_embeddings as init_embeddings_fn
 
-from embeddings.embedding_initializer import initialize_average_embeddings
 
 LOGGER = get_logger(__name__)
 

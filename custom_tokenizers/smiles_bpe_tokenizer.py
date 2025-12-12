@@ -1,8 +1,6 @@
-from transformers import PreTrainedTokenizerFast
-from tokenizers import Tokenizer, models, trainers, pre_tokenizers, decoders
-import json
 import os
-from typing import Optional, Tuple, List
+from transformers import PreTrainedTokenizerFast
+from tokenizers import decoders, models, pre_tokenizers, trainers, Tokenizer
 
 class SmilesBpeTokenizer(PreTrainedTokenizerFast):
     

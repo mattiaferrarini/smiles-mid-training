@@ -3,7 +3,7 @@ import csv
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 
 def _default_csv_path():

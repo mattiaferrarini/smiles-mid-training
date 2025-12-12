@@ -1,4 +1,6 @@
-from .character_tokenizer import CharacterTokenizer 
+import os
+from transformers import AutoTokenizer
+
 from .element_tokenizer import ElementTokenizer
 from .elementallparenthesis_tokenizer import ElementAllParenthesisTokenizer
 from .elementaromatics_tokenizer import ElementAromaticsTokenizer
@@ -13,8 +15,7 @@ from .chem_ape import ChemAPETokenizer
 from .hybrid_tokenizer import HybridTokenizer
 from .kmer_tokenizer import KmerTokenizer
 from .ape_wordpiece import APEWordPieceTokenizer
-from transformers import AutoTokenizer
-import os
+from .character_tokenizer import CharacterTokenizer
 
 def assemble_tokenizer(config):
     # Recupera i valori dal config

@@ -2,19 +2,17 @@
 Adapted and simplified from https://github.com/mikemayuare/apetokenizer.
 '''
 
-from collections import defaultdict
-import re
-import json
-import os
-from pathlib import Path
-from transformers import PreTrainedTokenizerBase
-from typing import Optional, List, Dict, Any
 import sys
+from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import os
+import re
+import json
 from datetime import datetime
-import utils.helpers as helpers
-
+from collections import defaultdict
+from transformers import PreTrainedTokenizerBase
 
 class APETokenizer(PreTrainedTokenizerBase):
     def __init__(self, 

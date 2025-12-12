@@ -3,8 +3,6 @@ try:
 except ImportError:
     from ape_tokenizer import APETokenizer
 
-import re
-
 try:
     from .scorers.chem_scorer import ChemScorer
 except ImportError:

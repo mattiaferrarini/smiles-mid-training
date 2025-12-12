@@ -1,15 +1,8 @@
-import os
-import torch
-import json
 import re
 import sys
+import json
+import torch
 from pathlib import Path
-
-# --- FIX IMPORT ---
-try:
-    from custom_tokenizers.element_tokenizer import ElementTokenizer
-except ImportError:
-    pass 
 
 def initialize_default_embeddings(model, tokenizer):
     model.resize_token_embeddings(len(tokenizer))

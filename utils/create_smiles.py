@@ -1,7 +1,5 @@
-import sys
 import os
 import logging
-import pprint
 import re
 import json
 

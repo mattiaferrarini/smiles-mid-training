@@ -4,7 +4,7 @@ from pathlib import Path
 from utils.config import load_config
 from utils.logging import setup_logging
 from training.training import train_model
-from training.benchmark import run_chemiq, run_chembench
+from evaluate.benchmark import run_chemiq, run_chembench
 from training.baselines import download_baseline_artifacts
 
 app = typer.Typer(help="Test novel tokenisation schemes and mid-stage training strategies for open-source chemical LLMs")

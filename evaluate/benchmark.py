@@ -16,7 +16,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from ChemIQ.utils.parser import AnswerParser
 from ChemIQ.utils.answer_verifier import AnswerVerifier
-from chembench.utils import enable_caching, enable_logging
+from chembench.utils import enable_logging
 from chembench.evaluate import ChemBenchmark, save_topic_reports
 
 from utils.config import load_config
@@ -87,7 +87,7 @@ class ModelWrapper:
             print(f"No PEFT config found, using full model: {base_model_path}")
             is_peft = False
 
-        print(f"Loading base model weights...")
+        print("Loading base model weights...")
         self.model = AutoModelForCausalLM.from_pretrained(
             base_model_path, 
             device_map=device_map, 

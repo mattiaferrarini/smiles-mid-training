@@ -295,11 +295,11 @@ def train(config, accelerator, output_dir):
         datasets.utils.logging.enable_progress_bar()   
 
     # Mix datasets
-    num_fine_web = len(fineweb)
-    num_my_data = len(dataset)
-    total_samples = num_fine_web + num_my_data
-    prob_fine_web = num_fine_web / total_samples
-    prob_my_data = num_my_data / total_samples
+    # num_fine_web = len(fineweb)
+    # num_my_data = len(dataset)
+    # total_samples = num_fine_web + num_my_data
+    # prob_fine_web = num_fine_web / total_samples
+    # prob_my_data = num_my_data / total_samples
     # comment this line to use config probabilities
     # probabilities = [prob_fine_web, prob_my_data]
 

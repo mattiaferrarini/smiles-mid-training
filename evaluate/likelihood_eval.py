@@ -6,7 +6,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import os
 import json
 import torch
-import argparse
 import numpy as np
 import torch.distributed as dist
 
@@ -418,17 +417,16 @@ def get_tokenizer_for_eval(model_path):
     
     return tokenizer
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", type=str, required=True, help="Path to the pretrained model or directory containing checkpoints")
-    parser.add_argument("--output_dir", type=str, required=True, help="Directory to save the results")
-    parser.add_argument("--debug", action="store_true", help="Enable debug output")
-    parser.add_argument("--annotate_smiles", action="store_true", help="Enable SMILES annotation with [START_SMILES] tags")
-    args = parser.parse_args()
-    model_path = args.model_path
-    output_dir = args.output_dir
-    debug = args.debug
-
+def run_likelihood_eval(model_path, output_dir, debug = False, annotate_smiles = False):
+    """
+    Runs likelihood-based evaluation on ChemBench for all checkpoints in the specified model path
+    
+    Args:
+        model_path (str): Path to the pretrained model or directory containing checkpoints
+        output_dir (str): Directory where to save the results
+        debug (bool): If True, enables debug output
+        annotate_smiles (bool): If True, annotates SMILES with [START_SMILES] tags
+    """
     # Setup distributed environment
     rank, world_size, local_rank = setup_distributed()
     
@@ -462,7 +460,7 @@ if __name__ == "__main__":
     local_results = []
     for checkpoint_path in my_checkpoints:
         print(f"\nRank {rank}: Evaluating checkpoint: {checkpoint_path}")
-        eval_results = eval_path(checkpoint_path, tokenizer, local_rank, debug=debug, use_smiles_annotation=args.annotate_smiles)
+        eval_results = eval_path(checkpoint_path, tokenizer, local_rank, debug=debug, use_smiles_annotation=annotate_smiles)
         log_path_results(eval_results)
         local_results.append(eval_results)
 

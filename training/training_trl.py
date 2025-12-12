@@ -3,7 +3,6 @@ import sys
 from pathlib import Path
 import yaml
 
-# Add parent directory to Python path to enable imports from utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import transformers
@@ -365,7 +364,15 @@ def init_wandb(config):
     return run
 
 
-def train_model(config, output_dir):
+def train_model(config_dict, output_dir):
+    """
+    Main entry point for fine-tuning a model
+    Sets up the environment, accelerator, and runs the training loop
+
+    Args:
+        config_dict (dict): The configuration dictionary
+        output_dir (str): The directory where results will be saved
+    """
     load_dotenv()
 
     if "SLURM_PROCID" in os.environ:
@@ -385,26 +392,26 @@ def train_model(config, output_dir):
         # Save config to output directory in both YAML and JSON formats
         config_output_path_yaml = os.path.join(output_dir, "training_config.yaml")
         with open(config_output_path_yaml, "w") as f:
-            yaml.dump(config, f, default_flow_style=False)
+            yaml.dump(config_dict, f, default_flow_style=False)
         print(f"Saved config to {config_output_path_yaml}")
 
         config_output_path_json = os.path.join(output_dir, "training_config.json")
         with open(config_output_path_json, "w") as f:
-            json.dump(config, f, indent=4)
+            json.dump(config_dict, f, indent=4)
         print(f"Saved config to {config_output_path_json}")
         
         print("Starting fine-tuning.")
         print(f"Distributed: {accelerator.distributed_type}")
         print(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
-        print(f"Config: {config}")
+        print(f"Config: {config_dict}")
         print(f"Output dir: {output_dir}")
     
     # Initialize wandb
-    if config["training"]["report_to"] == "wandb":
-        run = init_wandb(config)
+    if config_dict["training"]["report_to"] == "wandb":
+        run = init_wandb(config_dict)
 
     # Start training
-    trainer = train(config, accelerator, output_dir)
+    trainer = train(config_dict, accelerator, output_dir)
     LOGGER.info(f"[RANK {int(os.environ.get('RANK', 0))}] Finished training")
     
     # Save final model
@@ -414,22 +421,10 @@ def train_model(config, output_dir):
     if accelerator.is_main_process:
         print(f"Saved model to {final_model_dir}")
     
-    if config["training"]["report_to"] == "wandb":
+    if config_dict["training"]["report_to"] == "wandb":
         run.finish()
     
     # Ensure group termination    
     accelerator.wait_for_everyone()
     if dist.is_initialized():
         dist.destroy_process_group()
-
-
-if __name__ == "__main__":
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Fine-tune Gemma model.")
-    parser.add_argument("--config-path", "-c", type=str, required=True)
-    parser.add_argument("--output-dir", "-o", type=str, required=True)
-    args = parser.parse_args()
-
-    config = load_config(args.config_path)
-    output_dir = args.output_dir
-    train_model(config, output_dir)

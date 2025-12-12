@@ -6,7 +6,6 @@ from .elementallparenthesis_tokenizer import ElementAllParenthesisTokenizer
 from .elementaromatics_tokenizer import ElementAromaticsTokenizer
 from .elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from .elementrings_tokenizer import ElementRingsTokenizer
-from .selfies_tokenizer import SelfiesTokenizer
 from .smiles_bpe_tokenizer import SmilesBpeTokenizer
 from .ape_tokenizer import APETokenizer
 from .ape_hf_tokenizer import APEHFTokenizer
@@ -76,7 +75,6 @@ def assemble_tokenizer(config):
                 "elementaromatics": ElementAromaticsTokenizer,
                 "elementnoparenthesis": ElementNoParenthesisTokenizer,
                 "elementrings": ElementRingsTokenizer,
-                "selfies": SelfiesTokenizer,
                 "ape": APETokenizer,
                 "ape_hf": APEHFTokenizer,
                 "ape_wp_hf": APEWPHFTokenizer,

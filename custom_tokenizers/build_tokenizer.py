@@ -5,26 +5,24 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import os
 import re
-import argparse
 
 from datasets import load_dataset
 from utils.config import load_config
 from utils.helpers import build_and_save_tokenizer 
 
-from character_tokenizer import CharacterTokenizer 
-from element_tokenizer import ElementTokenizer
-from elementallparenthesis_tokenizer import ElementAllParenthesisTokenizer
-from elementaromatics_tokenizer import ElementAromaticsTokenizer
-from elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
-from elementrings_tokenizer import ElementRingsTokenizer
-from selfies_tokenizer import SelfiesTokenizer
-from smiles_bpe_tokenizer import SmilesBpeTokenizer
-from ape_tokenizer import APETokenizer
-from ape_hf_tokenizer import APEHFTokenizer
-from ape_wp_hf_tokenizer import APEWPHFTokenizer
-from chem_ape import ChemAPETokenizer
-from kmer_tokenizer import KmerTokenizer
-from ape_wordpiece import APEWordPieceTokenizer
+from .character_tokenizer import CharacterTokenizer 
+from .element_tokenizer import ElementTokenizer
+from .elementallparenthesis_tokenizer import ElementAllParenthesisTokenizer
+from .elementaromatics_tokenizer import ElementAromaticsTokenizer
+from .elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
+from .elementrings_tokenizer import ElementRingsTokenizer
+from .smiles_bpe_tokenizer import SmilesBpeTokenizer
+from .ape_tokenizer import APETokenizer
+from .ape_hf_tokenizer import APEHFTokenizer
+from .ape_wp_hf_tokenizer import APEWPHFTokenizer
+from .chem_ape import ChemAPETokenizer
+from .kmer_tokenizer import KmerTokenizer
+from .ape_wordpiece import APEWordPieceTokenizer
 
 TOKENIZER_CLASSES = {
     "character": CharacterTokenizer,
@@ -33,7 +31,6 @@ TOKENIZER_CLASSES = {
     "elementaromatics": ElementAromaticsTokenizer,
     "elementnoparenthesis": ElementNoParenthesisTokenizer,
     "elementrings": ElementRingsTokenizer,
-    "selfies": SelfiesTokenizer,
     "smiles_bpe": SmilesBpeTokenizer,
     "ape": APETokenizer,
     "ape_hf": APEHFTokenizer,
@@ -43,15 +40,15 @@ TOKENIZER_CLASSES = {
     "ape_wordpiece": APEWordPieceTokenizer,
 }
 
-def main():
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Build tokenizer")
-    parser.add_argument("--output-dir", type=str, required=True, help="Directory where to save the tokenizer")
-    parser.add_argument("--config", type=str, default="configs/tokenizer.yaml", help="Path to config file")
-
-    args = parser.parse_args()
-
-    config = load_config(args.config)
+def build_tokenizer(output_dir, config_path):
+    """
+    Builds and saves a tokenizer based on the provided configuration
+    
+    Args:
+        output_dir (str): Directory where to save the tokenizer
+        config_path (str): Path to the configuration file
+    """
+    config = load_config(config_path)
 
     print("Configuration Loaded:")
     print(config)
@@ -64,8 +61,8 @@ def main():
         split="train",
     )
 
+    base_output_dir = output_dir
     text_field = config["data"]["text_field"]
-    base_output_dir = args.output_dir
     tokenizer_type = config["tokenizer"]["type"] 
 
     # Handle case where type is 'base' or 'hybrid'
@@ -84,7 +81,7 @@ def main():
         raise ValueError(f"Unknown tokenizer type: {tokenizer_type}")
     
     if tokenizerclass:
-        print(f"--- Starting build for tokenizer type: {tokenizer_type} ---")
+        print(f"Starting build for tokenizer type: {tokenizer_type}")
         
         print("Filtering dataset to extract chemical segments (flattening to one SMILES per row)...")
         
@@ -141,8 +138,4 @@ def main():
             config=config,
         )
 
-        print("\nTokenizer built and saved.")
-
-if __name__ == "__main__":
-    main()
-
+        print("\nTokenizer built and saved")

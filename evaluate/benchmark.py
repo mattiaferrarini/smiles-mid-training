@@ -1,32 +1,31 @@
-import os
 import sys
-import json
-import torch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import os
+import json
+import torch
 from rdkit import RDLogger
 from datetime import timedelta
 from peft import PeftModel, PeftConfig
-from chembench.prompter import PrompterBuilder
-from chembench.types import Generation, Generations
 from accelerate import Accelerator, InitProcessGroupKwargs
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
-from ChemIQ.utils.parser import AnswerParser
-from ChemIQ.utils.answer_verifier import AnswerVerifier
-from chembench.utils import enable_logging
-from chembench.evaluate import ChemBenchmark, save_topic_reports
 
 from utils.config import load_config
 from custom_tokenizers.hybrid_tokenizer import HybridTokenizer
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
-AutoTokenizer.register("HybridTokenizer", HybridTokenizer)
+from chembench.utils import enable_logging
+from chembench.prompter import PrompterBuilder
+from chembench.types import Generation, Generations
+from chembench.evaluate import ChemBenchmark, save_topic_reports
 
-# TODO: remove this and check parsing error
+from ChemIQ.utils.parser import AnswerParser
+from ChemIQ.utils.answer_verifier import AnswerVerifier
+
 RDLogger.DisableLog('rdApp.*')
+AutoTokenizer.register("HybridTokenizer", HybridTokenizer)
 
 CHEMBENCH_TOPICS = [
     'analytical_chemistry', 
@@ -40,13 +39,22 @@ CHEMBENCH_TOPICS = [
     'toxicity_and_safety'
 ]
 
-class ModelWrapper:
+class GemmaWrapper:
+    """
+    Wrapper for loading gemma-3-1b models and their fine-tuned variants for chemical benchmarks
+    """
     def __init__(self, model_path, device=None):
+        """
+        Initializes the GemmaWrapper
+
+        Args:
+            model_path (str): Path to the pretrained or fine-tuned model (weights or adapter config)
+            device (torch.device, optional): The device to load the model on
+        """
         self.device = device
         device_map = {"": device} if device is not None else "auto"
 
         print(f"Loading tokenizer from: {model_path}")
-        # self.tokenizer = AutoTokenizer.from_pretrained(model_path)
 
         config_path = None        
         search_paths = [
@@ -126,9 +134,28 @@ class ModelWrapper:
             )
 
     def format_prompt(self, messages):
+        """
+        Applies the chat template to a list of messages
+
+        Args:
+            messages (list): List of message dictionaries (role, content)
+        
+        Returns:
+            str: Formatted prompt string
+        """
         return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
     def generate(self, prompts, **kwargs):
+        """
+        Generates text based on the provided prompts using the loaded Gemma model
+
+        Args:
+            prompts (str or list): Input prompt or list of prompts
+            **kwargs: Additional arguments
+
+        Returns:
+            Generations: A ChemBench Generations object containing the results
+        """
         if isinstance(prompts, str):
             prompts = [prompts]
         
@@ -171,6 +198,13 @@ class ModelWrapper:
         return Generations(generations=generations)  
 
 def run_chembench(model_path, output_path):
+    """
+    Runs the ChemBench benchmark suite on the specified Gemma model
+
+    Args:
+        model_path (str): Path to the Gemma model/adapter
+        output_path (str): Directory to save results
+    """
     if "SLURM_PROCID" in os.environ:
         os.environ["RANK"] = os.environ["SLURM_PROCID"]
         os.environ["LOCAL_RANK"] = os.environ["SLURM_LOCALID"]
@@ -182,10 +216,9 @@ def run_chembench(model_path, output_path):
     accelerator.wait_for_everyone()
     print(f"[Init] Rank: {accelerator.process_index}/{accelerator.num_processes} | Device: {accelerator.device}", flush=True)
 
-    # enable_caching()
     enable_logging()
 
-    model = ModelWrapper(model_path, device=accelerator.device)  
+    model = GemmaWrapper(model_path, device=accelerator.device)  
     prompter = PrompterBuilder.from_model_object(model=model, prompt_type="instruction")
 
     my_topics = [
@@ -207,124 +240,33 @@ def run_chembench(model_path, output_path):
 
     # benchmark.submit(results)
 
-# TODO: remove? not working, model copies context 
-# def get_few_shot_context(category):
-#     """Returns multi-shot examples to prevent answer copying."""
-    
-#     if category == "shortest_path":
-#         return (
-#             "Example 1:\n"
-#             "Question: Determine the number of bonds along the shortest path connecting the two dummy atoms (denoted by '*').\n"
-#             "*C1CCCCC1*\n"
-#             "Answer: \\boxed{1}\n\n"
-#             "Example 2:\n"
-#             "Question: Determine the number of bonds along the shortest path connecting the two dummy atoms (denoted by '*').\n"
-#             "*CC*C\n"
-#             "Answer: \\boxed{2}\n\n"
-#             "Example 3:\n"
-#             "Question: Determine the number of bonds along the shortest path connecting the two dummy atoms (denoted by '*').\n"
-#             "*C1CC(C*)CC1\n"
-#             "Answer: \\boxed{3}\n\n"
-#         )
-        
-#     elif category == "atom_mapping":
-#         return (
-#             "Example 1:\n"
-#             "Question: Determine the mapping of atoms from Molecule 1 to Molecule 2.\n"
-#             "Molecule 1: CO\n"
-#             "Molecule 2: OC\n"
-#             "Answer: \\boxed{[(0, 1), (1, 0)]}\n\n"
-#             "Example 2:\n"
-#             "Question: Determine the mapping of atoms from Molecule 1 to Molecule 2.\n"
-#             "Molecule 1: CCO\n"
-#             "Molecule 2: OCC\n"
-#             "Answer: \\boxed{[(0, 2), (1, 1), (2, 0)]}\n\n"
-#         )
-
-#     elif category == "nmr_elucidation":
-#         return (
-#             "Example 1:\n"
-#             "Question: Write the SMILES string of the molecule consistent with this data.\n"
-#             "Formula: C2H6O\n"
-#             "1H NMR: ...\n"
-#             "Answer: \\boxed{CCO}\n\n"
-#             "Example 2:\n"
-#             "Question: Write the SMILES string of the molecule consistent with this data.\n"
-#             "Formula: C6H6\n"
-#             "1H NMR: ...\n"
-#             "Answer: \\boxed{c1ccccc1}\n\n"
-#             "Example 3:\n"
-#             "Question: Write the SMILES string of the molecule consistent with this data.\n"
-#             "Formula: C3H6O\n"
-#             "1H NMR: ...\n"
-#             "Answer: \\boxed{CC(C)=O}\n\n"
-#         )
-
-#     elif category == "smiles_to_iupac":
-#         return (
-#             "Example 1:\n"
-#             "Question: Write the IUPAC name of this molecule:\n"
-#             "CC(=O)O\n"
-#             "Answer: \\boxed{acetic acid}\n\n"
-#             "Example 2:\n"
-#             "Question: Write the IUPAC name of this molecule:\n"
-#             "c1ccccc1\n"
-#             "Answer: \\boxed{benzene}\n\n"
-#             "Example 3:\n"
-#             "Question: Write the IUPAC name of this molecule:\n"
-#             "CCO\n"
-#             "Answer: \\boxed{ethanol}\n\n"
-#         )
-    
-#     elif "counting" in category:
-#         return (
-#             "Example 1:\n"
-#             "Question: How many carbon atoms are in the molecule:\n"
-#             "CC\n"
-#             "Answer: \\boxed{2}\n\n"
-#             "Example 2:\n"
-#             "Question: How many carbon atoms are in the molecule:\n"
-#             "c1ccccc1\n"
-#             "Answer: \\boxed{6}\n\n"
-#             "Example 3:\n"
-#             "Question: How many carbon atoms are in the molecule:\n"
-#             "C(C)C\n"
-#             "Answer: \\boxed{3}\n\n"
-#         )
-
-#     return ""
-
 def run_chemiq(model_path, chemiq_path, output_path):
+    """
+    Runs the ChemIQ benchmark on the specified Gemma model
+
+    Args:
+        model_path (str): Path to the Gemma model/adapter
+        chemiq_path (str): Root directory of the ChemIQ repository
+        output_path (str): Directory to save results
+    """
     questions = []
     jsonl_path = os.path.join(chemiq_path, "questions", "chemiq.jsonl")
     with open(jsonl_path, 'r') as f:
         for line in f:
             questions.append(json.loads(line))
 
-    model = ModelWrapper(model_path, device="cuda:0")
+    model = GemmaWrapper(model_path, device="cuda:0")
     parser = AnswerParser(jsonl_path) 
     verifier = AnswerVerifier(jsonl_path)
 
     os.makedirs(output_path, exist_ok=True)
     results_file = os.path.join(output_path, "chemiq_results.jsonl")
 
-    # system_instruction = (
-    #     "\nIMPORTANT: You must strictly follow the format requirements. "
-    #     "Do not provide explanations or reasoning. "
-    #     "Your final answer must be wrapped in \\boxed{}, for example \\boxed{answer}."
-    # )
-
     results = []
     for i, question in enumerate(questions):
         id = question.get("uuid")
         prompt = question.get("prompt")
-
-        # category = question.get("question_category")
         messages = [{"role": "user", "content": prompt}]
-
-        # few_shot_text = get_few_shot_context(category)
-        # full_prompt = few_shot_text + "Question: " + prompt + system_instruction
-        # messages = [{"role": "user", "content": full_prompt}]
 
         print(f"Processing ChemiQ question ({i}/{len(questions)}) {id}...")
         try:

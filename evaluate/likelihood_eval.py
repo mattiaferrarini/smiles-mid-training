@@ -1,36 +1,49 @@
-import os
 import sys
 from pathlib import Path
 
-# Add parent directory to Python path to enable imports from utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import torch
-import torch.distributed as dist
-from torch.nn import CrossEntropyLoss
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from dotenv import load_dotenv
-from datasets import load_dataset, load_from_disk
-import numpy as np
-from tqdm import tqdm
-import argparse
+import os
 import json
-from utils.config import load_config
-from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
-from utils.create_smiles import annotate_smiles
+import torch
+import argparse
+import numpy as np
+import torch.distributed as dist
 
+from tqdm import tqdm
+from dotenv import load_dotenv
+from utils.config import load_config
+from torch.nn import CrossEntropyLoss
+from utils.create_smiles import annotate_smiles
+from datasets import load_dataset, load_from_disk
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from custom_tokenizers.hybrid_tokenizer import HybridTokenizer
+from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
+
 AutoTokenizer.register("HybridTokenizer", HybridTokenizer)
 
-DATASET = "/capstor/store/cscs/swissai/a131/ML4Science/datasets/chembench_mcq/"
 HF_DATASET = "jablonkagroup/ChemBench"
+DATASET = "/capstor/store/cscs/swissai/a131/ML4Science/datasets/chembench_mcq/"
 
-configs = ['analytical_chemistry', 'chemical_preference', 'general_chemistry', 
-           'inorganic_chemistry', 'materials_science', 'organic_chemistry', 
-           'physical_chemistry', 'technical_chemistry', 'toxicity_and_safety']
-
+configs = [
+    'analytical_chemistry',
+    'chemical_preference',
+    'general_chemistry', 
+    'inorganic_chemistry',
+    'materials_science',
+    'organic_chemistry', 
+    'physical_chemistry',
+    'technical_chemistry',
+    'toxicity_and_safety'
+]
 
 def setup_distributed():
+    """
+    Initializes the distributed process group for multi-GPU evaluation
+
+    Returns:
+        tuple: A tuple containing (rank, world_size, local_rank)
+    """
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
         rank = int(os.environ['RANK'])
         world_size = int(os.environ['WORLD_SIZE'])
@@ -46,35 +59,56 @@ def setup_distributed():
     
     return rank, world_size, local_rank
 
-
 def cleanup_distributed():
     """Clean up distributed training"""
     if dist.is_initialized():
         dist.destroy_process_group()
 
-
 def find_checkpoint_folders(path):
+    """
+    Recursively finds valid checkpoint folders within a given path
+    A valid checkpoint is defined as a directory containing a 'config.json' file
+
+    Args:
+        path (str): The root directory to search
+
+    Returns:
+        list: A list of full paths to the found checkpoint directories
+    """
     if not os.path.isdir(path):
         return [path]
     
-    # Check if this path itself is a valid model (has config.json)
     if os.path.exists(os.path.join(path, "config.json")):
         return [path]
     
-    # Look for checkpoint folders
     checkpoints = []
     for item in sorted(os.listdir(path)):
         item_path = os.path.join(path, item)
         if os.path.isdir(item_path):
-            # Check if it's a valid checkpoint (has config.json)
             if os.path.exists(os.path.join(item_path, "config.json")):
                 checkpoints.append(item_path)
     
-    # If no checkpoints found, return the original path
     return checkpoints if checkpoints else [path]
 
-
 def get_likelihood(model, tokenizer, question, answer, debug=False, use_smiles_annotation=False):
+    """
+    Computes the negative log-likelihood of a candidate answer given a question
+
+    It concatenates the question and answer, performs a forward pass, and calculates
+    the cross-entropy loss on the tokens corresponding to the answer
+
+    Args:
+        model (torch.nn.Module): The transformer model instance
+        tokenizer (PreTrainedTokenizer): The tokenizer 
+        question (str): The question text
+        answer (str): The candidate answer text
+        debug (bool, optional): If True, enables debug output
+        use_smiles_annotation (bool, optional): If True, annotates SMILES with [START_SMILES] tags
+    
+    Returns:
+        float: The negative log-likelihood score of the answer given the question
+               Returns -inf if the answer tokens cannot be aligned
+    """
     if use_smiles_annotation:
         # Annotate question and answer with [START_SMILES] tags
         question, _ = annotate_smiles(question)
@@ -129,6 +163,19 @@ def get_likelihood(model, tokenizer, question, answer, debug=False, use_smiles_a
 
 
 def process_example(example):
+    """
+    Parses a single dataset example to extract the question and candidate scores
+
+    Args:
+        example (dict): A single example from the dataset
+
+    Returns:
+        tuple: A tuple containing (question, target_scores, candidates) where:
+            - question (str); The input question
+            - target_scores (dict): Mapping of answers to scores
+            - candidates (list): List of candidate answers
+            Returns (None, None, None) if parsing fails
+    """
     question = example.get("input")
     raw_scores = example.get("target_scores")
     
@@ -153,6 +200,19 @@ def process_example(example):
 
 
 def eval_config(model, tokenizer, config, debug=False, use_smiles_annotation=False):
+    """
+    Evaluates the model on a specific ChemBench topic
+
+    Args:
+        model (torch.nn.Module): The transformer model instance
+        tokenizer (PreTrainedTokenizer): The tokenizer
+        config (str): The ChemBench topic to evaluate
+        debug (bool, optional): If True, enables debug output
+        use_smiles_annotation (bool, optional): If True, annotates SMILES with [START_SMILES] tags
+
+    Returns:
+        dict: A dictionary containing the config name, accuracy, correct count, and total count
+    """
     if os.path.exists(DATASET):
         ds = load_from_disk(DATASET)[config]
     else:
@@ -208,6 +268,19 @@ def eval_config(model, tokenizer, config, debug=False, use_smiles_annotation=Fal
 
 
 def eval_path(model_path, tokenizer, local_rank, debug=False, use_smiles_annotation=False):
+    """
+    Loads a model from the specified path and evaluates it across all ChemBench topics
+
+    Args:
+        model_path (str): Path to the pretrained model checkpoint
+        tokenizer (PreTrainedTokenizer): The tokenizer
+        local_rank (int): The local GPU rank for device placement
+        debug (bool, optional): If True, enables debug output
+        use_smiles_annotation (bool, optional): If True, annotates SMILES with [START_SMILES] tags
+    
+    Returns:
+        dict: Aggregated results including individual topic results and overall accuracy
+    """
     # Load model on the correct device
     device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
     
@@ -233,8 +306,13 @@ def eval_path(model_path, tokenizer, local_rank, debug=False, use_smiles_annotat
     
     return {"path": model_path, "results": results, "overall_accuracy": overall_accuracy, "correct": correct, "total": total}
 
-
 def log_path_results(eval_results):
+    """
+    Prints a formatted summary of results for a single model checkpoint
+
+    Args:
+        eval_results (dict): The evaluation results dictionary
+    """
     path = eval_results['path']
     results = eval_results['results']
     overall_accuracy = eval_results['overall_accuracy']
@@ -251,6 +329,12 @@ def log_path_results(eval_results):
 
 
 def log_all_results(all_results):
+    """
+    Prints a comparison table of all evaluated checkpoints and identifies the best one
+
+    Args:
+        all_results (list): List of evaluation results dictionaries from multiple checkpoints
+    """
     print("\nSummary of all evaluated checkpoints:")
 
     # Headers for the table
@@ -299,8 +383,19 @@ def log_all_results(all_results):
     print("="*50)
     log_path_results(best_result)
     
-
 def get_tokenizer_for_eval(model_path):
+    """
+    Loads the appropriate tokenizer for evaluation based on the model path
+
+    It first checks for training_config.yaml to assemble a custom tokenizer
+    If not found, it falls back to loading the tokenizer directly from the model path using AutoTokenizer
+
+    Args:
+        model_path (str): Path to the pretrained model or directory containing checkpoints
+
+    Returns:
+        PreTrainedTokenizer: The loaded tokenizer instance
+    """
     if os.path.exists(model_path) and os.path.isdir(model_path):
         # Local directory
         if os.path.exists(os.path.join(model_path, "config.json")):
@@ -322,7 +417,6 @@ def get_tokenizer_for_eval(model_path):
         tokenizer = AutoTokenizer.from_pretrained(model_path)
     
     return tokenizer
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

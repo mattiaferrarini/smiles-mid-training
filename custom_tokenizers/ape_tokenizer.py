@@ -64,7 +64,7 @@ class APETokenizer(PreTrainedTokenizerBase):
         self.vocabulary = self.vocab
 
     @property
-    def vocab_size(self) -> int:
+    def vocab_size(self):
         """Required by PreTrainedTokenizerBase"""
         return len(self.vocab)
 
@@ -82,7 +82,7 @@ class APETokenizer(PreTrainedTokenizerBase):
         max_length=None, 
         is_split_into_words=False, 
         **kwargs
-    ) -> dict:
+    ):
         """Required by PreTrainedTokenizerBase"""
         input_ids = self.encode(text)
         
@@ -129,7 +129,7 @@ class APETokenizer(PreTrainedTokenizerBase):
     def score_item(self, item):
         return item[1]
 
-    def _train(self, corpus, max_vocab_size: int = None, min_freq_for_merge: int = None):
+    def _train(self, corpus, max_vocab_size=None, min_freq_for_merge=None):
         """Internal training method - original train logic"""
         if max_vocab_size is None:
             max_vocab_size = self.max_vocab_size
@@ -288,7 +288,7 @@ class APETokenizer(PreTrainedTokenizerBase):
 
         return encoded_tokens
 
-    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None):
+    def save_vocabulary(self, save_directory, filename_prefix=None):
         """Required by PreTrainedTokenizerBase - save just the vocab file"""
         if filename_prefix:
             vocab_file = f"{filename_prefix}-vocab.json"

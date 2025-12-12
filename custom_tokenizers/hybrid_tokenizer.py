@@ -7,7 +7,6 @@ from transformers import AutoTokenizer, BatchEncoding, PreTrainedTokenizerBase
 
 class HybridTokenizer(PreTrainedTokenizerBase):
     def __init__(self, base_tokenizer, chem_tokenizer, chem_start, chem_end, **kwargs):
-        def __init__(self, base_tokenizer, chem_tokenizer, chem_start, chem_end, **kwargs):
         # 1. Sync special tokens from base_tokenizer if not provided in kwargs
         # This prevents eos_token or pad_token from being None
         for token_attr in ["pad_token", "eos_token", "bos_token", "unk_token"]:
@@ -63,7 +62,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         """
         return self.base_tokenizer.save_pretrained(save_directory, **kwargs)
     
-    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
+    def save_vocabulary(self, save_directory, filename_prefix=None):
         base_files = self.base_tokenizer.save_vocabulary(save_directory, filename_prefix)
         
         if filename_prefix:
@@ -77,7 +76,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         return base_files + (chem_file,)
 
     @property
-    def added_tokens_decoder(self) -> Dict[int, Any]:
+    def added_tokens_decoder(self):
         """
         Required for handling special tokens during saving.
         """
@@ -127,13 +126,13 @@ class HybridTokenizer(PreTrainedTokenizerBase):
                 vocab[token] = new_id
         return vocab
     
-    def convert_ids_to_tokens(self, ids: Union[int, List[int]], skip_special_tokens=False):
+    def convert_ids_to_tokens(self, ids, skip_special_tokens=False):
         """Converts a single index or a list of indices to token(s)."""
         if isinstance(ids, int):
             return self._convert_id_to_token_single(ids, skip_special_tokens)
         return [self._convert_id_to_token_single(i, skip_special_tokens) for i in ids]
 
-    def _convert_id_to_token_single(self, index: int, skip_special_tokens: bool) -> str:
+    def _convert_id_to_token_single(self, index, skip_special_tokens):
         # 1. Check special hybrid tokens
         if index == self.chem_start_id:
             return "" if skip_special_tokens else self.chem_start
@@ -148,7 +147,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         # 3. Fallback to base tokenizer
         return self.base_tokenizer.convert_ids_to_tokens(index)
     
-    def convert_tokens_to_ids(self, tokens: Union[str, List[str], None]):
+    def convert_tokens_to_ids(self, tokens):
         """Converts a token string (or list of strings) to a single integer ID (or list of IDs)."""
         # FIX: Handle None input (which happens if pad_token is missing)
         if tokens is None:
@@ -159,7 +158,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         
         return [self._convert_token_to_id_single(t) for t in tokens]
     
-    def _convert_token_to_id_single(self, token: str) -> int:
+    def _convert_token_to_id_single(self, token):
         # 1. Check special tokens
         if token == self.chem_start:
             return self.chem_start_id
@@ -238,8 +237,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         
         return input_ids
 
-    ####
-    def __call__(self, text: Union[str, List[str]], text_pair=None, **kwargs):
+    def __call__(self, text, text_pair=None, **kwargs):
 
         if text is None:
             return None

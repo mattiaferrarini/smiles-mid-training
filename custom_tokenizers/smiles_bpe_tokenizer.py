@@ -111,7 +111,7 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
         
         return self.get_vocab()
 
-    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
+    def save_vocabulary(self, save_directory, filename_prefix=None):
         if not os.path.isdir(save_directory):
             os.makedirs(save_directory, exist_ok=True)
             
@@ -132,5 +132,5 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
         self._tokenizer = tokenizer_object
 
     @property
-    def vocab_size(self) -> int:
+    def vocab_size(self):
         return self._tokenizer.get_vocab_size()

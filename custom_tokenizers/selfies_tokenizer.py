@@ -43,7 +43,7 @@ class SelfiesTokenizer(PreTrainedTokenizer):
         )
 
     @property
-    def vocab_size(self) -> int:
+    def vocab_size(self):
         return len(self.vocab)
 
     def _tokenize_selfies_style(self, text):
@@ -77,7 +77,7 @@ class SelfiesTokenizer(PreTrainedTokenizer):
     def _convert_id_to_token(self, index):
         return self.decoder.get(index, self.unk_token)
 
-    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None):
+    def save_vocabulary(self, save_directory, filename_prefix=None):
         if filename_prefix:
             vocab_file = f"{filename_prefix}-vocab.json"
         else:

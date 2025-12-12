@@ -71,7 +71,7 @@ def create_vocabulary(text, _tokenize, append_to_existing_vocabulary=False, voca
     return vocab
 
 
-def save_tokenizer_files(save_directory: Path, vocab_dict: dict, config_dict: dict):
+def save_tokenizer_files(save_directory, vocab_dict, config_dict):
 
     save_directory.mkdir(parents=True, exist_ok=True)
     
@@ -88,12 +88,12 @@ def save_tokenizer_files(save_directory: Path, vocab_dict: dict, config_dict: di
 
 
 def build_and_save_tokenizer(
-    TokenizerClass: Type[PreTrainedTokenizerBase], 
-    dataset: Dataset, 
-    text_field: str, # text field in the dataset
-    output_dir: str, # output directory to save the tokenizer
+    TokenizerClass, 
+    dataset, 
+    text_field, # text field in the dataset
+    output_dir, # output directory to save the tokenizer
     config=None # optional config dict to pass to tokenizer
-) -> PreTrainedTokenizerBase:
+):
     """
     It learns the vocabulary of the tokenizer and saves it compatible with Huggingface.
     """

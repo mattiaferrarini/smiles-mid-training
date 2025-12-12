@@ -47,7 +47,7 @@ class CharacterTokenizer(PreTrainedTokenizer):
         return len(self.vocab)
 
     @property # for Huggingface compatibility
-    def vocab_size(self) -> int:
+    def vocab_size(self):
         return len(self.vocab)
     
     def save_pretrained(self, save_directory, **kwargs):
@@ -90,7 +90,7 @@ class CharacterTokenizer(PreTrainedTokenizer):
         max_length=None, 
         is_split_into_words=False, 
         **kwargs
-    ) -> dict:
+    ):
         
         tokens = self._tokenize(text)
         
@@ -127,7 +127,7 @@ class CharacterTokenizer(PreTrainedTokenizer):
     def reset_vocabulary(self):
         self.vocab = helpers.reset_vocabulary()
 
-    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None):
+    def save_vocabulary(self, save_directory, filename_prefix=None):
         if filename_prefix:
             vocab_file = f"{filename_prefix}-vocab.json"
         else:

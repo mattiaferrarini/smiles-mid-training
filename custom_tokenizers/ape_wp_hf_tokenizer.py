@@ -26,7 +26,7 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
     }
     model_input_names = ["input_ids", "attention_mask"]
 
-    def get_pretokenization_pattern(self) -> str:
+    def get_pretokenization_pattern(self):
         """
         Returns the regex pattern for pre-tokenization.
         Override this method to customize pre-tokenization behavior.
@@ -157,7 +157,7 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
         
         return self.get_vocab()
 
-    def save_vocabulary(self, save_directory: str, filename_prefix: Optional[str] = None) -> Tuple[str]:
+    def save_vocabulary(self, save_directory, filename_prefix=None):
         """Save vocabulary files (vocab.txt for WordPiece)"""
         if not os.path.isdir(save_directory):
             os.makedirs(save_directory, exist_ok=True)
@@ -229,7 +229,7 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
         )
 
     @property
-    def vocab_size(self) -> int:
+    def vocab_size(self):
         """Return vocabulary size"""
         return self._tokenizer.get_vocab_size()
 

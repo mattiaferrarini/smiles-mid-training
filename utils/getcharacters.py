@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 
-def _default_csv_path() -> str:
+def _default_csv_path():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'csv', 'Periodic Table of Elements.csv'))
 
 
-def _read_elements(csv_path: str) -> List[Dict[str, Any]]:
+def _read_elements(csv_path):
     rows: List[Dict[str, Any]] = []
     with open(csv_path, newline='', encoding='utf-8') as fh:
         reader = csv.DictReader(fh)
@@ -25,7 +25,7 @@ def _read_elements(csv_path: str) -> List[Dict[str, Any]]:
     return rows
 
 
-def main() -> None:
+def main():
     """CLI entrypoint: build character->index vocabulary and save as JSON.
 
     The output JSON will be written to `json/vocab_characters.json` under the

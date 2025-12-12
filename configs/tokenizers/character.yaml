@@ -1,0 +1,16 @@
+job:
+  name: tokenizer_building_experiment
+
+data:
+
+  data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
+  data_files_pattern: "**/*.arrow" 
+  text_field: text_annotated_v1tags
+  count_field: text_annotated_v1tags_smiles_count
+
+tokenizer:
+  type: base
+  chem_type: character
+  output_dir: /users/$USER/json/tokenizers
+  params:
+    max_vocab_size: 2000 

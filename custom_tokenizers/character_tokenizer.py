@@ -289,34 +289,3 @@ class CharacterTokenizer(PreTrainedTokenizer):
         self.decoder = {v: k for k, v in self.vocab.items()}
         return self.vocab
 
-if __name__ == "__main__":
-    print("--- Testing CharacterTokenizer ---")
-    tk = CharacterTokenizer()
-    print("Initial vocab:", tk.vocab)
-    
-    s = "CNaC(=O)Oc1ccccc1C(=O)O"
-    print(f"Tokenizing string: {s}")
-    
-    tk.create_vocabulary(s)
-    print("Vocab size after learning:", len(tk))
-    
-    encoded = tk(s) 
-    print("Standard Encode Output (input_ids):", encoded['input_ids'])
-    
-    decoded = tk.decode(encoded['input_ids'])
-    print("Decoded:", decoded)
-    
-    import tempfile
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        print(f"Saving tokenizer to {tmpdirname}...")
-        tk.save_pretrained(tmpdirname)
-        
-        print("Loading tokenizer from saved files...")
-        loaded_tk = CharacterTokenizer.from_pretrained(tmpdirname)
-        
-        print("Loaded vocab size:", len(loaded_tk))
-        print("Loaded tokenizer encode check:", loaded_tk.encode(s))
-        
-        assert len(tk) == len(loaded_tk)
-        assert tk.encode(s) == loaded_tk.encode(s)
-        print("SUCCESS: Tokenizer saved and loaded# filepath: c:/Users/luca_/OneDrive/Desktop/Unpoditutto/EPFL/ML/P02/smiles-mid-training/custom_tokenizers/character_tokenizer.py correctly!")

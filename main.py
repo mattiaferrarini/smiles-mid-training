@@ -10,6 +10,34 @@ from instructions.instruction import run_instruction_tuning
 from evaluate.likelihood_eval import run_likelihood_eval
 from training.training_trl import train_model
 
+from custom_tokenizers import (
+    CharacterTokenizer,
+    ElementTokenizer,
+    ElementAllParenthesisTokenizer,
+    ElementAromaticsTokenizer,
+    ElementNoParenthesisTokenizer,
+    ElementRingsTokenizer,
+    HybridTokenizer,
+    APETokenizer,
+    APEHFTokenizer,
+    APEWPHFTokenizer,
+    ChemAPETokenizer,
+)
+
+TOKENIZERS = {
+    "CharacterTokenizer": CharacterTokenizer,
+    "ElementTokenizer": ElementTokenizer,
+    "ElementAllParenthesisTokenizer": ElementAllParenthesisTokenizer,
+    "ElementAromaticsTokenizer": ElementAromaticsTokenizer,
+    "ElementNoParenthesisTokenizer": ElementNoParenthesisTokenizer,
+    "ElementRingsTokenizer": ElementRingsTokenizer,
+    "HybridTokenizer": HybridTokenizer,
+    "APETokenizer": APETokenizer,
+    "APEHFTokenizer": APEHFTokenizer,
+    "APEWPHFTokenizer": APEWPHFTokenizer,
+    "ChemAPETokenizer": ChemAPETokenizer,
+}
+
 app = typer.Typer(help="Test novel tokenisation schemes and mid-stage training strategies for open-source chemical LLMs")
 
 @app.callback()
@@ -76,6 +104,75 @@ def run_chemiq_command(
     output_path: Path = typer.Option(..., "--output-path", "-o", help="Where to save results", file_okay=False, dir_okay=True),
 ):
     run_chemiq(model_path, chemiq_path, output_path)
+
+@app.command("test-tokenizer")
+def test_tokenizer_command(
+    tokenizer_name: str = typer.Option(..., "--tokenizer", "-t", help="Name of the tokenizer class"),
+    text: str = typer.Option(..., "--text", "-x", help="Text to tokenize"),
+    vocab_path: Path = typer.Option(None, "--vocab-path", "-v", help="Path to vocabulary file (optional)", exists=True, dir_okay=False),
+):
+    
+    if tokenizer_name not in TOKENIZERS:
+        typer.echo(f"Tokenizer {tokenizer_name} not found. Available: {list(TOKENIZERS.keys())}")
+        raise typer.Exit(code=1)
+    
+    TokenizerClass = TOKENIZERS[tokenizer_name]
+    if vocab_path:
+            tokenizer = TokenizerClass(vocab_file=str(vocab_path))
+    else:
+        tokenizer = TokenizerClass()
+        print("Warning: No vocabulary file provided. Using default/empty vocabulary.")
+    
+    s = text
+    print(f"\nTRAINING ON TEXT: '{s}'")
+    tokenizer.create_vocabulary(s)
+    
+    print("\nORIGINAL VOCABULARY CONTENT")
+    vocab = tokenizer.get_vocab()
+    sorted_vocab = sorted(vocab.items(), key=lambda item: item[1])
+    
+    print(f"Total items: {len(vocab)}")
+    print(f"Reported len(tokenizer): {len(tokenizer)}\n")
+    print(f"{'ID':<5} | {'Token':<10}\n")
+    for token, id in sorted_vocab:
+        print(f"{id:<5} | {token:<10}")
+
+    #Encoding Test
+    encoded = tokenizer.encode(s)
+    print(f"\nEncoded IDs: {encoded}")
+    decoded = tokenizer.decode(encoded)
+    print(f"Decoded:     {decoded}")
+
+    # Save & Load Cycle
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        print(f"\nSaving tokenizer to {tmpdirname}...")
+        tokenizer.save_pretrained(tmpdirname)
+        
+        print("Loading tokenizer from saved files...")
+        loaded_tk = TokenizerClass.from_pretrained(tmpdirname)
+        
+        print("\nLOADED VOCABULARY CONTENT")
+        loaded_vocab = loaded_tk.get_vocab()
+        
+        if vocab == loaded_vocab:
+            print("Dictionary content is identical")
+        else:
+            print("Mismatch found in dictionary content")
+            print(f"Original keys: {len(vocab)}, Loaded keys: {len(loaded_vocab)}")
+
+        ids_original = tokenizer.encode(s)
+        ids_loaded = loaded_tk.encode(s)
+        
+        if ids_original == ids_loaded:
+            print("Same IDs")
+        else:
+            print("Failed, they don't have same ids")
+            print(f"Original IDs: {ids_original}")
+            print(f"Loaded IDs:   {ids_loaded}")
+
+        print("\nSUCCESS: Process completed.")
+    
 
 if __name__ == "__main__":
     app()

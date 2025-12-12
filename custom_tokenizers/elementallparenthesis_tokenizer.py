@@ -231,13 +231,3 @@ class ElementAllParenthesisTokenizer(PreTrainedTokenizer):
         self.decoder = {v: k for k, v in self.vocab.items()}
 
 
-
-if __name__ == "__main__":
-    # small smoke test
-    tk = ElementAllParenthesisTokenizer()
-    print("Initial vocab size:", len(tk))
-    s = "CNaC(=O)Oc1ccccc1C(=O)O"
-    print("Tokens:", tk._tokenize(s))
-    tk.create_vocabulary(s, append_to_existing_vocabulary=False)
-    print("Vocab size after create:", len(tk))
-    print("Encoded:", tk(s))

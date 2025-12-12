@@ -5,67 +5,98 @@ from .elementaromatics_tokenizer import ElementAromaticsTokenizer
 from .elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from .elementrings_tokenizer import ElementRingsTokenizer
 from .selfies_tokenizer import SelfiesTokenizer
-from .kmer_tokenizer import KmerTokenizer
+from .smiles_bpe_tokenizer import SmilesBpeTokenizer
+from .ape_tokenizer import APETokenizer
+from .ape_hf_tokenizer import APEHFTokenizer
+from .ape_wp_hf_tokenizer import APEWPHFTokenizer
+from .chem_ape import ChemAPETokenizer
 from .hybrid_tokenizer import HybridTokenizer
+from .kmer_tokenizer import KmerTokenizer
 from .ape_wordpiece import APEWordPieceTokenizer
-
 from transformers import AutoTokenizer
-
 import os
 
 def assemble_tokenizer(config):
-    tokenizer = None
+    # Recupera i valori dal config
     tokenizer_type = config["tokenizer"]["type"]
-
-    tokenizer_params = config["tokenizer"].get("params", {})
-    tokenizer_path = config["tokenizer"].get("path")
-
-    START_SMILES = config["tokenizer"].get("special_tokens", {}).get("start_smiles", "[START_SMILES]")
-    END_SMILES = config["tokenizer"].get("special_tokens", {}).get("end_smiles", "[END_SMILES]")
+    special_tokens = config["tokenizer"].get("special_tokens", {})
+    START_SMILES = special_tokens.get("start_smiles", "[START_SMILES]")
+    END_SMILES = special_tokens.get("end_smiles", "[END_SMILES]")
+    
+    print(f"Assembling tokenizer of type: {tokenizer_type}")
+    
     base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
 
     if tokenizer_type == "base":
-        tokenizer = base_tokenizer
+        return base_tokenizer
     elif tokenizer_type == "base_special":
         print("Including special SMILES tokens")
         base_tokenizer.add_special_tokens({'additional_special_tokens': [START_SMILES, END_SMILES]})
-        tokenizer = base_tokenizer
-    elif tokenizer_type == "character":
-        # JUST FOR TEST, TO BE DELETED LATER
-        tokenizer = CharacterTokenizer()
-    elif tokenizer_type == "kmer":
-        vocab_file = f"{tokenizer_path}/vocab.json"
-        print(f"Loading k-mer vocab from {vocab_file}")
-        chem_tokenizer = KmerTokenizer(vocab_file=vocab_file, **tokenizer_params)
+        return base_tokenizer
+    elif tokenizer_type == "hybrid":
+        chem_type = config["tokenizer"].get("chem_type", "element")
+        print(f"Assembling Hybrid Tokenizer with chem_type: {chem_type}")
         
-        print("Assembling HybridTokenizer (Gemma + Kmer)...")
-        tokenizer = HybridTokenizer(
-            base_tokenizer=base_tokenizer,
-            chem_tokenizer=chem_tokenizer,
-            chem_start=START_SMILES,
-            chem_end=END_SMILES
-        )
-    elif tokenizer_type == "ape_wordpiece":
-        tokenizer_json = os.path.join(tokenizer_path, "tokenizer.json")
-        vocab_file = os.path.join(tokenizer_path, "vocab.json")
-
-        print(f"Loading ape_wordpiece tokenizer from {tokenizer_path}")
-
-        if os.path.exists(tokenizer_json):
-            chem_tokenizer = APEWordPieceTokenizer(tokenizer_file=tokenizer_json, **tokenizer_params)
-        elif os.path.exists(vocab_file):
-            chem_tokenizer = APEWordPieceTokenizer(vocab_file=vocab_file, **tokenizer_params)
+        base_output_dir = config["tokenizer"]["output_dir"]
+        output_subdir_name = config["tokenizer"].get("output_subdir_name", f"{chem_type}_tokenizer")
+        tokenizer_dir = os.path.join(base_output_dir, output_subdir_name)
+        print("Tokenizer dir:", tokenizer_dir)        
+        
+        chem_tokenizer = None
+        
+        # Handle BPE-based tokenizers (use tokenizer.json)
+        if chem_type in ["smiles_bpe", "ape_hf", "ape_wp_hf"]:
+            tokenizer_file = os.path.join(tokenizer_dir, "tokenizer.json")
+            if os.path.exists(tokenizer_file):
+                print(f"Loading {chem_type} tokenizer from {tokenizer_file}")
+                if chem_type == "smiles_bpe":
+                    chem_tokenizer = SmilesBpeTokenizer(tokenizer_file=tokenizer_file)
+                elif chem_type == "ape_hf":
+                    chem_tokenizer = APEHFTokenizer.from_pretrained(tokenizer_dir)
+                elif chem_type == "ape_wp_hf":
+                    chem_tokenizer = APEWPHFTokenizer.from_pretrained(tokenizer_dir)
+            else:
+                raise FileNotFoundError(f"Tokenizer file not found at {tokenizer_file}. Please run build_tokenizer.py first.") 
         else:
-            raise Exception(f"Failed to find tokenizer files in {tokenizer_path}")
-        
-        print("Assembling HybridTokenizer (Gemma + APE WordPiece)...")
-        tokenizer = HybridTokenizer(
+            # Map type to class
+            tokenizer_classes = {
+                "character": CharacterTokenizer,
+                "element": ElementTokenizer,
+                "elementallparenthesis": ElementAllParenthesisTokenizer,
+                "elementaromatics": ElementAromaticsTokenizer,
+                "elementnoparenthesis": ElementNoParenthesisTokenizer,
+                "elementrings": ElementRingsTokenizer,
+                "selfies": SelfiesTokenizer,
+                "ape": APETokenizer,
+                "ape_hf": APEHFTokenizer,
+                "ape_wp_hf": APEWPHFTokenizer,
+                "chem_ape": ChemAPETokenizer,
+                "ape_wordpiece": APEWordPieceTokenizer,
+                "kmer": KmerTokenizer
+            }
+
+            if chem_type not in tokenizer_classes:
+                 raise ValueError(f"Unknown chem_type: {chem_type}")
+            
+            TokenizerClass = tokenizer_classes[chem_type]
+            vocab_file = os.path.join(tokenizer_dir, "vocab.json")
+            
+            if os.path.exists(vocab_file):
+                print(f"Loading {chem_type} tokenizer vocab from {vocab_file}")
+                chem_tokenizer = TokenizerClass(vocab_file=vocab_file)
+            else:
+                print(f"Warning: Pre-built vocab not found at {vocab_file}. Initializing default {chem_type} tokenizer.")
+                chem_tokenizer = TokenizerClass()
+            
+        # Creazione Istanza Ibrida
+        hybrid_tokenizer = HybridTokenizer(
             base_tokenizer=base_tokenizer,
             chem_tokenizer=chem_tokenizer,
             chem_start=START_SMILES,
             chem_end=END_SMILES
         )
+        # IMPORTANTE: Restituisci l'istanza ibrida, non quella base!
+        return hybrid_tokenizer
+    
     else:
         raise ValueError(f"Unknown tokenizer_type: {tokenizer_type}")
-
-    return tokenizer 

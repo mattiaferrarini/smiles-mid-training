@@ -1,4 +1,4 @@
-from transformers import PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizer
 from tokenizers import Tokenizer
 import re
 import json
@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 import utils.helpers as helpers
-class CharacterTokenizer(PreTrainedTokenizerBase):
+class CharacterTokenizer(PreTrainedTokenizer):
 
     CHAR_LEVEL_PATTERN = r"." 
 
@@ -20,6 +20,7 @@ class CharacterTokenizer(PreTrainedTokenizerBase):
         pad_token="[PAD]", 
         bos_token="[BOS]", 
         eos_token="[EOS]", 
+        config=None,
         **kwargs
     ):
         self.vocab = {}
@@ -181,4 +182,3 @@ if __name__ == "__main__":
         assert len(tk) == len(loaded_tk)
         assert tk.encode(s) == loaded_tk.encode(s)
         print("SUCCESS: Tokenizer saved and loaded# filepath: c:/Users/luca_/OneDrive/Desktop/Unpoditutto/EPFL/ML/P02/smiles-mid-training/custom_tokenizers/character_tokenizer.py correctly!")
-

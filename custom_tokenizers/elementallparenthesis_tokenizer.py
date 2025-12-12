@@ -3,6 +3,11 @@ import re
 import json
 import os
 from typing import Optional, List, Dict, Any
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+
 import utils.helpers as helpers
 
 class ElementAllParenthesisTokenizer(PreTrainedTokenizer):
@@ -30,6 +35,7 @@ class ElementAllParenthesisTokenizer(PreTrainedTokenizer):
         pad_token="[PAD]", 
         bos_token="[BOS]", 
         eos_token="[EOS]", 
+        config=None,
         **kwargs
     ):
         self.vocab = {}

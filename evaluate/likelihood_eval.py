@@ -17,6 +17,7 @@ import argparse
 import json
 from utils.config import load_config
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
+from utils.create_smiles import annotate_smiles
 
 from custom_tokenizers.hybrid_tokenizer import HybridTokenizer
 AutoTokenizer.register("HybridTokenizer", HybridTokenizer)
@@ -73,7 +74,12 @@ def find_checkpoint_folders(path):
     return checkpoints if checkpoints else [path]
 
 
-def get_likelihood(model, tokenizer, question, answer, debug=False):
+def get_likelihood(model, tokenizer, question, answer, debug=False, use_smiles_annotation=False):
+    if use_smiles_annotation:
+        # Annotate question and answer with [START_SMILES] tags
+        question, _ = annotate_smiles(question)
+        answer, _ = annotate_smiles(answer)
+
     prompt_text = f"Question: {question}\nAnswer:"
     # Add space before answer to ensure it tokenizes separately
     full_text = prompt_text + " " + answer
@@ -146,7 +152,7 @@ def process_example(example):
     return question, target_scores, candidates
 
 
-def eval_config(model, tokenizer, config, debug=False):
+def eval_config(model, tokenizer, config, debug=False, use_smiles_annotation=False):
     if os.path.exists(DATASET):
         ds = load_from_disk(DATASET)[config]
     else:
@@ -176,7 +182,7 @@ def eval_config(model, tokenizer, config, debug=False):
                 print(f"Question: {question}")
             # Calculate likelihoods
             for candidate in candidates:
-                score = get_likelihood(model, tokenizer, question, candidate, debug=debug)
+                score = get_likelihood(model, tokenizer, question, candidate, debug=debug, use_smiles_annotation=use_smiles_annotation)
                 if debug:
                     print(f"Candidate: {candidate}, Score: {score}")
                 candidate_scores.append(score)
@@ -201,7 +207,7 @@ def eval_config(model, tokenizer, config, debug=False):
     return {"config": config, "accuracy": accuracy, "correct": correct_count, "total": total_count}
 
 
-def eval_path(model_path, tokenizer, local_rank, debug=False):
+def eval_path(model_path, tokenizer, local_rank, debug=False, use_smiles_annotation=False):
     # Load model on the correct device
     device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
     
@@ -215,7 +221,7 @@ def eval_path(model_path, tokenizer, local_rank, debug=False):
     # Evaluate each config
     results = []
     for config in configs:
-        result = eval_config(model, tokenizer, config, debug=debug)
+        result = eval_config(model, tokenizer, config, debug=debug, use_smiles_annotation=use_smiles_annotation)
         results.append(result)
     
     # Aggregate overall accuracy
@@ -323,6 +329,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_path", type=str, required=True, help="Path to the pretrained model or directory containing checkpoints")
     parser.add_argument("--output_dir", type=str, required=True, help="Directory to save the results")
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
+    parser.add_argument("--annotate_smiles", action="store_true", help="Enable SMILES annotation with [START_SMILES] tags")
     args = parser.parse_args()
     model_path = args.model_path
     output_dir = args.output_dir
@@ -361,7 +368,7 @@ if __name__ == "__main__":
     local_results = []
     for checkpoint_path in my_checkpoints:
         print(f"\nRank {rank}: Evaluating checkpoint: {checkpoint_path}")
-        eval_results = eval_path(checkpoint_path, tokenizer, local_rank, debug=debug)
+        eval_results = eval_path(checkpoint_path, tokenizer, local_rank, debug=debug, use_smiles_annotation=args.annotate_smiles)
         log_path_results(eval_results)
         local_results.append(eval_results)
 

@@ -105,7 +105,7 @@ srun --ntasks-per-node=1 \
     --rdzv_id=$SLURM_JOB_ID \
     --rdzv_backend=c10d \
     --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
-    evaluate/likelihood_eval.py --model_path "$MODEL_PATH" --output_dir "$OUTPUT_DIR"
+    main.py likelihood-eval --model-path "$MODEL_PATH" --output-dir "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

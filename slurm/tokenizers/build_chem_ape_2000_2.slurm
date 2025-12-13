@@ -39,7 +39,7 @@ mkdir -p "$OUTPUT_DIR"
 export PYTHONUNBUFFERED=1
 
 echo "Running tokenizer build script..."
-srun "$PYTHON_EXEC" -u custom_tokenizers/build_tokenizer.py \
+srun "$PYTHON_EXEC" -u main.py build-tokenizer \
     --config configs/tokenizers/chem_ape_2000_2.yaml \
     --output-dir "$OUTPUT_DIR"
 EXIT_CODE=$?

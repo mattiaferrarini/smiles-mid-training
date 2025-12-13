@@ -94,7 +94,7 @@ export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
 # Run the training with jobreport
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training_trl.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py train-model --config "$CONFIG_PATH" --output-path "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

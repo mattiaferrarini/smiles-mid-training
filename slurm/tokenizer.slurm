@@ -75,7 +75,7 @@ export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
 # Run the training with jobreport
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" custom_tokenizers/build_tokenizer.py
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py build-tokenizer --config "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

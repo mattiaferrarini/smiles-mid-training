@@ -53,13 +53,10 @@ echo "Using Python at: $PYTHON_EXEC"
 
 echo "--- STARTING DEBUG RUN ---"
 
-# Usiamo 'accelerate launch' che gestisce SFTTrainer su 4 GPU automaticamente.
-# --num_processes=4 corrisponde al numero di GPU che abbiamo chiesto (--gres=gpu:4)
-# --multi_gpu flag per dire che stiamo usando più schede su un nodo
 srun "$PYTHON_EXEC" -m accelerate.commands.launch \
     --num_processes=4 \
     --multi_gpu \
-    instruction.py \
+    main.py instruction-tuning \
     --config configs/instruction.yaml
 
 echo "--- DEBUG RUN FINISHED ---"

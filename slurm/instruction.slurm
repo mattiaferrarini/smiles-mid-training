@@ -46,5 +46,5 @@ echo "Using Python at: $PYTHON_EXEC"
 export CONFIG_PATH="configs/instruction.yaml"
 export MODEL_PATH="/iopsstor/scratch/cscs/$USER/artifacts/baseliens/gemma-3-1b-pt"
 
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" instructions/instruction.py --config "$CONFIG_PATH" --model-path "$MODEL_PATH"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py instruction-tuning --config "$CONFIG_PATH" --model-path "$MODEL_PATH"
 $JOBREPORT print "$PROFILING_FOLDER"

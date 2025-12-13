@@ -15,15 +15,6 @@ export ENV_NAME=ml4science
 # Activate conda
 source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
 
-# Create or update conda environment
-# if conda env list | grep -q "^$ENV_NAME "; then \
-#  echo "Conda env exists: updating"; \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# else \
-#  echo "Creating conda env"; \
-#  conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# fi
 
 # Activate conda environment
 conda activate "$ENV_NAME"

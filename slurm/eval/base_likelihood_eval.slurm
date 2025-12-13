@@ -10,25 +10,14 @@
 #SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH -A a131
 
-# Check GPU state before starting
-# srun --ntasks=$SLURM_NTASKS --ntasks-per-node=$SLURM_NTASKS_PER_NODE bash -c 'nvidia-smi'
 
 export ENV_NAME=ml4science
 
 # Activate conda
 source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
 
-# Create or update conda environment
-# if conda env list | grep -q "^$ENV_NAME "; then \
-#  echo "Conda env exists: updating"; \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# else \
-#  echo "Creating conda env"; \
-#  conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# fi
 
-# Allow overriding USE_ANNOTATION from environment
+# Allow overriding USE_ANNOTATION from environment, use false as default, true if you want to annotate the dataset used for evaluation
 if [ -z "$USE_ANNOTATION" ]; then
     USE_ANNOTATION="false"
 fi
@@ -94,7 +83,6 @@ fi
 if [ -z "$MODEL_PATH" ]; then
     export MODEL_PATH="/iopsstor/scratch/cscs/$USER/finetuning/base_finetuning_1202267/"
 fi
-# export MODEL_PATH="/iopsstor/scratch/cscs/mattiaferrarini/finetuning/base_finetuning_20251203_175010"
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -137,6 +125,4 @@ srun --ntasks-per-node=1 \
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"
-# echo "--- Starting direct Python run for debugging (Job $SLURM_JOB_ID) ---"
-# srun --propagate=NONE --label "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
-# echo "--- Python run finished ---"
+

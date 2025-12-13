@@ -10,23 +10,11 @@
 #SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH -A a131
 
-# Check GPU state before starting
-# srun --ntasks=$SLURM_NTASKS --ntasks-per-node=$SLURM_NTASKS_PER_NODE bash -c 'nvidia-smi'
-
 export ENV_NAME=ml4science
 
 # Activate conda
 source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
 
-# Create or update conda environment
-# if conda env list | grep -q "^$ENV_NAME "; then \
-#  echo "Conda env exists: updating"; \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# else \
-#  echo "Creating conda env"; \
-#  conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# fi
 
 # Activate conda environment
 conda activate "$ENV_NAME"
@@ -131,6 +119,4 @@ echo "Evaluation job submitted with dependency afterok:$SLURM_JOB_ID"
 echo "Evaluation Job Name: $EVAL_JOB_NAME"
 echo "=================================================================="
 
-# echo "--- Starting direct Python run for debugging (Job $SLURM_JOB_ID) ---"
-# srun --propagate=NONE --label "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
-# echo "--- Python run finished ---"
+

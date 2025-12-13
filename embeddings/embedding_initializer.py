@@ -3,6 +3,9 @@ import sys
 import json
 import torch
 from pathlib import Path
+from utils.logging import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 def initialize_default_embeddings(model, tokenizer):
@@ -67,8 +70,8 @@ def initialize_elementwise_embeddings(model, hybrid_tokenizer):
     if not hasattr(hybrid_tokenizer, "base_tokenizer") or not hasattr(
         hybrid_tokenizer, "get_chem_vocab"
     ):
-        print(
-            f"WARNING: Found non-hybrid tokenizer ({type(hybrid_tokenizer)}). Using default initialization."
+        LOGGER.warning(
+            f"Found non-hybrid tokenizer ({type(hybrid_tokenizer)}), using default initialization..."
         )
         return initialize_default_embeddings(model, hybrid_tokenizer)
 
@@ -124,7 +127,9 @@ def initialize_elementwise_embeddings(model, hybrid_tokenizer):
     model.resize_token_embeddings(len(hybrid_tokenizer))
     embeddings = model.get_input_embeddings().weight
 
-    print(f"Initializing {len(chem_ids_map)} chemical tokens using element names...")
+    LOGGER.info(
+        f"Initializing {len(chem_ids_map)} chemical tokens using element names..."
+    )
 
     with torch.no_grad():
         for token, chem_id in chem_vocab.items():
@@ -171,8 +176,8 @@ def initialize_embeddings(model, tokenizer, strategy="default"):
         torch.nn.Module: The model with resized and initialized embeddings
     """
 
-    print(f"Base embeddings shape: {model.get_input_embeddings().weight.shape}")
-    print(f"Initializing embeddings with strategy: {strategy}")
+    LOGGER.info(f"Base embeddings shape: {model.get_input_embeddings().weight.shape}")
+    LOGGER.info(f"Initializing embeddings with strategy: {strategy}")
 
     if strategy == "average":
         model = initialize_average_embeddings(model, tokenizer)
@@ -181,6 +186,8 @@ def initialize_embeddings(model, tokenizer, strategy="default"):
     else:
         model = initialize_default_embeddings(model, tokenizer)
 
-    print(f"Resized embeddings shape: {model.get_input_embeddings().weight.shape}")
+    LOGGER.info(
+        f"Resized embeddings shape: {model.get_input_embeddings().weight.shape}"
+    )
 
     return model

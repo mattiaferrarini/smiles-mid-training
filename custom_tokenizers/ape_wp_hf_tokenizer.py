@@ -6,8 +6,11 @@ This uses WordPiece algorithm instead of BPE for subword tokenization.
 import os
 import json
 from pathlib import Path
+from utils.logging import get_logger
 from transformers import PreTrainedTokenizerFast
 from tokenizers import models, pre_tokenizers, trainers, Tokenizer
+
+LOGGER = get_logger(__name__)
 
 
 class APEWPHFTokenizer(PreTrainedTokenizerFast):
@@ -132,7 +135,7 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
             vocab_path: Not used, kept for compatibility
             save_vocabulary: Not used, kept for compatibility
         """
-        print(
+        LOGGER.info(
             f"Training APE-WP-HF tokenizer with vocab_size={self.max_vocab_size}, min_frequency={self.min_freq_for_merge}..."
         )
 
@@ -170,13 +173,13 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
         else:
             iterator = text
 
-        print(f"Training on {len(iterator)} SMILES sequences...")
+        LOGGER.info(f"Training on {len(iterator)} SMILES sequences...")
         tokenizer.train_from_iterator(iterator, trainer=trainer)
 
         # Update the underlying tokenizer
         self._tokenizer = tokenizer
 
-        print(f"Training complete! Vocabulary size: {self.vocab_size}")
+        LOGGER.info(f"Training complete! Vocabulary size: {self.vocab_size}")
 
         return self.get_vocab()
 
@@ -232,7 +235,7 @@ class APEWPHFTokenizer(PreTrainedTokenizerFast):
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump(config_dict, f, indent=4)
 
-        print(f"APE-WP-HF tokenizer saved in {save_directory}")
+        LOGGER.info(f"APE-WP-HF tokenizer saved in {save_directory}")
         return str(save_directory / "tokenizer.json"), str(config_file)
 
     @classmethod

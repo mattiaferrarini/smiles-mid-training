@@ -15,16 +15,19 @@ from peft import LoraConfig
 from datetime import datetime
 from trl import SFTTrainer, SFTConfig
 from utils.config import load_config, hf_auth
+from utils.logging import get_logger
 from datasets import load_dataset, interleave_datasets
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
+LOGGER = get_logger(__name__)
+
 
 def prepare_sciq(output, target_count=15000):
-    print("Downloading SciQ dataset...")
+    LOGGER.info("Downloading SciQ dataset...")
     dataset = load_dataset("allenai/sciq", split="train")
 
-    print(f"Processing up to {target_count} examples into strict format...")
+    LOGGER.info(f"Processing up to {target_count} examples into strict format...")
 
     # Write to a temporary file first for atomic operation
     tmp_output = output + ".tmp"
@@ -69,15 +72,15 @@ def prepare_sciq(output, target_count=15000):
             count += 1
             out.write(json.dumps(example) + "\n")
 
-    print(f"Generated {count} examples, saving to {output}...")
+    LOGGER.info(f"Generated {count} examples, saving to {output}...")
     shutil.move(tmp_output, output)  # Atomic move
 
 
 def prepare_metamathqa(output, target_count=15000):
-    print("Downloading MetaMathQA dataset...")
+    LOGGER.info("Downloading MetaMathQA dataset...")
     dataset = load_dataset("meta-math/MetaMathQA", split="train")
 
-    print(f"Processing up to {target_count} examples into strict format...")
+    LOGGER.info(f"Processing up to {target_count} examples into strict format...")
 
     tmp_output = output + ".tmp"
 
@@ -113,23 +116,23 @@ def prepare_metamathqa(output, target_count=15000):
                 count += 1
                 out.write(json.dumps(example) + "\n")
 
-    print(f"Generated {count} examples, saving to {output}...")
+    LOGGER.info(f"Generated {count} examples, saving to {output}...")
     shutil.move(tmp_output, output)  # Atomic move
 
 
 def prepare_datasets(config):
-    print("Loading datasets for mixing...")
+    LOGGER.info("Loading datasets for mixing...")
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
 
     chat_dataset = load_dataset("trl-lib/Capybara", split="train")
-    print(f"Loaded {len(chat_dataset)} samples from chat dataset")
+    LOGGER.info(f"Loaded {len(chat_dataset)} samples from chat dataset")
 
     sciq_path = config.get("data", {}).get("sciq_path", "sciq.jsonl")
-    print(f"Using sciq path: {sciq_path}")
+    LOGGER.info(f"Using sciq path: {sciq_path}")
 
     # Only Rank 0 generates data
     if local_rank == 0 and not os.path.exists(sciq_path):
-        print(f"{sciq_path} not found, generating from sciq...")
+        LOGGER.info(f"{sciq_path} not found, generating from sciq...")
         prepare_sciq(sciq_path)
 
     # Other ranks wait
@@ -138,13 +141,13 @@ def prepare_datasets(config):
             time.sleep(1)
 
     sciq_dataset = load_dataset("json", data_files=sciq_path, split="train")
-    print(f"Loaded {len(sciq_dataset)} samples from sciq dataset")
+    LOGGER.info(f"Loaded {len(sciq_dataset)} samples from sciq dataset")
 
     metamathqa_path = config.get("data", {}).get("metamathqa_path", "metamathqa.jsonl")
-    print(f"Using methamathqa path: {metamathqa_path}")
+    LOGGER.info(f"Using methamathqa path: {metamathqa_path}")
 
     if local_rank == 0 and not os.path.exists(metamathqa_path):
-        print(f"{metamathqa_path} not found, generating from methamathqa...")
+        LOGGER.info(f"{metamathqa_path} not found, generating from methamathqa...")
         prepare_metamathqa(metamathqa_path)
 
     if local_rank != 0:
@@ -152,9 +155,9 @@ def prepare_datasets(config):
             time.sleep(1)
 
     metamathqa_dataset = load_dataset("json", data_files=metamathqa_path, split="train")
-    print(f"Loaded {len(metamathqa_dataset)} samples from metamathqa dataset")
+    LOGGER.info(f"Loaded {len(metamathqa_dataset)} samples from metamathqa dataset")
 
-    print("Creating final dataset...")
+    LOGGER.info("Creating final dataset...")
     final_dataset = interleave_datasets(
         [chat_dataset, sciq_dataset, metamathqa_dataset],
         probabilities=[0.4, 0.3, 0.3],
@@ -164,7 +167,7 @@ def prepare_datasets(config):
 
     dataset_splits = final_dataset.train_test_split(test_size=0.05, seed=42)
 
-    print(
+    LOGGER.info(
         f"Train size: {len(dataset_splits['train'])}, Validation size: {len(dataset_splits['test'])}"
     )
     return dataset_splits
@@ -187,19 +190,19 @@ def setup_tokenizer_and_model(config, model_path_override=None):
 
         for cfg in configs:
             if os.path.exists(cfg):
-                print(f"Found training config at {cfg}, assembling tokenizer...")
+                LOGGER.info(f"Found training config at {cfg}, assembling tokenizer...")
                 train_config = load_config(cfg)
                 tokenizer = assemble_tokenizer(train_config)
                 config_found = cfg
                 break
 
     if tokenizer is None:
-        print(f"Loading tokenizer from model_path: {model_path}")
+        LOGGER.info(f"Loading tokenizer from model_path: {model_path}")
         tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     device_map = {"": local_rank}
-    print(f"Loading model on local rank {local_rank}")
+    LOGGER.info(f"Loading model on local rank {local_rank}")
 
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
@@ -214,13 +217,15 @@ def setup_tokenizer_and_model(config, model_path_override=None):
     num_added_toks = tokenizer.add_special_tokens(special_tokens_dict)
 
     if num_added_toks > 0:
-        print(f"Added {num_added_toks} special tokens, resizing model embeddings...")
+        LOGGER.info(
+            f"Added {num_added_toks} special tokens, resizing model embeddings..."
+        )
         model.resize_token_embeddings(len(tokenizer))
 
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    print("Applying gemma chat template to tokenizer...")
+    LOGGER.info("Applying gemma chat template to tokenizer...")
     tokenizer.chat_template = (
         "{{ bos_token }}"
         "{% for message in messages %}"
@@ -286,7 +291,7 @@ def train(config, model, tokenizer, dataset_splits, base_config):
     )
 
     trainer.train()
-    print("Training complete, saving model and tokenizer...")
+    LOGGER.info("Training complete, saving model and tokenizer...")
 
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     if local_rank == 0:
@@ -297,9 +302,9 @@ def train(config, model, tokenizer, dataset_splits, base_config):
         if base_config and os.path.exists(base_config):
             dest = os.path.join(final_dir, "training_config.yaml")
             shutil.copyfile(base_config, dest)
-            print(f"Copied training_config.yaml to {dest}")
+            LOGGER.info(f"Copied training_config.yaml to {dest}")
         else:
-            print(
+            LOGGER.warning(
                 "Failed to find training_config.yaml, instruction-tuning might fail..."
             )
 
@@ -337,7 +342,7 @@ def run_instruction_tuning(config_path, model_path=None):
     tokenizer, model, base_config = setup_tokenizer_and_model(config, model_path)
     trainer = train(config, model, tokenizer, dataset_splits, base_config)
 
-    print("\n=== SANITY CHECK: TEST GENERATION ===")
+    LOGGER.info("\nSanity Check")
     test_messages = [
         {"role": "user", "content": "Explain what a molecule is in one sentence."}
     ]
@@ -345,7 +350,7 @@ def run_instruction_tuning(config_path, model_path=None):
     prompt_str = tokenizer.apply_chat_template(
         test_messages, tokenize=False, add_generation_prompt=True
     )
-    print(f"Test Input: {prompt_str}")
+    LOGGER.info(f"Test Input: {prompt_str}")
 
     inputs = tokenizer(prompt_str, return_tensors="pt").to(trainer.model.device)
     model_to_gen = trainer.accelerator.unwrap_model(trainer.model)
@@ -360,4 +365,6 @@ def run_instruction_tuning(config_path, model_path=None):
             eos_token_id=trainer.model.generation_config.eos_token_id,
         )
 
-    print(f"Model Output:\n{tokenizer.decode(outputs[0], skip_special_tokens=True)}")
+    LOGGER.info(
+        f"Model Output:\n{tokenizer.decode(outputs[0], skip_special_tokens=True)}"
+    )

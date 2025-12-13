@@ -56,7 +56,7 @@ class MultiGPUResourcesCallback(TrainerCallback):
             if state.global_step % self.log_steps == 0:
                 current_mem = torch.cuda.memory_allocated() / (1024**3)
                 max_mem = torch.cuda.max_memory_allocated() / (1024**3)
-                print(
+                LOGGER.info(
                     f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)"
                 )
 
@@ -93,7 +93,6 @@ def prepare_training_args(config, output_dir):
             "dispatch_batches": False,
         },
         "dataloader_drop_last": True,
-        # --- FIX CRITICO QUI SOTTO: max_seq_length ---
         "max_length": config["training"]["max_length"],
         "include_tokens_per_second": True,
         "include_num_input_tokens_seen": True,
@@ -145,21 +144,17 @@ def initialize_embeddings(model, tokenizer, config):
         "embedding_initialization", "default"
     )
 
-    # DEBUG: Verifica che tipo di tokenizer abbiamo
-    print(
-        f"[DEBUG] initialize_embeddings called with tokenizer type: {type(tokenizer)}"
-    )
+    LOGGER.debug(f"initialize_embeddings called with tokenizer type: {type(tokenizer)}")
     if hasattr(tokenizer, "chem_tokenizer"):
-        print("[DEBUG] Tokenizer is Hybrid (chem_tokenizer found).")
+        LOGGER.debug("Tokenizer is Hybrid (chem_tokenizer found).")
     else:
-        print("[DEBUG] Tokenizer appears to be standard (NO chem_tokenizer found).")
+        LOGGER.debug("Tokenizer appears to be standard (NO chem_tokenizer found).")
 
     if initialization_strategy == "random":
-        print("Initializing embeddings with strategy: random")
+        LOGGER.info("Initializing embeddings with strategy: random")
         model.resize_token_embeddings(len(tokenizer))
     else:
-        print(f"Initializing embeddings with strategy: {initialization_strategy}")
-        # Chiamata alla funzione esterna
+        LOGGER.info(f"Initializing embeddings with strategy: {initialization_strategy}")
         model = init_embeddings_fn(model, tokenizer, strategy=initialization_strategy)
 
     return model
@@ -182,13 +177,13 @@ def prepare_dataset(tokenizer, config, accelerator):
     dataset = dataset.select_columns(["text"])
 
     # Select a portion of the dataset if specified
-    print(f"Original dataset size: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")
+    LOGGER.info(f"Original dataset size: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")
     portion_of_data_used = config["data"]["portion_of_data_used"]
     if portion_of_data_used < 1.0:
         total_samples = dataset.num_rows
         samples_to_use = int(total_samples * portion_of_data_used)
         dataset = dataset.select(range(samples_to_use))
-    print(
+    LOGGER.info(
         f"Dataset size after selecting {portion_of_data_used*100}%: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB"
     )
 
@@ -201,7 +196,7 @@ def prepare_dataset(tokenizer, config, accelerator):
         dataset_gb / SIZE_OF_CHUNK_GB * probabilities[0] / probabilities[1]
     )
     subset_path = config["data_mix"]["external_subset_name"]
-    print(
+    LOGGER.info(
         f"Using {num_chunks} chunks from FineWeb based on dataset size of {dataset_gb:.2f} GB"
     )
 
@@ -268,9 +263,9 @@ def prepare_dataset(tokenizer, config, accelerator):
             load_from_cache_file=True,
         )
 
-        print("Tokenized samples in dataset:", len(dataset))
-        print("Tokenized samples in fineweb:", len(fineweb))
-        print("Total tokenized samples:", len(dataset) + len(fineweb))
+        LOGGER.info(f"Tokenized samples in dataset: {len(dataset)}")
+        LOGGER.info(f"Tokenized samples in fineweb: {len(fineweb)}")
+        LOGGER.info(f"Total tokenized samples: {len(dataset) + len(fineweb)}")
 
     # Re-enable logging
     if not accelerator.is_main_process:
@@ -350,10 +345,10 @@ def train(config, accelerator, output_dir):
 
     # Train the model (resume from checkpoint if available)
     if checkpoint_dir:
-        print(f"Resuming training from checkpoint: {checkpoint_dir}")
+        LOGGER.info(f"Resuming training from checkpoint: {checkpoint_dir}")
         trainer.train(resume_from_checkpoint=checkpoint_dir)
     else:
-        print("Starting training from scratch")
+        LOGGER.info("Starting training from scratch")
         trainer.train()
     return trainer
 
@@ -409,18 +404,18 @@ def train_model(config_dict, output_dir):
         config_output_path_yaml = os.path.join(output_dir, "training_config.yaml")
         with open(config_output_path_yaml, "w") as f:
             yaml.dump(config_dict, f, default_flow_style=False)
-        print(f"Saved config to {config_output_path_yaml}")
+        LOGGER.info(f"Saved config to {config_output_path_yaml}")
 
         config_output_path_json = os.path.join(output_dir, "training_config.json")
         with open(config_output_path_json, "w") as f:
             json.dump(config_dict, f, indent=4)
-        print(f"Saved config to {config_output_path_json}")
+        LOGGER.info(f"Saved config to {config_output_path_json}")
 
-        print("Starting fine-tuning.")
-        print(f"Distributed: {accelerator.distributed_type}")
-        print(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
-        print(f"Config: {config_dict}")
-        print(f"Output dir: {output_dir}")
+        LOGGER.info("Starting fine-tuning.")
+        LOGGER.info(f"Distributed: {accelerator.distributed_type}")
+        LOGGER.info(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
+        LOGGER.info(f"Config: {config_dict}")
+        LOGGER.info(f"Output dir: {output_dir}")
 
     # Initialize wandb
     if config_dict["training"]["report_to"] == "wandb":
@@ -435,7 +430,7 @@ def train_model(config_dict, output_dir):
     trainer.save_model(final_model_dir)
 
     if accelerator.is_main_process:
-        print(f"Saved model to {final_model_dir}")
+        LOGGER.info(f"Saved model to {final_model_dir}")
 
     if config_dict["training"]["report_to"] == "wandb":
         run.finish()

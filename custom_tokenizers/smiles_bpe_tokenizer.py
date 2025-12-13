@@ -1,6 +1,9 @@
 import os
+from utils.logging import get_logger
 from transformers import PreTrainedTokenizerFast
 from tokenizers import decoders, models, pre_tokenizers, trainers, Tokenizer
+
+LOGGER = get_logger(__name__)
 
 
 class SmilesBpeTokenizer(PreTrainedTokenizerFast):
@@ -104,7 +107,7 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
             vocab_size (int): The desired vocabulary size. Defaults to 2000.
             min_frequency (int): The minimum frequency for a token to be included. Defaults to 2.
         """
-        print("Training BPE tokenizer...")
+        LOGGER.info("Training BPE tokenizer...")
 
         # Initialize BPE Tokenizer
         tokenizer = Tokenizer(models.BPE())

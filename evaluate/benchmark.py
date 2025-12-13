@@ -13,6 +13,7 @@ from accelerate import Accelerator, InitProcessGroupKwargs
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from utils.config import load_config
+from utils.logging import get_logger
 from custom_tokenizers.hybrid_tokenizer import HybridTokenizer
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
@@ -26,6 +27,8 @@ from ChemIQ.utils.answer_verifier import AnswerVerifier
 
 RDLogger.DisableLog("rdApp.*")
 AutoTokenizer.register("HybridTokenizer", HybridTokenizer)
+
+LOGGER = get_logger(__name__)
 
 CHEMBENCH_TOPICS = [
     "analytical_chemistry",
@@ -56,7 +59,7 @@ class GemmaWrapper:
         self.device = device
         device_map = {"": device} if device is not None else "auto"
 
-        print(f"Loading tokenizer from: {model_path}")
+        LOGGER.info(f"Loading tokenizer from: {model_path}")
 
         config_path = None
         search_paths = [
@@ -71,15 +74,19 @@ class GemmaWrapper:
 
         self.tokenizer = None
         if config_path:
-            print(f"Found training config at {config_path}, assembling tokenizer...")
+            LOGGER.info(
+                f"Found training config at {config_path}, assembling tokenizer..."
+            )
             try:
                 train_config = load_config(config_path)
                 self.tokenizer = assemble_tokenizer(train_config)
             except Exception as e:
-                print(f"Failed to assemble tokenizer from config: {e}")
+                LOGGER.warning(f"Failed to assemble tokenizer from config: {e}")
 
         if self.tokenizer is None:
-            print(f"Falling back to AutoTokenizer.from_pretrained for {model_path}")
+            LOGGER.info(
+                f"Falling back to AutoTokenizer.from_pretrained for {model_path}"
+            )
             self.tokenizer = AutoTokenizer.from_pretrained(
                 model_path, trust_remote_code=True
             )
@@ -92,14 +99,14 @@ class GemmaWrapper:
         try:
             config = PeftConfig.from_pretrained(model_path)
             base_model_path = config.base_model_name_or_path
-            print(f"Found base model path from PEFT config: {base_model_path}")
+            LOGGER.info(f"Found base model path from PEFT config: {base_model_path}")
             is_peft = True
         except Exception:
             base_model_path = model_path
-            print(f"No PEFT config found, using full model: {base_model_path}")
+            LOGGER.info(f"No PEFT config found, using full model: {base_model_path}")
             is_peft = False
 
-        print("Loading base model weights...")
+        LOGGER.info("Loading base model weights...")
         self.model = AutoModelForCausalLM.from_pretrained(
             base_model_path,
             device_map=device_map,
@@ -109,17 +116,17 @@ class GemmaWrapper:
 
         current_vocab_size = self.model.get_input_embeddings().weight.shape[0]
         if len(self.tokenizer) > current_vocab_size:
-            print(
+            LOGGER.info(
                 f"Resizing model embeddings from {current_vocab_size} to {len(self.tokenizer)}"
             )
             self.model.resize_token_embeddings(len(self.tokenizer))
 
         if is_peft:
-            print(f"Loading adapter weights from: {model_path}")
+            LOGGER.info(f"Loading adapter weights from: {model_path}")
             self.model = PeftModel.from_pretrained(self.model, model_path)
 
         if not self.tokenizer.chat_template:
-            print("Chat template missing, applying gemma default template...")
+            LOGGER.info("Chat template missing, applying gemma default template...")
             self.tokenizer.chat_template = (
                 "{{ bos_token }}"
                 "{% for message in messages %}"
@@ -224,9 +231,8 @@ def run_chembench(model_path, output_path):
     accelerator = Accelerator(kwargs_handlers=[timeout])
 
     accelerator.wait_for_everyone()
-    print(
-        f"[Init] Rank: {accelerator.process_index}/{accelerator.num_processes} | Device: {accelerator.device}",
-        flush=True,
+    LOGGER.info(
+        f"[Init] Rank: {accelerator.process_index}/{accelerator.num_processes} | Device: {accelerator.device}"
     )
 
     enable_logging()
@@ -239,7 +245,7 @@ def run_chembench(model_path, output_path):
         for i, topic in enumerate(CHEMBENCH_TOPICS)
         if i % accelerator.num_processes == accelerator.process_index
     ]
-    print(
+    LOGGER.info(
         f"[Rank {accelerator.process_index}] Processing {len(my_topics)} topics: {my_topics}"
     )
 
@@ -252,7 +258,7 @@ def run_chembench(model_path, output_path):
 
     accelerator.wait_for_everyone()
     if accelerator.is_main_process:
-        print("All ranks are done")
+        LOGGER.info("All ranks are done")
 
     # benchmark.submit(results)
 
@@ -285,7 +291,7 @@ def run_chemiq(model_path, chemiq_path, output_path):
         prompt = question.get("prompt")
         messages = [{"role": "user", "content": prompt}]
 
-        print(f"Processing ChemiQ question ({i}/{len(questions)}) {id}...")
+        LOGGER.info(f"Processing ChemiQ question ({i}/{len(questions)}) {id}...")
         try:
             generations = model.generate([messages])
 
@@ -300,7 +306,7 @@ def run_chemiq(model_path, chemiq_path, output_path):
                     raw_answer = first_gen[0].text
 
             if not raw_answer:
-                print(f"Warning: Model generated empty output for {id}")
+                LOGGER.warning(f"Model generated empty output for {id}")
                 raw_answer = ""
 
             if raw_answer:
@@ -323,7 +329,7 @@ def run_chemiq(model_path, chemiq_path, output_path):
                     check = verifier.check_answer(id, parsed_answer)
                     record.update(check)
                 except Exception as e:
-                    print(f"Failed to verify answer for {id}: {e}")
+                    LOGGER.warning(f"Failed to verify answer for {id}: {e}")
                     record.update({"is_correct": False, "opsin_smiles": None})
             else:
                 record.update(
@@ -335,7 +341,7 @@ def run_chemiq(model_path, chemiq_path, output_path):
                 f.write(json.dumps(record) + "\n")
 
         except Exception as e:
-            print(f"CRITICAL ERROR on question {id}: {e}")
+            LOGGER.exception(f"Critical error on question {id}: {e}")
             continue
 
     summary = {

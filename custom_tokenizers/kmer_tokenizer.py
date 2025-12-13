@@ -4,8 +4,11 @@ import collections
 import utils.helpers as helpers
 
 from tqdm import tqdm
+from utils.logging import get_logger
 from transformers import PreTrainedTokenizer
 from SmilesPE.pretokenizer import kmer_tokenizer
+
+LOGGER = get_logger(__name__)
 
 
 class KmerTokenizer(PreTrainedTokenizer):
@@ -159,7 +162,9 @@ class KmerTokenizer(PreTrainedTokenizer):
         Returns:
             dict: The created vocabulary.
         """
-        print(f"Counting k-mers (ngram={self.ngram}, limit={self.max_vocab_size})...")
+        LOGGER.info(
+            f"Counting k-mers (ngram={self.ngram}, limit={self.max_vocab_size})..."
+        )
         counter = collections.Counter()
 
         for i, item in enumerate(tqdm(text_iterator)):
@@ -167,7 +172,7 @@ class KmerTokenizer(PreTrainedTokenizer):
             tokens = self._tokenize(text)
             counter.update(tokens)
 
-        print(f"Total unique k-mers found: {len(counter)}")
+        LOGGER.info(f"Total unique k-mers found: {len(counter)}")
 
         new_vocab = {
             self.unk_token: 0,
@@ -189,7 +194,7 @@ class KmerTokenizer(PreTrainedTokenizer):
         self.vocab = new_vocab
         self.decoder = {v: k for k, v in self.vocab.items()}
 
-        print(f"Final vocab size: {len(self.vocab)}")
+        LOGGER.info(f"Final vocab size: {len(self.vocab)}")
 
         if save_vocabulary and vocab_path:
             with open(vocab_path, "w", encoding="utf-8") as f:

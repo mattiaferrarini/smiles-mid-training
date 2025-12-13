@@ -1,7 +1,10 @@
 import os
 import re
 import json
+from utils.logging import get_logger
 from transformers import BatchEncoding, PreTrainedTokenizerBase
+
+LOGGER = get_logger(__name__)
 
 
 class HybridTokenizer(PreTrainedTokenizerBase):
@@ -48,22 +51,24 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         if hasattr(base_tokenizer, "chat_template") and base_tokenizer.chat_template:
             self.chat_template = base_tokenizer.chat_template
 
-        print(f"Base tokenizer type: {type(base_tokenizer)}")
-        print("Base tokenizer vocab size:", len(self.base_tokenizer))
+        LOGGER.debug(f"Base tokenizer type: {type(base_tokenizer)}")
+        LOGGER.debug(f"Base tokenizer vocab size: {len(self.base_tokenizer)}")
 
         # Ensure base tokenizer has special tokens
         if chem_start not in self.base_tokenizer.get_vocab():
             self.base_tokenizer.add_special_tokens(
                 {"additional_special_tokens": [self.chem_start, self.chem_end]}
             )
-        print(
-            "Base tokenizer vocab size after special tokens:", len(self.base_tokenizer)
+        LOGGER.debug(
+            f"Base tokenizer vocab size after special tokens: {len(self.base_tokenizer)}"
         )
 
         # Ids for special tokens delimiting chemical segments
         self.chem_start_id = self.base_tokenizer.convert_tokens_to_ids(self.chem_start)
         self.chem_end_id = self.base_tokenizer.convert_tokens_to_ids(self.chem_end)
-        print(f"Chem Start ID: {self.chem_start_id}, Chem End ID: {self.chem_end_id}")
+        LOGGER.debug(
+            f"Chem Start ID: {self.chem_start_id}, Chem End ID: {self.chem_end_id}"
+        )
 
         # Create chemical vocabulary and ID mapping
         self.chem_vocab, self.chem_ids_map = self.create_chem_vocab()
@@ -135,14 +140,14 @@ class HybridTokenizer(PreTrainedTokenizerBase):
 
         # Find the first available ID after the base vocabulary
         next_chem_id = max(base_vocab.values()) + 1
-        print("First available ID for chemical tokens:", next_chem_id)
+        LOGGER.debug(f"First available ID for chemical tokens: {next_chem_id}")
 
         # Map chemical tokenizer IDs to new unique IDs
         for token, idx in chem_vocab.items():
             chem_ids_map[idx] = next_chem_id
             next_chem_id += 1
 
-        print("Chemical vocabulary size:", len(chem_vocab))
+        LOGGER.debug(f"Chemical vocabulary size: {len(chem_vocab)}")
         return chem_vocab, chem_ids_map
 
     def get_chem_vocab(self):

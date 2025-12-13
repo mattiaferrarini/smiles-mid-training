@@ -2,13 +2,16 @@
 Adapted and simplified from https://github.com/mikemayuare/apetokenizer.
 """
 
-from pathlib import Path
 import os
 import re
 import json
+from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
+from utils.logging import get_logger
 from transformers import PreTrainedTokenizerBase
+
+LOGGER = get_logger(__name__)
 
 
 class APETokenizer(PreTrainedTokenizerBase):
@@ -257,36 +260,36 @@ class APETokenizer(PreTrainedTokenizerBase):
             min_freq_for_merge = self.min_freq_for_merge
 
         # Preprocessing: Tokenize and count word frequencies upfront
-        print(f"Starting tokenization training on {len(corpus)} sequences...")
+        LOGGER.info(f"Starting tokenization training on {len(corpus)} sequences...")
         print("Pretokenizing corpus...", end="\r")
         words = [word for sentence in corpus for word in self.pre_tokenize(sentence)]
         vocabulary_frequency = defaultdict(int)
         for word in words:
             vocabulary_frequency[word] += 1
-        print(
+        LOGGER.info(
             f"Pretokenization complete! Found {len(vocabulary_frequency)} initial tokens from {len(words)} total tokens"
         )
 
         merged_counter = len(vocabulary_frequency) + 1
         iteration = 0
 
-        print(
-            f"\nStarting merge iterations (target vocab size: {max_vocab_size}, min frequency: {min_freq_for_merge})..."
+        LOGGER.info(
+            f"Starting merge iterations (target vocab size: {max_vocab_size}, min frequency: {min_freq_for_merge})..."
         )
 
         while True:
             iteration += 1
 
             if len(vocabulary_frequency) > self.max_vocab_size:
-                print(
-                    f"\n✓ Max vocabulary size reached: {len(vocabulary_frequency)} tokens"
+                LOGGER.info(
+                    f"Max vocabulary size reached: {len(vocabulary_frequency)} tokens"
                 )
                 break
 
             most_common_pair, freq = self.get_most_common_pair(words)
             if freq < self.min_freq_for_merge:
-                print(
-                    f"\n✓ Stopping: pair frequency ({freq}) below minimum threshold ({self.min_freq_for_merge})"
+                LOGGER.info(
+                    f"Stopping: pair frequency ({freq}) below minimum threshold ({self.min_freq_for_merge})"
                 )
                 break
 
@@ -294,7 +297,7 @@ class APETokenizer(PreTrainedTokenizerBase):
             if merged_word not in vocabulary_frequency.keys():
                 progress_pct = round(merged_counter / max_vocab_size * 100, 2)
                 timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                print(
+                LOGGER.info(
                     f"[{timestamp}] Iteration {iteration}: Merging '{most_common_pair[0]}' + '{most_common_pair[1]}' → '{merged_word}' "
                     f"(freq: {freq}) | Vocab: {merged_counter}/{max_vocab_size} ({progress_pct}%)"
                 )
@@ -343,7 +346,7 @@ class APETokenizer(PreTrainedTokenizerBase):
         self.vocabulary = self.vocab
         self.decoder = {v: k for k, v in self.vocab.items()}
 
-        print("\nTraining complete.")
+        LOGGER.info("Training complete.")
 
         return None
 
@@ -373,7 +376,7 @@ class APETokenizer(PreTrainedTokenizerBase):
         else:
             corpus = text
 
-        print(f"Training APE tokenizer on {len(corpus)} sequences...")
+        LOGGER.info(f"Training APE tokenizer on {len(corpus)} sequences...")
         self._train(
             corpus,
             max_vocab_size=self.max_vocab_size,
@@ -550,7 +553,7 @@ class APETokenizer(PreTrainedTokenizerBase):
             with open(training_state_file, "w", encoding="utf-8") as f:
                 json.dump(training_state, f, ensure_ascii=False, indent=4)
 
-        print(f"Tokenizer saved in {save_directory}")
+        LOGGER.info(f"Tokenizer saved in {save_directory}")
         return str(save_directory / "vocab.json"), str(config_file)
 
     @classmethod

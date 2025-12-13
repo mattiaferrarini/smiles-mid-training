@@ -8,6 +8,7 @@ import re
 
 from datasets import load_dataset
 from utils.config import load_config
+from utils.logging import get_logger
 from utils.helpers import build_and_save_tokenizer
 
 from .character_tokenizer import CharacterTokenizer
@@ -40,6 +41,8 @@ TOKENIZER_CLASSES = {
     "ape_wordpiece": APEWordPieceTokenizer,
 }
 
+LOGGER = get_logger(__name__)
+
 
 def build_tokenizer(output_dir, config_path):
     """
@@ -51,10 +54,10 @@ def build_tokenizer(output_dir, config_path):
     """
     config = load_config(config_path)
 
-    print("Configuration Loaded:")
-    print(config)
+    LOGGER.info("Configuration loaded")
+    LOGGER.debug(f"Config: {config}")
 
-    print("Loading dataset...")
+    LOGGER.info("Loading dataset...")
     dataset = load_dataset(
         "arrow",
         data_dir=config["data"]["data_folder"],
@@ -70,8 +73,8 @@ def build_tokenizer(output_dir, config_path):
     if (
         tokenizer_type == "base" or tokenizer_type == "hybrid"
     ) and "chem_type" in config["tokenizer"]:
-        print(
-            f"[INFO] Tokenizer type is '{tokenizer_type}'. Switching to build chemical tokenizer defined in 'chem_type': {config['tokenizer']['chem_type']}"
+        LOGGER.info(
+            f"Tokenizer type is '{tokenizer_type}'. Switching to build chemical tokenizer defined in 'chem_type': {config['tokenizer']['chem_type']}"
         )
         tokenizer_type = config["tokenizer"]["chem_type"]
 
@@ -80,7 +83,9 @@ def build_tokenizer(output_dir, config_path):
     output_subdir_name = config["tokenizer"].get(
         "output_subdir_name", f"{tokenizer_type}_tokenizer"
     )
-    print(f"Output directory for tokenizer: {base_output_dir}/{output_subdir_name}")
+    LOGGER.info(
+        f"Output directory for tokenizer: {base_output_dir}/{output_subdir_name}"
+    )
 
     if tokenizer_type in TOKENIZER_CLASSES:
         tokenizerclass = TOKENIZER_CLASSES[tokenizer_type]
@@ -88,9 +93,9 @@ def build_tokenizer(output_dir, config_path):
         raise ValueError(f"Unknown tokenizer type: {tokenizer_type}")
 
     if tokenizerclass:
-        print(f"Starting build for tokenizer type: {tokenizer_type}")
+        LOGGER.info(f"Starting build for tokenizer type: {tokenizer_type}")
 
-        print(
+        LOGGER.info(
             "Filtering dataset to extract chemical segments (flattening to one SMILES per row)..."
         )
 
@@ -106,12 +111,12 @@ def build_tokenizer(output_dir, config_path):
 
             return {text_field: extracted_smiles}
 
-        print("\n[DEBUG] First 3 original examples:")
+        LOGGER.debug("First 3 original examples:")
         for i in range(min(3, len(dataset))):
-            print(f"Example {i}: {dataset[i][text_field]}...")
+            LOGGER.debug(f"Example {i}: {dataset[i][text_field]}...")
 
         safe_num_proc = min(8, os.cpu_count() or 1)
-        print(f"[INFO] Using num_proc={safe_num_proc} for processing")
+        LOGGER.info(f"Using num_proc={safe_num_proc} for processing")
 
         chem_dataset = dataset.map(
             extract_smiles_batch,
@@ -121,28 +126,26 @@ def build_tokenizer(output_dir, config_path):
             num_proc=safe_num_proc,
         )
 
-        print(f"\n[DEBUG] New dataset size: {len(chem_dataset)} rows.")
-        print("[DEBUG] First 5 extracted SMILES:")
+        LOGGER.debug(f"New dataset size: {len(chem_dataset)} rows.")
+        LOGGER.debug("First 5 extracted SMILES:")
         for i in range(min(5, len(chem_dataset))):
-            print(f"Row {i}: {chem_dataset[i][text_field]}")
+            LOGGER.debug(f"Row {i}: {chem_dataset[i][text_field]}")
 
         if len(chem_dataset) == 0:
-            print("\n[WARNING] !!! NO CHEMICAL DATA FOUND !!!")
+            LOGGER.warning("No chemical data found")
         else:
-            print(
-                f"\n[INFO] Successfully extracted {len(chem_dataset)} SMILES segments."
-            )
+            LOGGER.info(f"Successfully extracted {len(chem_dataset)} SMILES segments.")
 
         if "portion_of_data" in config["data"]:
             portion = config["data"]["portion_of_data"]
             num_rows = int(len(chem_dataset) * portion)
             chem_dataset = chem_dataset.select(range(num_rows))
-            print(
-                f"\n[INFO] Using portion_of_data={portion}. Reduced dataset to {num_rows} rows."
+            LOGGER.info(
+                f"Using portion_of_data={portion}. Reduced dataset to {num_rows} rows."
             )
 
-        print(
-            f"\nBuilding and saving tokenizer to {base_output_dir}/{output_subdir_name} ..."
+        LOGGER.info(
+            f"Building and saving tokenizer to {base_output_dir}/{output_subdir_name} ..."
         )
 
         build_and_save_tokenizer(
@@ -153,4 +156,4 @@ def build_tokenizer(output_dir, config_path):
             config=config,
         )
 
-        print("\nTokenizer built and saved")
+        LOGGER.info("Tokenizer built and saved")

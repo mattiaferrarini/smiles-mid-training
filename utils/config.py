@@ -3,6 +3,9 @@ from pathlib import Path
 import os
 from huggingface_hub import login
 from dotenv import load_dotenv  #
+from utils.logging import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 def load_config(path):
@@ -18,18 +21,20 @@ def hf_auth():
     if token:
         try:
             login(token=token, add_to_git_credential=False)
-            print("Hugging Face authentication successful (using HF_TOKEN).")
+            LOGGER.info("Hugging Face authentication successful (using HF_TOKEN)")
         except Exception as e:
-            print(
-                f"Warning: Hugging Face authentication failed (Token non valido): {e}"
+            LOGGER.warning(
+                f"Hugging Face authentication failed (invalid token): {e}",
+                exc_info=True,
             )
     else:
         try:
             login(add_to_git_credential=False)
-            print(
-                "Warning: HF_TOKEN non trovato nell'ambiente, uso l'autenticazione tramite cache locale."
+            LOGGER.info(
+                "HF_TOKEN not found; using local cached Hugging Face authentication if available"
             )
         except Exception:
-            print(
-                "Warning: Nessuna autenticazione Hugging Face trovata. Accesso come utente anonimo."
+            LOGGER.warning(
+                "No Hugging Face authentication found; proceeding as anonymous user",
+                exc_info=True,
             )

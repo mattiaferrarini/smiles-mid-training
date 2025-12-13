@@ -44,6 +44,11 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
             config (dict, optional): A dictionary containing tokenizer configuration parameters.
             **kwargs: Additional keyword arguments passed to `PreTrainedTokenizerFast`.
         """
+        # Store config parameters
+        self.config = config or {}
+        self.max_vocab_size = self.config.get('max_vocab_size', 2000)
+        self.min_freq_for_merge = self.config.get('min_freq_for_merge', 2)
+        
         # If loading from files
         if tokenizer_file:
             super().__init__(
@@ -96,7 +101,7 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
             )
 
     def create_vocabulary(
-        self, text, save_vocabulary=False, vocab_size=2000, min_frequency=2
+        self, text, save_vocabulary=False, vocab_size=None, min_frequency=None
     ):
         """
         Trains the WordPiece tokenizer on the provided text.
@@ -104,10 +109,14 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
         Args:
             text (iterator): An iterator over the training data.
             save_vocabulary (bool): Whether to save the vocabulary. Defaults to False.
-            vocab_size (int): The desired vocabulary size. Defaults to 2000.
-            min_frequency (int): The minimum frequency for a token to be included. Defaults to 2.
+            vocab_size (int, optional): The desired vocabulary size. Uses config value if not provided.
+            min_frequency (int, optional): The minimum frequency for a token to be included. Uses config value if not provided.
         """
         LOGGER.info("Training WordPiece tokenizer...")
+
+        # Use config values if not explicitly provided
+        vocab_size = vocab_size or self.max_vocab_size
+        min_frequency = min_frequency or self.min_freq_for_merge
 
         # Initialize WordPiece Tokenizer
         tokenizer = Tokenizer(models.WordPiece(unk_token=self.unk_token))

@@ -33,21 +33,24 @@
         "name": "APE Tokenizer",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "ape_hf"
+            "chem_type": "ape_hf",
+            "output_subdir_name": "ape_hf_5000"
         }
     },
     {
         "name": "APE WordPiece Tokenizer",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "ape_wp_hf"
+            "chem_type": "ape_wp_hf",
+            "output_subdir_name": "ape_wp_hf_5000"
         }
     },
     {
         "name": "Chem APE Tokenizer",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "chem_ape"
+            "chem_type": "chem_ape",
+            "output_subdir_name": "chem_ape_2000"
         }
     },
     {

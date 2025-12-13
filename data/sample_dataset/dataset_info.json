@@ -1,0 +1,120 @@
+{
+  "builder_name": "arrow",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "arrow",
+  "dataset_size": 2004671375,
+  "description": "",
+  "download_checksums": {
+    "/capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1/data-00000-of-00068.arrow": {
+      "num_bytes": 2004856640,
+      "checksum": null
+    }
+  },
+  "download_size": 2004856640,
+  "features": {
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "id": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "dump": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "url": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "file_path": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "language": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "language_score": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "token_count": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "score": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "int_score": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "chemistry_score": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "chemistry_id": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "n_duplicates": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "chemicals_positions": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "n_chemicals": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "text_annotated_v1": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "text_annotated_v1_smiles_count": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "text_annotated_v1_token_count": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "text_annotated_v1tags": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "text_annotated_v1tags_smiles_count": {
+      "dtype": "int64",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 4009528015,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 2004671375,
+      "num_examples": 114271,
+      "shard_lengths": [
+        30000,
+        29000,
+        29000,
+        26271
+      ],
+      "dataset_name": "arrow"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

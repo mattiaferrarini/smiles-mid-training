@@ -33,14 +33,14 @@ echo "=================================================================="
 echo "STARTING TOKENIZER BUILD JOB at $(date)"
 echo "=================================================================="
 
-OUTPUT_DIR="/users/$USER/json/tokenizers"
+OUTPUT_DIR="/users/$USER/smiles-mid-training/json/tokenizers"
 mkdir -p "$OUTPUT_DIR"
 
 export PYTHONUNBUFFERED=1
 
 echo "Running tokenizer build script..."
-srun "$PYTHON_EXEC" -u custom_tokenizers/build_tokenizer.py \
-    --config configs/smiles_wp.yaml \
+srun "$PYTHON_EXEC" -u main.py build-tokenizer \
+    --config configs/tokenizers/smiles_wp.yaml \
     --output-dir "$OUTPUT_DIR"
 EXIT_CODE=$?
 

@@ -76,7 +76,7 @@ def evaluate_tokenizer(tokenizer, smiles_list):
     }
 
 
-def evaluate_tokenizers_fertility(registry_path, dataset_path, output_folder):
+def evaluate_tokenizers_fertility(registry_path, tokenizers_dir, dataset_path, output_folder):
     load_dotenv()
     with open(registry_path, "r") as f:
         configs = json.load(f)
@@ -87,6 +87,7 @@ def evaluate_tokenizers_fertility(registry_path, dataset_path, output_folder):
 
     for config in configs:
         print(f"Evaluating fertility for tokenizer config: {config['name']}")
+        config["tokenizer"]["output_dir"] = tokenizers_dir
         tokenizer = assemble_tokenizer(config)
         results = evaluate_tokenizer(tokenizer, smiles)
         all_results[config['name']] = results

@@ -38,12 +38,12 @@ def assemble_tokenizer(config):
 
     LOGGER.info(f"Assembling tokenizer of type: {tokenizer_type}")
 
-    base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
-
     if tokenizer_type == "base":
+        base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
         return base_tokenizer
     elif tokenizer_type == "base_special":
         LOGGER.info("Including special SMILES tokens")
+        base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
         base_tokenizer.add_special_tokens(
             {"additional_special_tokens": [START_SMILES, END_SMILES]}
         )
@@ -53,7 +53,8 @@ def assemble_tokenizer(config):
         return chem_tokenizer
     elif tokenizer_type == "hybrid":
         chem_tokenizer = assemble_chem_tokenizer(config)
-
+        base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
+        
         # Assemble HybridTokenizer
         hybrid_tokenizer = HybridTokenizer(
             base_tokenizer=base_tokenizer,

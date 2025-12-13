@@ -9,12 +9,24 @@ LOGGER = get_logger(__name__)
 
 
 def load_config(path):
+    """
+    Loads a YAML configuration file from the specified path
+
+    Args:
+        path (str): Path to the YAML configuration file
+
+    Returns:
+        dict: The loaded configuration as a dictionary
+    """
     path = Path(path)
     with path.open("r", encoding="utf-8") as config_file:
         return yaml.safe_load(config_file)
 
 
 def hf_auth():
+    """
+    Authenticates the user with Hugging Face using their token environment variable
+    """
     load_dotenv()
     token = os.environ.get("HF_TOKEN")
 

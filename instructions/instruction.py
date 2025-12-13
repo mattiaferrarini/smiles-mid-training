@@ -127,7 +127,7 @@ def prepare_datasets(config):
     chat_dataset = load_dataset("trl-lib/Capybara", split="train")
     LOGGER.info(f"Loaded {len(chat_dataset)} samples from chat dataset")
 
-    sciq_path = config.get("data", {}).get("sciq_path", "sciq.jsonl")
+    sciq_path = os.path.expandvars(config.get("data", {}).get("sciq_path", "sciq.jsonl"))
     LOGGER.info(f"Using sciq path: {sciq_path}")
 
     # Only Rank 0 generates data
@@ -143,7 +143,7 @@ def prepare_datasets(config):
     sciq_dataset = load_dataset("json", data_files=sciq_path, split="train")
     LOGGER.info(f"Loaded {len(sciq_dataset)} samples from sciq dataset")
 
-    metamathqa_path = config.get("data", {}).get("metamathqa_path", "metamathqa.jsonl")
+    metamathqa_path = os.path.expandvars(config.get("data", {}).get("metamathqa_path", "metamathqa.jsonl"))
     LOGGER.info(f"Using methamathqa path: {metamathqa_path}")
 
     if local_rank == 0 and not os.path.exists(metamathqa_path):
@@ -258,7 +258,7 @@ def train(config, model, tokenizer, dataset_splits, base_config):
     )
 
     training_args = SFTConfig(
-        output_dir=config["training"]["output_dir"],
+        output_dir=os.path.expandvars(config["training"]["output_dir"]),
         num_train_epochs=config["training"]["epochs"],
         per_device_train_batch_size=config["training"]["batch_size"],
         gradient_accumulation_steps=config["training"]["gradient_accumulation_steps"],
@@ -296,7 +296,7 @@ def train(config, model, tokenizer, dataset_splits, base_config):
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     if local_rank == 0:
         subdir = f"it-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        final_dir = os.path.join(config["training"]["output_dir"], subdir)
+        final_dir = os.path.join(os.path.expandvars(config["training"]["output_dir"]), subdir)
         os.makedirs(final_dir, exist_ok=True)
 
         if base_config and os.path.exists(base_config):

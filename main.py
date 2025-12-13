@@ -10,6 +10,7 @@ from custom_tokenizers.build_tokenizer import build_tokenizer
 from instructions.instruction import run_instruction_tuning
 from evaluate.likelihood_eval import run_likelihood_eval
 from evaluate.fertility import evaluate_tokenizers_fertility
+from evaluate.embeddings import evaluate_embeddings
 from training.training_trl import train_model
 
 from custom_tokenizers import (
@@ -271,6 +272,48 @@ def run_fertility_eval_command(
     ),
 ):
     evaluate_tokenizers_fertility(str(registry_path), str(tokenizers_folder), str(dataset_path), str(output_folder))
+
+
+@app.command("evaluate-embeddings")
+def evaluate_embeddings_command(
+    checkpoint_folder: str = typer.Option(
+        ...,
+        "--checkpoint-folder",
+        "-c",
+        help="Path to the model checkpoint folder",
+    ),
+    dataset_path: str = typer.Option(
+        ...,
+        "--dataset-path",
+        "-d",
+        help="Path to the dataset CSV file",
+    ),
+    smiles_col: str = typer.Option(
+        ...,
+        "--smiles-col",
+        "-s",
+        help="Name of the column containing SMILES strings",
+    ),
+    label_col: str = typer.Option(
+        ...,
+        "--label-col",
+        "-l",
+        help="Name of the column containing labels",
+    ),
+    output_path: str = typer.Option(
+        ...,
+        "--output-path",
+        "-o",
+        help="Path to save the embeddings plot",
+    ),
+):
+    evaluate_embeddings(
+        checkpoint_folder,
+        dataset_path,
+        smiles_col,
+        label_col,
+        output_path,
+    )
 
 
 @app.command("test-tokenizer")

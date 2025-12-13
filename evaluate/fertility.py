@@ -17,6 +17,14 @@ TEXT_FIELD = "text_annotated_v1tags"
 
 
 def get_smiles_list_from_dataset(dataset_path, text_field):
+    """
+    Extracts SMILES strings from a dataset stored in Arrow format.
+    Args:
+        dataset_path (str): Path to the dataset directory.
+        text_field (str): Name of the text field containing annotated SMILES.
+    Returns:
+        list: A list of extracted SMILES strings.
+    """
     dataset = load_dataset(
         "arrow",
         data_dir=dataset_path,
@@ -52,6 +60,15 @@ def get_smiles_list_from_dataset(dataset_path, text_field):
 
 
 def evaluate_tokenizer(tokenizer, smiles_list):
+    """
+    Evaluates the tokenizer's performance on a list of SMILES strings.
+    
+    Args:
+        tokenizer: The tokenizer to evaluate.
+        smiles_list (list): A list of SMILES strings.
+    Returns:
+        dict: A dictionary containing evaluation metrics.
+    """
     total_smiles = len(smiles_list)
     token_counts = []
     for smiles in smiles_list:
@@ -81,6 +98,17 @@ def evaluate_tokenizer(tokenizer, smiles_list):
 
 
 def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path, output_folder):
+    """
+    Evaluates the fertility of multiple tokenizers defined in a registry file on a dataset of SMILES strings.
+    Args:
+        registry_path (str): Path to the tokenizer registry JSON file.
+        tokenizers_folder (str): Folder where tokenizers are stored.
+        dataset_path (str): Path to the dataset containing SMILES strings.
+        output_folder (str): Folder to save the evaluation results.
+    Returns:
+        None
+    """
+
     load_dotenv()
     with open(registry_path, "r") as f:
         configs = json.load(f)

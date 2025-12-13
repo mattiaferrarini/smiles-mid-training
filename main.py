@@ -9,6 +9,7 @@ from training.baselines import download_baseline_artifacts
 from custom_tokenizers.build_tokenizer import build_tokenizer
 from instructions.instruction import run_instruction_tuning
 from evaluate.likelihood_eval import run_likelihood_eval
+from evaluate.fertility import evaluate_tokenizers_fertility
 from training.training_trl import train_model
 
 from custom_tokenizers import (
@@ -229,6 +230,38 @@ def run_chemiq_command(
     ),
 ):
     run_chemiq(model_path, chemiq_path, output_path)
+
+
+@app.command("fertility-eval")
+def run_fertility_eval_command(
+    registry_path: Path = typer.Option(
+        ...,
+        "--registry-path",
+        "-r",
+        help="Path to registry of tokenizer configurations",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+    ),
+    dataset_path: Path = typer.Option(
+        ...,
+        "--dataset-path",
+        "-d",
+        help="Path to dataset containing SMILES",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+    ),
+    output_folder: Path = typer.Option(
+        ...,
+        "--output-folder",
+        "-o",
+        help="Where to save fertility evaluation results",
+        file_okay=False,
+        dir_okay=True,
+    ),
+):
+    evaluate_tokenizers_fertility(str(config_path), str(dataset_path), str(output_folder))
 
 
 @app.command("test-tokenizer")

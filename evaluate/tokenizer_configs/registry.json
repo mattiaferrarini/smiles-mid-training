@@ -1,0 +1,93 @@
+[
+    {
+        "name": "Base",
+        "tokenizer": {
+            "type": "base"
+        },
+        "model": {
+            "name": "google/gemma-3-1b-pt"
+        }
+    },
+    {
+        "name": "Character Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "character"
+        }
+    },
+    {
+        "name": "Element Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "element"
+        }
+    },
+    {
+        "name": "SMILES BPE Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "smiles_bpe"
+        }
+    },
+    {
+        "name": "APE Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "ape_hf"
+        }
+    },
+    {
+        "name": "APE WordPiece Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "ape_wp_hf"
+        }
+    },
+    {
+        "name": "Chem APE Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "chem_ape"
+        }
+    },
+    {
+        "name": "2-mer Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "kmer",
+            "output_subdir_name": "kmer2"
+        }
+    },
+    {
+        "name": "3-mer Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "kmer",
+            "output_subdir_name": "kmer3"
+        }
+    },
+    {
+        "name": "4-mer Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "kmer",
+            "output_subdir_name": "kmer4"
+        }
+    },
+    {
+        "name": "5-mer Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "kmer",
+            "output_subdir_name": "kmer5"
+        }
+    },
+    {
+        "name": "6-mer Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "kmer",
+            "output_subdir_name": "kmer6"
+        }
+    }
+]

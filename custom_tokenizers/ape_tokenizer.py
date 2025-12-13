@@ -1,6 +1,7 @@
-'''
+"""
 Adapted and simplified from https://github.com/mikemayuare/apetokenizer.
-'''
+"""
+
 from pathlib import Path
 import os
 import re
@@ -9,19 +10,22 @@ from datetime import datetime
 from collections import defaultdict
 from transformers import PreTrainedTokenizerBase
 
+
 class APETokenizer(PreTrainedTokenizerBase):
     """
     APE tokenizer without using HuggingFace's optimized BPE implementation.
     Compatible with build_tokenizer.py and assemble_tokenizer.py workflows.
     """
-    def __init__(self, 
+
+    def __init__(
+        self,
         vocab_file=None,
         unk_token="[UNK]",
-        pad_token="[PAD]", 
-        bos_token="[BOS]", 
+        pad_token="[PAD]",
+        bos_token="[BOS]",
         eos_token="[EOS]",
         config=None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initializes the APETokenizer.
@@ -32,35 +36,41 @@ class APETokenizer(PreTrainedTokenizerBase):
             pad_token (str): The padding token. Defaults to "[PAD]".
             bos_token (str): The beginning of sequence token. Defaults to "[BOS]".
             eos_token (str): The end of sequence token. Defaults to "[EOS]".
-            config (dict, optional): A dictionary containing tokenizer configuration parameters 
+            config (dict, optional): A dictionary containing tokenizer configuration parameters
             **kwargs: Additional keyword arguments passed to `PreTrainedTokenizerBase`.
         """
-        
-        self.max_vocab_size = config["tokenizer"]["params"].get("max_vocab_size", 20000) if config else 20000
-        self.min_freq_for_merge = config["tokenizer"]["params"].get("min_freq_for_merge", 0) if config else 0
+
+        self.max_vocab_size = (
+            config["tokenizer"]["params"].get("max_vocab_size", 20000)
+            if config
+            else 20000
+        )
+        self.min_freq_for_merge = (
+            config["tokenizer"]["params"].get("min_freq_for_merge", 0) if config else 0
+        )
         self.vocabulary_frequency = defaultdict(int)
         self.pair_counts = defaultdict(int)
-        
+
         # Initialize vocabulary
         self.vocab = {}
         self.decoder = {}
-        
+
         if vocab_file:
             with open(vocab_file, encoding="utf-8") as f:
                 self.vocab = json.load(f)
         else:
             self.vocab = {unk_token: 0, pad_token: 1, bos_token: 2, eos_token: 3}
-        
+
         self.decoder = {v: k for k, v in self.vocab.items()}
-        
+
         super().__init__(
-            unk_token=unk_token, 
-            pad_token=pad_token, 
-            bos_token=bos_token, 
-            eos_token=eos_token, 
-            **kwargs
+            unk_token=unk_token,
+            pad_token=pad_token,
+            bos_token=bos_token,
+            eos_token=eos_token,
+            **kwargs,
         )
-        
+
         # Store special tokens for compatibility
         self.special_tokens = {
             unk_token: self.vocab[unk_token],
@@ -68,7 +78,7 @@ class APETokenizer(PreTrainedTokenizerBase):
             bos_token: self.vocab[bos_token],
             eos_token: self.vocab[eos_token],
         }
-        
+
         # Alias vocabulary to vocab for compatibility
         self.vocabulary = self.vocab
 
@@ -91,20 +101,20 @@ class APETokenizer(PreTrainedTokenizerBase):
         return self.vocab.get(self.unk_token, 0)
 
     def _encode_plus(
-        self, 
-        text, 
-        text_pair=None, 
+        self,
+        text,
+        text_pair=None,
         add_special_tokens=True,
-        padding_strategy="do_not_pad", 
-        truncation_strategy="do_not_truncate", 
-        max_length=None, 
-        is_split_into_words=False, 
-        **kwargs
+        padding_strategy="do_not_pad",
+        truncation_strategy="do_not_truncate",
+        max_length=None,
+        is_split_into_words=False,
+        **kwargs,
     ):
         """
         Tokenizes text and prepares model inputs.
-        
-        This method provides a basic encoding implementation compatible with the `PreTrainedTokenizerBase` interface. 
+
+        This method provides a basic encoding implementation compatible with the `PreTrainedTokenizerBase` interface.
 
         Args:
             text (str): The input text to tokenize.
@@ -120,11 +130,8 @@ class APETokenizer(PreTrainedTokenizerBase):
             dict: A dictionary containing `input_ids` and `attention_mask`.
         """
         input_ids = self.encode(text)
-        
-        return {
-            "input_ids": input_ids,
-            "attention_mask": [1] * len(input_ids)
-        }
+
+        return {"input_ids": input_ids, "attention_mask": [1] * len(input_ids)}
 
     def __call__(self, text, add_special_tokens=False, return_tensors=None, **kwargs):
         """
@@ -172,7 +179,7 @@ class APETokenizer(PreTrainedTokenizerBase):
             int: The integer ID of the token.
         """
         return self.vocab.get(token, self.vocab.get(self.unk_token, 0))
-    
+
     def _convert_id_to_token(self, index):
         """
         Converts a token string to its integer ID.
@@ -180,7 +187,7 @@ class APETokenizer(PreTrainedTokenizerBase):
 
         Args:
             index (int): The integer ID to convert.
-        
+
         Returns:
             str: The token string corresponding to the ID.
         """
@@ -192,8 +199,8 @@ class APETokenizer(PreTrainedTokenizerBase):
 
         Args:
             molecule (str): The SMILES string to pre-tokenize.
-        
-        Returns:    
+
+        Returns:
             List[str]: A list of pre-tokenized string tokens.
         """
         pattern = r"(\[[^\]]+]|Br?|Cl?|N|O|S|P|F|I|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|\%[0-9]{2}|[0-9])"
@@ -204,7 +211,7 @@ class APETokenizer(PreTrainedTokenizerBase):
         """
         Identifies the most common adjacent token pair in the list of words.
 
-        Args: 
+        Args:
             words (List[str]): A list of string tokens.
 
         Returns:
@@ -219,7 +226,7 @@ class APETokenizer(PreTrainedTokenizerBase):
             self.pair_counts.items(), key=self.score_item, default=((None, None), 0)
         )
         return most_common_pair, freq
-    
+
     def score_item(self, item):
         """
         Helper for sorting/max functions based on frequency.
@@ -248,7 +255,7 @@ class APETokenizer(PreTrainedTokenizerBase):
             max_vocab_size = self.max_vocab_size
         if min_freq_for_merge is None:
             min_freq_for_merge = self.min_freq_for_merge
-            
+
         # Preprocessing: Tokenize and count word frequencies upfront
         print(f"Starting tokenization training on {len(corpus)} sequences...")
         print("Pretokenizing corpus...", end="\r")
@@ -263,18 +270,24 @@ class APETokenizer(PreTrainedTokenizerBase):
         merged_counter = len(vocabulary_frequency) + 1
         iteration = 0
 
-        print(f"\nStarting merge iterations (target vocab size: {max_vocab_size}, min frequency: {min_freq_for_merge})...")
-        
+        print(
+            f"\nStarting merge iterations (target vocab size: {max_vocab_size}, min frequency: {min_freq_for_merge})..."
+        )
+
         while True:
             iteration += 1
-            
+
             if len(vocabulary_frequency) > self.max_vocab_size:
-                print(f"\n✓ Max vocabulary size reached: {len(vocabulary_frequency)} tokens")
+                print(
+                    f"\n✓ Max vocabulary size reached: {len(vocabulary_frequency)} tokens"
+                )
                 break
 
             most_common_pair, freq = self.get_most_common_pair(words)
             if freq < self.min_freq_for_merge:
-                print(f"\n✓ Stopping: pair frequency ({freq}) below minimum threshold ({self.min_freq_for_merge})")
+                print(
+                    f"\n✓ Stopping: pair frequency ({freq}) below minimum threshold ({self.min_freq_for_merge})"
+                )
                 break
 
             merged_word = "".join(most_common_pair)
@@ -309,38 +322,46 @@ class APETokenizer(PreTrainedTokenizerBase):
                     new_words.append(words[i])
 
             words = new_words
-            
+
             # Clear pair counts for next iteration
             self.pair_counts.clear()
 
         # Convert vocabulary_frequency to a regular dictionary for final output
         self.vocabulary_frequency = dict(vocabulary_frequency)
-        
+
         # Build vocab from special tokens + learned vocabulary
         # Start from next available ID after special tokens
         max_special_id = max(self.special_tokens.values())
         self.vocab = {**self.special_tokens}
-        for idx, word in enumerate(vocabulary_frequency.keys(), start=max_special_id + 1):
+        for idx, word in enumerate(
+            vocabulary_frequency.keys(), start=max_special_id + 1
+        ):
             if word not in self.vocab:  # Don't override special tokens
                 self.vocab[word] = idx
-        
+
         # Update vocabulary alias and decoder
         self.vocabulary = self.vocab
         self.decoder = {v: k for k, v in self.vocab.items()}
-        
+
         print("\nTraining complete.")
 
         return None
 
-    def create_vocabulary(self, text, append_to_existing_vocabulary=False, vocab_path=None, save_vocabulary=False):
+    def create_vocabulary(
+        self,
+        text,
+        append_to_existing_vocabulary=False,
+        vocab_path=None,
+        save_vocabulary=False,
+    ):
         """
         Wrapper method compatible with build_and_save_tokenizer.
         Accepts a list of strings (SMILES) and trains the APE tokenizer on them.
-        
+
         Args:
             text: List of strings or single string to train on
             append_to_existing_vocabulary: Not used, kept for compatibility
-            vocab_path: Not used, kept for compatibility  
+            vocab_path: Not used, kept for compatibility
             save_vocabulary: Not used, kept for compatibility
 
         Returns:
@@ -351,10 +372,14 @@ class APETokenizer(PreTrainedTokenizerBase):
             corpus = [text]
         else:
             corpus = text
-            
+
         print(f"Training APE tokenizer on {len(corpus)} sequences...")
-        self._train(corpus, max_vocab_size=self.max_vocab_size, min_freq_for_merge=self.min_freq_for_merge)
-        
+        self._train(
+            corpus,
+            max_vocab_size=self.max_vocab_size,
+            min_freq_for_merge=self.min_freq_for_merge,
+        )
+
         return self.vocab
 
     def convert_tokens_to_ids(self, tokens):
@@ -375,14 +400,13 @@ class APETokenizer(PreTrainedTokenizerBase):
                 for token in tokens
             ]
 
-
     def convert_ids_to_tokens(self, token_ids):
         """
         Converts a token ID or a list of token IDs back into their string tokens.
 
         Args:
             token_ids (int or List[int]): Input token ID(s).
-        
+
         Returns:
             str or List[str]: The corresponding token string(s).
         """
@@ -393,7 +417,7 @@ class APETokenizer(PreTrainedTokenizerBase):
         """
         Converts a list of integer IDs back into their string tokens.
         Required by PreTrainedTokenizerBase
-        
+
         Args:
             token_ids (List[int]): List of token IDs.
 
@@ -414,12 +438,12 @@ class APETokenizer(PreTrainedTokenizerBase):
             str: The decoded string (concatenated tokens).
         """
         tokens = self.convert_ids_to_tokens(token_ids)
-        return ''.join(tokens)
+        return "".join(tokens)
 
     def encode(self, text):
         """
         Tokenizes a text string into a list of token IDs using the learned vocabulary.
-        
+
         It scans the text and attempts to match the longest possible substring present in the vocabulary at each position.
 
         Args:
@@ -455,7 +479,7 @@ class APETokenizer(PreTrainedTokenizerBase):
     def save_vocabulary(self, save_directory, filename_prefix=None):
         """
         Saves the vocabulary to a JSON file.
-        
+
         Required by PreTrainedTokenizerBase.
 
         Args:
@@ -469,16 +493,16 @@ class APETokenizer(PreTrainedTokenizerBase):
             vocab_file = f"{filename_prefix}-vocab.json"
         else:
             vocab_file = "vocab.json"
-            
+
         path = os.path.join(save_directory, vocab_file)
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(self.vocab, f, ensure_ascii=False, indent=2)
-            
+
         return (path,)
 
     def save_pretrained(self, save_directory, **kwargs):
         """
-        Saves the tokenizer vocabulary, configuration, and training state (optional) 
+        Saves the tokenizer vocabulary, configuration, and training state (optional)
         to the specified directory.
 
         Args:
@@ -490,10 +514,10 @@ class APETokenizer(PreTrainedTokenizerBase):
         """
         save_directory = Path(save_directory)
         save_directory.mkdir(parents=True, exist_ok=True)
-        
+
         # Save vocabulary using standard method
         self.save_vocabulary(str(save_directory))
-        
+
         # Save tokenizer config
         config_dict = {
             "max_len": getattr(self, "model_max_length", 1024),
@@ -505,16 +529,18 @@ class APETokenizer(PreTrainedTokenizerBase):
             "max_vocab_size": self.max_vocab_size,
             "min_freq_for_merge": self.min_freq_for_merge,
         }
-        
+
         config_file = save_directory / "tokenizer_config.json"
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump(config_dict, f, indent=4)
 
         # Optionally save training state for further training
         if self.vocabulary_frequency:
-            vocabulary_frequency_serializable = {str(k): v for k, v in self.vocabulary_frequency.items()}
+            vocabulary_frequency_serializable = {
+                str(k): v for k, v in self.vocabulary_frequency.items()
+            }
             pair_counts_serializable = {str(k): v for k, v in self.pair_counts.items()}
-            
+
             training_state = {
                 "vocabulary_frequency": vocabulary_frequency_serializable,
                 "pair_counts": pair_counts_serializable,
@@ -523,7 +549,7 @@ class APETokenizer(PreTrainedTokenizerBase):
             training_state_file = save_directory / "training_state.json"
             with open(training_state_file, "w", encoding="utf-8") as f:
                 json.dump(training_state, f, ensure_ascii=False, indent=4)
-        
+
         print(f"Tokenizer saved in {save_directory}")
         return str(save_directory / "vocab.json"), str(config_file)
 
@@ -550,7 +576,7 @@ class APETokenizer(PreTrainedTokenizerBase):
         # Load vocabulary
         if not vocab_file.is_file():
             raise FileNotFoundError(f"Vocabulary file {vocab_file} not found.")
-            
+
         with open(vocab_file, "r", encoding="utf-8") as f:
             vocabulary = json.load(f)
 
@@ -569,7 +595,7 @@ class APETokenizer(PreTrainedTokenizerBase):
             max_vocab_size=config.get("max_vocab_size", 5000),
             min_freq_for_merge=config.get("min_freq_for_merge", 2000),
         )
-        
+
         # Load the vocabulary
         tokenizer.vocab = vocabulary
         tokenizer.vocabulary = vocabulary

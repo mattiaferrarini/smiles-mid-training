@@ -3,14 +3,14 @@ model:
 
 data:
   chat_dataset: "trl-lib/Capybara"
-  sciq_path: /iopsstor/scratch/cscs/monti/sciq.jsonl
-  metamathqa_path: /iopsstor/scratch/cscs/monti/metamathqa.jsonl
+  sciq_path: /iopsstor/scratch/cscs/$user/sciq.jsonl
+  metamathqa_path: /iopsstor/scratch/cscs/$user/metamathqa.jsonl
 
 # tokenizer:
 #   path: ""
 
 training:
-  output_dir: "/iopsstor/scratch/cscs/monti/instruction_tuning"
+  output_dir: "/iopsstor/scratch/cscs/$user/instruction_tuning"
   epochs: 3             
   batch_size: 4         
   gradient_accumulation_steps: 4

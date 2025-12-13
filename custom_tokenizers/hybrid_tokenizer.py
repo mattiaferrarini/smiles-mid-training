@@ -3,10 +3,12 @@ import re
 import json
 from transformers import BatchEncoding, PreTrainedTokenizerBase
 
+
 class HybridTokenizer(PreTrainedTokenizerBase):
     """
     Tokenizer that combines a base tokenizer (e.g., for natural language) with a chemical tokenizer.
     """
+
     def __init__(self, base_tokenizer, chem_tokenizer, chem_start, chem_end, **kwargs):
         """
         Initializes the HybridTokenizer.
@@ -28,7 +30,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
 
         # Initialize base class (handles special tokens logic)
         super().__init__(**kwargs)
-        
+
         self.base_tokenizer = base_tokenizer
         self.chem_tokenizer = chem_tokenizer
         self.chem_start = chem_start
@@ -42,19 +44,21 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             self.bos_token = base_tokenizer.bos_token
         if base_tokenizer.unk_token:
             self.unk_token = base_tokenizer.unk_token
-        
-        if hasattr(base_tokenizer, 'chat_template') and base_tokenizer.chat_template:
+
+        if hasattr(base_tokenizer, "chat_template") and base_tokenizer.chat_template:
             self.chat_template = base_tokenizer.chat_template
 
         print(f"Base tokenizer type: {type(base_tokenizer)}")
         print("Base tokenizer vocab size:", len(self.base_tokenizer))
-        
+
         # Ensure base tokenizer has special tokens
         if chem_start not in self.base_tokenizer.get_vocab():
-            self.base_tokenizer.add_special_tokens({
-                'additional_special_tokens': [self.chem_start, self.chem_end]
-            })
-        print("Base tokenizer vocab size after special tokens:", len(self.base_tokenizer))
+            self.base_tokenizer.add_special_tokens(
+                {"additional_special_tokens": [self.chem_start, self.chem_end]}
+            )
+        print(
+            "Base tokenizer vocab size after special tokens:", len(self.base_tokenizer)
+        )
 
         # Ids for special tokens delimiting chemical segments
         self.chem_start_id = self.base_tokenizer.convert_tokens_to_ids(self.chem_start)
@@ -63,7 +67,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
 
         # Create chemical vocabulary and ID mapping
         self.chem_vocab, self.chem_ids_map = self.create_chem_vocab()
-        
+
         # Create reverse map for faster decoding/conversion
         self.id_to_chem_map = {v: k for k, v in self.chem_ids_map.items()}
 
@@ -79,7 +83,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             tuple: Paths to the saved files.
         """
         return self.base_tokenizer.save_pretrained(save_directory, **kwargs)
-    
+
     def save_vocabulary(self, save_directory, filename_prefix=None):
         """
         Saves the vocabulary to a file.
@@ -91,16 +95,20 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         Returns:
             tuple: Path to the saved vocabulary file.
         """
-        base_files = self.base_tokenizer.save_vocabulary(save_directory, filename_prefix)
-        
+        base_files = self.base_tokenizer.save_vocabulary(
+            save_directory, filename_prefix
+        )
+
         if filename_prefix:
-            chem_file = os.path.join(save_directory, f"{filename_prefix}-chem_vocab.json")
+            chem_file = os.path.join(
+                save_directory, f"{filename_prefix}-chem_vocab.json"
+            )
         else:
             chem_file = os.path.join(save_directory, "chem_vocab.json")
-            
-        with open(chem_file, 'w', encoding='utf-8') as f:
+
+        with open(chem_file, "w", encoding="utf-8") as f:
             json.dump(self.chem_vocab, f, ensure_ascii=False, indent=2)
-            
+
         return base_files + (chem_file,)
 
     @property
@@ -113,7 +121,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             dict: The added tokens decoder.
         """
         return self.base_tokenizer.added_tokens_decoder
-    
+
     def create_chem_vocab(self):
         """
         Creates the chemical vocabulary and ID mapping.
@@ -124,11 +132,11 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         base_vocab = self.base_tokenizer.get_vocab().copy()
         chem_vocab = self.chem_tokenizer.get_vocab().copy()
         chem_ids_map = {}
-        
+
         # Find the first available ID after the base vocabulary
         next_chem_id = max(base_vocab.values()) + 1
         print("First available ID for chemical tokens:", next_chem_id)
-        
+
         # Map chemical tokenizer IDs to new unique IDs
         for token, idx in chem_vocab.items():
             chem_ids_map[idx] = next_chem_id
@@ -136,13 +144,13 @@ class HybridTokenizer(PreTrainedTokenizerBase):
 
         print("Chemical vocabulary size:", len(chem_vocab))
         return chem_vocab, chem_ids_map
-    
+
     def get_chem_vocab(self):
         return self.chem_vocab
 
     def get_chem_ids_map(self):
         return self.chem_ids_map
-    
+
     @property
     def vocab_size(self):
         """
@@ -159,7 +167,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             int: The size of the vocabulary.
         """
         return self.vocab_size
-    
+
     def get_vocab(self):
         """
         Returns the vocabulary dictionary.
@@ -176,7 +184,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             if token not in vocab:
                 vocab[token] = new_id
         return vocab
-    
+
     def convert_ids_to_tokens(self, ids, skip_special_tokens=False):
         """
         Converts a single index or a list of indices to token(s).
@@ -198,15 +206,15 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             return "" if skip_special_tokens else self.chem_start
         if index == self.chem_end_id:
             return "" if skip_special_tokens else self.chem_end
-            
+
         # 2. Check if it's a mapped chemical ID
         if index in self.id_to_chem_map:
             original_chem_id = self.id_to_chem_map[index]
             return self.chem_tokenizer.convert_ids_to_tokens(original_chem_id)
-            
+
         # 3. Fallback to base tokenizer
         return self.base_tokenizer.convert_ids_to_tokens(index)
-    
+
     def convert_tokens_to_ids(self, tokens):
         """
         Converts a token string (or list of strings) to a single integer ID (or list of IDs).
@@ -220,12 +228,12 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         # FIX: Handle None input (which happens if pad_token is missing)
         if tokens is None:
             return None
-        
+
         if isinstance(tokens, str):
             return self._convert_token_to_id_single(tokens)
-        
+
         return [self._convert_token_to_id_single(t) for t in tokens]
-    
+
     def _convert_token_to_id_single(self, token):
         """
         Converts a single token to its ID.
@@ -241,20 +249,20 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             return self.chem_start_id
         if token == self.chem_end:
             return self.chem_end_id
-        
+
         # 2. Try base tokenizer
         base_id = self.base_tokenizer.convert_tokens_to_ids(token)
         if base_id != self.base_tokenizer.unk_token_id:
             return base_id
-            
+
         # 3. If not in base, try chemical tokenizer
         chem_id = self.chem_tokenizer.convert_tokens_to_ids(token)
         if chem_id in self.chem_ids_map:
             return self.chem_ids_map[chem_id]
-            
+
         # 4. Return UNK
         return self.base_tokenizer.unk_token_id
-    
+
     def decode(self, token_ids, **kwargs):
         """
         Decodes a sequence of IDs back to a string.
@@ -268,10 +276,10 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         """
         tokens = []
         reverse_chem_map = {v: k for k, v in self.chem_ids_map.items()}
-        
+
         if isinstance(token_ids, int):
             token_ids = [token_ids]
-            
+
         for token_id in token_ids:
             if token_id == self.chem_start_id:
                 tokens.append(self.chem_start)
@@ -284,9 +292,9 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             else:
                 base_token = self.base_tokenizer.decode([token_id])
                 tokens.append(base_token)
-        
-        return ''.join(tokens)
-    
+
+        return "".join(tokens)
+
     def _tokenize_single_text(self, text):
         """
         Helper to tokenize a single string into a list of IDs.
@@ -297,7 +305,9 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         Returns:
             list: A list of token IDs.
         """
-        segments = re.split(f"({re.escape(self.chem_start)}.*?{re.escape(self.chem_end)})", text)
+        segments = re.split(
+            f"({re.escape(self.chem_start)}.*?{re.escape(self.chem_end)})", text
+        )
         input_ids = []
 
         for i, segment in enumerate(segments):
@@ -305,17 +315,19 @@ class HybridTokenizer(PreTrainedTokenizerBase):
                 continue
             if segment.startswith(self.chem_start) and segment.endswith(self.chem_end):
                 # Extract content between tags
-                content = segment[len(self.chem_start):-len(self.chem_end)]
-                
+                content = segment[len(self.chem_start) : -len(self.chem_end)]
+
                 # Tokenize the chemical segment
-                chem_token_results = self.chem_tokenizer(content, add_special_tokens=False)
-                
+                chem_token_results = self.chem_tokenizer(
+                    content, add_special_tokens=False
+                )
+
                 # Handle different return types
                 if isinstance(chem_token_results, (dict, BatchEncoding)):
                     chem_ids = chem_token_results["input_ids"]
                 else:
                     chem_ids = chem_token_results
-                
+
                 input_ids.append(self.chem_start_id)
                 for id in chem_ids:
                     if id in self.chem_ids_map:
@@ -325,11 +337,17 @@ class HybridTokenizer(PreTrainedTokenizerBase):
                 input_ids.append(self.chem_end_id)
             else:
                 # Tokenize the non-chemical segment
-                base_ids = self.base_tokenizer(segment, add_special_tokens=False)["input_ids"]
-                if i > 0 and len(base_ids) > 0 and base_ids[0] == self.base_tokenizer.bos_token_id:
+                base_ids = self.base_tokenizer(segment, add_special_tokens=False)[
+                    "input_ids"
+                ]
+                if (
+                    i > 0
+                    and len(base_ids) > 0
+                    and base_ids[0] == self.base_tokenizer.bos_token_id
+                ):
                     base_ids = base_ids[1:]
                 input_ids.extend(base_ids)
-        
+
         return input_ids
 
     def __call__(self, text, text_pair=None, **kwargs):
@@ -346,7 +364,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         """
         if text is None:
             return None
-        
+
         # 1. Normalize input to list
         if isinstance(text, str):
             text_list = [text]
@@ -354,7 +372,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             text_list = list(text)
         else:
             raise ValueError(f"Expected string or list of strings, got {type(text)}")
-        
+
         padding = kwargs.get("padding", False)
         return_tensors = kwargs.get("return_tensors", None)
 
@@ -373,38 +391,44 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         # Determine effective max length
         if max_length is None:
             max_length = self.model_max_length
-            if max_length > 1_000_000: 
-                max_length = 2048 
+            if max_length > 1_000_000:
+                max_length = 2048
 
         for sample_idx, ids in enumerate(batch_full_ids):
             total_len = len(ids)
-            
+
             if not truncation or total_len <= max_length:
                 final_input_ids.append(ids)
                 if return_overflowing_tokens:
                     overflow_to_sample_mapping.append(sample_idx)
                 continue
-            
+
             if not return_overflowing_tokens:
                 final_input_ids.append(ids[:max_length])
             else:
                 # Sliding window (stride)
                 step = max_length - stride
                 if step <= 0:
-                    raise ValueError(f"Stride ({stride}) must be strictly less than max_length ({max_length})")
-                
+                    raise ValueError(
+                        f"Stride ({stride}) must be strictly less than max_length ({max_length})"
+                    )
+
                 for i in range(0, total_len, step):
                     window = ids[i : i + max_length]
                     final_input_ids.append(window)
                     overflow_to_sample_mapping.append(sample_idx)
                     if i + max_length >= total_len:
                         break
-        
+
         # 4. Handle Padding
         if padding and final_input_ids:
             max_len_in_batch = max(len(x) for x in final_input_ids)
-            pad_id = self.pad_token_id if self.pad_token_id is not None else self.eos_token_id
-            
+            pad_id = (
+                self.pad_token_id
+                if self.pad_token_id is not None
+                else self.eos_token_id
+            )
+
             for i in range(len(final_input_ids)):
                 diff = max_len_in_batch - len(final_input_ids[i])
                 if diff > 0:
@@ -412,20 +436,18 @@ class HybridTokenizer(PreTrainedTokenizerBase):
 
         # 5. Create Attention Masks
         attention_mask = []
-        pad_id = self.pad_token_id if self.pad_token_id is not None else self.eos_token_id
+        pad_id = (
+            self.pad_token_id if self.pad_token_id is not None else self.eos_token_id
+        )
 
         for ids in final_input_ids:
             mask = [1 if token != pad_id else 0 for token in ids]
             attention_mask.append(mask)
 
         # 6. Construct Output
-        data = {
-            "input_ids": final_input_ids,
-            "attention_mask": attention_mask
-        }
-        
+        data = {"input_ids": final_input_ids, "attention_mask": attention_mask}
+
         if return_overflowing_tokens:
             data["overflow_to_sample_mapping"] = overflow_to_sample_mapping
 
         return BatchEncoding(data, tensor_type=return_tensors)
-    

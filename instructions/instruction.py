@@ -19,74 +19,76 @@ from datasets import load_dataset, interleave_datasets
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
+
 def prepare_sciq(output, target_count=15000):
     print("Downloading SciQ dataset...")
     dataset = load_dataset("allenai/sciq", split="train")
 
     print(f"Processing up to {target_count} examples into strict format...")
-    
+
     # Write to a temporary file first for atomic operation
     tmp_output = output + ".tmp"
-    
-    with open(tmp_output, 'w') as out:
+
+    with open(tmp_output, "w") as out:
         count = 0
         for row in dataset:
             if count >= target_count:
                 break
-            
-            question = row['question']
-            correct_answer = row['correct_answer']
-            distractors = [row['distractor1'], row['distractor2'], row['distractor3']]
-            
+
+            question = row["question"]
+            correct_answer = row["correct_answer"]
+            distractors = [row["distractor1"], row["distractor2"], row["distractor3"]]
+
             options = [correct_answer] + distractors
             random.shuffle(options)
-            
+
             option_text = ""
             correct_label = ""
-            labels = ['A', 'B', 'C', 'D']
-            
+            labels = ["A", "B", "C", "D"]
+
             for i, opt in enumerate(options):
                 option_text += f"{labels[i]}. {opt}\n"
                 if opt == correct_answer:
                     correct_label = labels[i]
-            
+
             user_prompt = (
                 f"{question}\n"
                 f"Options:\n{option_text}\n"
                 "Answer with the correct letter inside [ANSWER] tags."
             )
-            
+
             assistant_response = f"[ANSWER]{correct_label}[/ANSWER]"
-            
+
             example = {
                 "messages": [
                     {"role": "user", "content": user_prompt},
-                    {"role": "assistant", "content": assistant_response}
+                    {"role": "assistant", "content": assistant_response},
                 ]
             }
-            
+
             count += 1
             out.write(json.dumps(example) + "\n")
 
     print(f"Generated {count} examples, saving to {output}...")
-    shutil.move(tmp_output, output) # Atomic move
+    shutil.move(tmp_output, output)  # Atomic move
+
 
 def prepare_metamathqa(output, target_count=15000):
     print("Downloading MetaMathQA dataset...")
     dataset = load_dataset("meta-math/MetaMathQA", split="train")
 
     print(f"Processing up to {target_count} examples into strict format...")
-    
+
     tmp_output = output + ".tmp"
-    
-    with open(tmp_output, 'w') as out:
+
+    with open(tmp_output, "w") as out:
         count = 0
         for row in dataset:
             if count >= target_count:
                 break
 
-            question = row.get('query')
-            response = row.get('response', '')
+            question = row.get("query")
+            response = row.get("response", "")
 
             match = re.search(r"The answer is:? (.*?)(?:\.|$)", response)
             if match:
@@ -95,21 +97,25 @@ def prepare_metamathqa(output, target_count=15000):
                     f"{question}\n"
                     "Answer with the numerical value wrapped in [ANSWER] tags."
                 )
-                strict_response = response.replace(f"The answer is: {answer_value}", f"The answer is: [ANSWER]{answer_value}[/ANSWER]")
+                strict_response = response.replace(
+                    f"The answer is: {answer_value}",
+                    f"The answer is: [ANSWER]{answer_value}[/ANSWER]",
+                )
                 if "[ANSWER]" not in strict_response:
                     strict_response = response + f"\n[ANSWER]{answer_value}[/ANSWER]"
                 example = {
                     "messages": [
                         {"role": "user", "content": user_prompt},
-                        {"role": "assistant", "content": strict_response}
+                        {"role": "assistant", "content": strict_response},
                     ]
                 }
-                
+
                 count += 1
                 out.write(json.dumps(example) + "\n")
 
     print(f"Generated {count} examples, saving to {output}...")
-    shutil.move(tmp_output, output) # Atomic move
+    shutil.move(tmp_output, output)  # Atomic move
+
 
 def prepare_datasets(config):
     print("Loading datasets for mixing...")
@@ -118,29 +124,29 @@ def prepare_datasets(config):
     chat_dataset = load_dataset("trl-lib/Capybara", split="train")
     print(f"Loaded {len(chat_dataset)} samples from chat dataset")
 
-    sciq_path = config.get('data', {}).get('sciq_path', 'sciq.jsonl')
+    sciq_path = config.get("data", {}).get("sciq_path", "sciq.jsonl")
     print(f"Using sciq path: {sciq_path}")
-    
+
     # Only Rank 0 generates data
     if local_rank == 0 and not os.path.exists(sciq_path):
         print(f"{sciq_path} not found, generating from sciq...")
         prepare_sciq(sciq_path)
-    
+
     # Other ranks wait
     if local_rank != 0:
         while not os.path.exists(sciq_path):
             time.sleep(1)
-            
+
     sciq_dataset = load_dataset("json", data_files=sciq_path, split="train")
     print(f"Loaded {len(sciq_dataset)} samples from sciq dataset")
 
-    metamathqa_path = config.get('data', {}).get('metamathqa_path', 'metamathqa.jsonl')
+    metamathqa_path = config.get("data", {}).get("metamathqa_path", "metamathqa.jsonl")
     print(f"Using methamathqa path: {metamathqa_path}")
-    
+
     if local_rank == 0 and not os.path.exists(metamathqa_path):
         print(f"{metamathqa_path} not found, generating from methamathqa...")
         prepare_metamathqa(metamathqa_path)
-        
+
     if local_rank != 0:
         while not os.path.exists(metamathqa_path):
             time.sleep(1)
@@ -153,25 +159,32 @@ def prepare_datasets(config):
         [chat_dataset, sciq_dataset, metamathqa_dataset],
         probabilities=[0.4, 0.3, 0.3],
         seed=42,
-        stopping_strategy="first_exhausted"
+        stopping_strategy="first_exhausted",
     )
 
     dataset_splits = final_dataset.train_test_split(test_size=0.05, seed=42)
-    
-    print(f"Train size: {len(dataset_splits['train'])}, Validation size: {len(dataset_splits['test'])}")
+
+    print(
+        f"Train size: {len(dataset_splits['train'])}, Validation size: {len(dataset_splits['test'])}"
+    )
     return dataset_splits
 
+
 def setup_tokenizer_and_model(config, model_path_override=None):
-    model_path = model_path_override if model_path_override is not None else config['model']['name']
-    
+    model_path = (
+        model_path_override
+        if model_path_override is not None
+        else config["model"]["name"]
+    )
+
     tokenizer = None
     config_found = None
     if os.path.isdir(model_path):
         configs = [
             os.path.join(model_path, "training_config.yaml"),
-            os.path.join(os.path.dirname(model_path), "training_config.yaml")
+            os.path.join(os.path.dirname(model_path), "training_config.yaml"),
         ]
-        
+
         for cfg in configs:
             if os.path.exists(cfg):
                 print(f"Found training config at {cfg}, assembling tokenizer...")
@@ -179,7 +192,7 @@ def setup_tokenizer_and_model(config, model_path_override=None):
                 tokenizer = assemble_tokenizer(train_config)
                 config_found = cfg
                 break
-    
+
     if tokenizer is None:
         print(f"Loading tokenizer from model_path: {model_path}")
         tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -191,8 +204,8 @@ def setup_tokenizer_and_model(config, model_path_override=None):
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
         device_map=device_map,
-        torch_dtype=torch.bfloat16 if config['training']['bf16'] else torch.float32,
-        attn_implementation="eager" 
+        torch_dtype=torch.bfloat16 if config["training"]["bf16"] else torch.float32,
+        attn_implementation="eager",
     )
 
     special_tokens_dict = {
@@ -225,51 +238,51 @@ def setup_tokenizer_and_model(config, model_path_override=None):
         "{% if not add_generation_prompt %}"
         "{{ eos_token }}"
         "{% endif %}"
-    )    
+    )
     return tokenizer, model, config_found
+
 
 def train(config, model, tokenizer, dataset_splits, base_config):
     peft_config = LoraConfig(
-        r=config['peft']['lora_r'],
-        lora_alpha=config['peft']['lora_alpha'],
-        lora_dropout=config['peft']['lora_dropout'],
-        target_modules=config['peft']['lora_target_modules'],
+        r=config["peft"]["lora_r"],
+        lora_alpha=config["peft"]["lora_alpha"],
+        lora_dropout=config["peft"]["lora_dropout"],
+        target_modules=config["peft"]["lora_target_modules"],
         bias="none",
         task_type="CAUSAL_LM",
     )
 
     training_args = SFTConfig(
-        output_dir=config['training']['output_dir'],
-        num_train_epochs=config['training']['epochs'],
-        per_device_train_batch_size=config['training']['batch_size'],
-        gradient_accumulation_steps=config['training']['gradient_accumulation_steps'],
-        learning_rate=float(config['training']['learning_rate']),
-        logging_steps=config['training']['logging_steps'],
-        save_steps=config['training']['save_steps'],
-        bf16=config['training']['bf16'],
-        fp16=config['training']['fp16'],
-        dataset_text_field="messages", 
+        output_dir=config["training"]["output_dir"],
+        num_train_epochs=config["training"]["epochs"],
+        per_device_train_batch_size=config["training"]["batch_size"],
+        gradient_accumulation_steps=config["training"]["gradient_accumulation_steps"],
+        learning_rate=float(config["training"]["learning_rate"]),
+        logging_steps=config["training"]["logging_steps"],
+        save_steps=config["training"]["save_steps"],
+        bf16=config["training"]["bf16"],
+        fp16=config["training"]["fp16"],
+        dataset_text_field="messages",
         packing=False,
         # max_steps=config['training']['max_steps'],
         max_length=2048,
-        report_to=config['training'].get('report_to', 'none'), 
+        report_to=config["training"].get("report_to", "none"),
         ddp_find_unused_parameters=False,
         gradient_checkpointing=True,
-        
         # for validation
         evaluation_strategy="steps",
-        eval_steps=config['training']['save_steps'],
-        per_device_eval_batch_size=config['training']['batch_size'],
-        do_eval=True
+        eval_steps=config["training"]["save_steps"],
+        per_device_eval_batch_size=config["training"]["batch_size"],
+        do_eval=True,
     )
 
     trainer = SFTTrainer(
         model=model,
-        train_dataset=dataset_splits['train'],
-        eval_dataset=dataset_splits['test'],
+        train_dataset=dataset_splits["train"],
+        eval_dataset=dataset_splits["test"],
         args=training_args,
         peft_config=peft_config,
-        processing_class=tokenizer
+        processing_class=tokenizer,
     )
 
     trainer.train()
@@ -278,7 +291,7 @@ def train(config, model, tokenizer, dataset_splits, base_config):
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     if local_rank == 0:
         subdir = f"it-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        final_dir = os.path.join(config['training']['output_dir'], subdir)
+        final_dir = os.path.join(config["training"]["output_dir"], subdir)
         os.makedirs(final_dir, exist_ok=True)
 
         if base_config and os.path.exists(base_config):
@@ -286,11 +299,13 @@ def train(config, model, tokenizer, dataset_splits, base_config):
             shutil.copyfile(base_config, dest)
             print(f"Copied training_config.yaml to {dest}")
         else:
-            print("Failed to find training_config.yaml, instruction-tuning might fail...")
+            print(
+                "Failed to find training_config.yaml, instruction-tuning might fail..."
+            )
 
         trainer.model.generation_config.eos_token_id = [
             tokenizer.eos_token_id,
-            tokenizer.convert_tokens_to_ids("<end_of_turn>")
+            tokenizer.convert_tokens_to_ids("<end_of_turn>"),
         ]
         trainer.model.generation_config.pad_token_id = tokenizer.pad_token_id
         trainer.model.generation_config.save_pretrained(final_dir)
@@ -300,7 +315,8 @@ def train(config, model, tokenizer, dataset_splits, base_config):
 
     return trainer
 
-def run_instruction_tuning(config_path, model_path = None):
+
+def run_instruction_tuning(config_path, model_path=None):
     """
     Executes instruction tuning based on the provided configuration
 
@@ -313,8 +329,8 @@ def run_instruction_tuning(config_path, model_path = None):
         os.environ["LOCAL_RANK"] = os.environ["SLURM_LOCALID"]
         os.environ["WORLD_SIZE"] = os.environ["SLURM_NTASKS"]
 
-    config = load_config(config_path) 
-    hf_auth() 
+    config = load_config(config_path)
+    hf_auth()
 
     dataset_splits = prepare_datasets(config)
 
@@ -322,9 +338,13 @@ def run_instruction_tuning(config_path, model_path = None):
     trainer = train(config, model, tokenizer, dataset_splits, base_config)
 
     print("\n=== SANITY CHECK: TEST GENERATION ===")
-    test_messages = [{"role": "user", "content": "Explain what a molecule is in one sentence."}]
+    test_messages = [
+        {"role": "user", "content": "Explain what a molecule is in one sentence."}
+    ]
 
-    prompt_str = tokenizer.apply_chat_template(test_messages, tokenize=False, add_generation_prompt=True)
+    prompt_str = tokenizer.apply_chat_template(
+        test_messages, tokenize=False, add_generation_prompt=True
+    )
     print(f"Test Input: {prompt_str}")
 
     inputs = tokenizer(prompt_str, return_tensors="pt").to(trainer.model.device)
@@ -337,7 +357,7 @@ def run_instruction_tuning(config_path, model_path = None):
             max_new_tokens=60,
             do_sample=True,
             temperature=0.7,
-            eos_token_id=trainer.model.generation_config.eos_token_id
+            eos_token_id=trainer.model.generation_config.eos_token_id,
         )
 
     print(f"Model Output:\n{tokenizer.decode(outputs[0], skip_special_tokens=True)}")

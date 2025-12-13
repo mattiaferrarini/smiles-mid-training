@@ -1,12 +1,14 @@
 from rdkit import Chem
 from rdkit import RDLogger
 
-RDLogger.DisableLog('rdApp.*')
+RDLogger.DisableLog("rdApp.*")
+
 
 class ChemScorer:
     """
     Scorer for chemical validity and patterns to guide token merging.
     """
+
     def __init__(self, base_score=1.0, bonus_pattern=1.1, bonus_valid=1.2):
         """
         Initializes the ChemScorer.
@@ -19,7 +21,9 @@ class ChemScorer:
         self.BASE_SCORE = base_score
         self.BONUS_PATTERN = bonus_pattern
         self.BONUS_VALID = bonus_valid
-        print(f"ChemScorer initialized with BASE_SCORE={self.BASE_SCORE}, BONUS_VALID={self.BONUS_VALID}, BONUS_PATTERN={self.BONUS_PATTERN}")
+        print(
+            f"ChemScorer initialized with BASE_SCORE={self.BASE_SCORE}, BONUS_VALID={self.BONUS_VALID}, BONUS_PATTERN={self.BONUS_PATTERN}"
+        )
 
     def get_merge_multiplier(self, text):
         # Perfect molecule
@@ -33,9 +37,10 @@ class ChemScorer:
         # Base case: return base score
         return self.BASE_SCORE
 
+
 if __name__ == "__main__":
     scorer = ChemScorer()
-    
+
     candidates = [
         ("C(=O)O", "Valid Acid (Functional Group)"),
         ("c1ccccc1", "Valid Benzene (Ring)"),
@@ -43,7 +48,7 @@ if __name__ == "__main__":
         ("cc", "Aromatic Pair (Valid Pattern)"),
         (")O", "Glue (Invalid but necessary)"),
         ("c1ccccc", "Open Ring (Glue)"),
-        ("C((", "Open Branch (Glue)")
+        ("C((", "Open Branch (Glue)"),
     ]
 
     print(f"{'Token':<10} | {'Mult':<5} | {'Note'}")

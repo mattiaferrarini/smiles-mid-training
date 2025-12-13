@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+
 def _load_vocab_from_json(path, append_to_existing_vocabulary=False, self_vocab=None):
     p = Path(path)
     if not p.exists():
@@ -27,9 +28,11 @@ def _load_vocab_from_json(path, append_to_existing_vocabulary=False, self_vocab=
                 vocab = {k: (v + 1) for k, v in vocab.items()}
             vocab["[UNK]"] = 0
         return vocab
-    
+
+
 def reset_vocabulary():
-    return {'[UNK]': 0}
+    return {"[UNK]": 0}
+
 
 def load_vocabulary(vocab_path="../json/vocab_symbol_to_number.json"):
     try:
@@ -38,8 +41,16 @@ def load_vocabulary(vocab_path="../json/vocab_symbol_to_number.json"):
     except Exception as e:
         print("Json file not found or could not be loaded:", e)
         return reset_vocabulary()
-    
-def create_vocabulary(text, _tokenize, append_to_existing_vocabulary=False, vocab_path="../json/vocab_symbol_to_number.json", save_vocabulary=False, vocab = {'[UNK]': 0}):
+
+
+def create_vocabulary(
+    text,
+    _tokenize,
+    append_to_existing_vocabulary=False,
+    vocab_path="../json/vocab_symbol_to_number.json",
+    save_vocabulary=False,
+    vocab={"[UNK]": 0},
+):
     if append_to_existing_vocabulary:
         try:
             vocab_file = _load_vocab_from_json(vocab_path)
@@ -48,7 +59,7 @@ def create_vocabulary(text, _tokenize, append_to_existing_vocabulary=False, voca
                     vocab[token] = vocab_file[token]
         except Exception as e:
             print("Json file not found or could not be loaded:", e)
-    
+
     # Handle both single string and list of strings
     if isinstance(text, str):
         text_iter = [text]
@@ -56,59 +67,58 @@ def create_vocabulary(text, _tokenize, append_to_existing_vocabulary=False, voca
         text_iter = text
 
     max_id = max(vocab.values()) if vocab else -1
-    next_id = max_id + 1        
-    
+    next_id = max_id + 1
+
     for chunk in text_iter:
         tokens = _tokenize(chunk)
         for token in tokens:
             if token not in vocab:
                 vocab[token] = next_id
                 next_id += 1
-                
+
     return vocab
 
 
 def save_tokenizer_files(save_directory, vocab_dict, config_dict):
 
     save_directory.mkdir(parents=True, exist_ok=True)
-    
+
     vocab_file = save_directory / "vocab.json"
     with open(vocab_file, "w", encoding="utf-8") as f:
         json.dump(vocab_dict, f, indent=4)
-        
+
     config_file = save_directory / "tokenizer_config.json"
     with open(config_file, "w", encoding="utf-8") as f:
         json.dump(config_dict, f, indent=4)
-        
+
     return str(vocab_file), str(config_file)
 
 
-
 def build_and_save_tokenizer(
-    TokenizerClass, 
-    dataset, 
-    text_field, # text field in the dataset
-    output_dir, # output directory to save the tokenizer
-    config=None # optional config dict to pass to tokenizer
+    TokenizerClass,
+    dataset,
+    text_field,  # text field in the dataset
+    output_dir,  # output directory to save the tokenizer
+    config=None,  # optional config dict to pass to tokenizer
 ):
     """
     It learns the vocabulary of the tokenizer and saves it compatible with Huggingface.
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     tk = TokenizerClass(config=config)
     print("Preparazione del corpus di testo...")
     # Pass the list of strings directly, do not join them
     # This prevents learning patterns across SMILES boundaries (e.g. "][")
     all_text = dataset[text_field]
-    
+
     print(f"Avvio creazione vocabolario per {TokenizerClass.__name__}...")
 
-    tk.create_vocabulary(all_text, save_vocabulary=False) 
+    tk.create_vocabulary(all_text, save_vocabulary=False)
     print(f"Vocabolario creato con {tk.vocab_size} simboli.")
 
     tk.save_pretrained(output_path)
     print(f"Tokenizer saved in: {output_path.resolve()}")
-    
+
     return tk

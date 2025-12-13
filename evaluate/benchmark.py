@@ -24,25 +24,27 @@ from chembench.evaluate import ChemBenchmark, save_topic_reports
 from ChemIQ.utils.parser import AnswerParser
 from ChemIQ.utils.answer_verifier import AnswerVerifier
 
-RDLogger.DisableLog('rdApp.*')
+RDLogger.DisableLog("rdApp.*")
 AutoTokenizer.register("HybridTokenizer", HybridTokenizer)
 
 CHEMBENCH_TOPICS = [
-    'analytical_chemistry', 
-    'chemical_preference', 
-    'general_chemistry', 
-    'inorganic_chemistry', 
-    'materials_science', 
-    'organic_chemistry', 
-    'physical_chemistry', 
-    'technical_chemistry', 
-    'toxicity_and_safety'
+    "analytical_chemistry",
+    "chemical_preference",
+    "general_chemistry",
+    "inorganic_chemistry",
+    "materials_science",
+    "organic_chemistry",
+    "physical_chemistry",
+    "technical_chemistry",
+    "toxicity_and_safety",
 ]
+
 
 class GemmaWrapper:
     """
     Wrapper for loading gemma-3-1b models and their fine-tuned variants for chemical benchmarks
     """
+
     def __init__(self, model_path, device=None):
         """
         Initializes the GemmaWrapper
@@ -56,17 +58,17 @@ class GemmaWrapper:
 
         print(f"Loading tokenizer from: {model_path}")
 
-        config_path = None        
+        config_path = None
         search_paths = [
             os.path.join(model_path, "training_config.yaml"),
-            os.path.join(os.path.dirname(model_path), "training_config.yaml")
+            os.path.join(os.path.dirname(model_path), "training_config.yaml"),
         ]
-        
+
         for path in search_paths:
             if os.path.exists(path):
                 config_path = path
                 break
-        
+
         self.tokenizer = None
         if config_path:
             print(f"Found training config at {config_path}, assembling tokenizer...")
@@ -78,7 +80,9 @@ class GemmaWrapper:
 
         if self.tokenizer is None:
             print(f"Falling back to AutoTokenizer.from_pretrained for {model_path}")
-            self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_path, trust_remote_code=True
+            )
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -97,15 +101,17 @@ class GemmaWrapper:
 
         print("Loading base model weights...")
         self.model = AutoModelForCausalLM.from_pretrained(
-            base_model_path, 
-            device_map=device_map, 
-            torch_dtype=torch.bfloat16, 
-            trust_remote_code=True
+            base_model_path,
+            device_map=device_map,
+            torch_dtype=torch.bfloat16,
+            trust_remote_code=True,
         )
 
         current_vocab_size = self.model.get_input_embeddings().weight.shape[0]
         if len(self.tokenizer) > current_vocab_size:
-            print(f"Resizing model embeddings from {current_vocab_size} to {len(self.tokenizer)}")
+            print(
+                f"Resizing model embeddings from {current_vocab_size} to {len(self.tokenizer)}"
+            )
             self.model.resize_token_embeddings(len(self.tokenizer))
 
         if is_peft:
@@ -139,11 +145,13 @@ class GemmaWrapper:
 
         Args:
             messages (list): List of message dictionaries (role, content)
-        
+
         Returns:
             str: Formatted prompt string
         """
-        return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        return self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
 
     def generate(self, prompts, **kwargs):
         """
@@ -158,24 +166,23 @@ class GemmaWrapper:
         """
         if isinstance(prompts, str):
             prompts = [prompts]
-        
+
         formatted_prompts = []
         for prompt in prompts:
             if isinstance(prompt, str):
-                formatted_prompts.append(self.format_prompt([{"role": "user", "content": prompt}]))
+                formatted_prompts.append(
+                    self.format_prompt([{"role": "user", "content": prompt}])
+                )
             elif isinstance(prompt, list):
                 formatted_prompts.append(self.format_prompt(prompt))
-        
+
         inputs = self.tokenizer(
-            formatted_prompts, 
-            return_tensors="pt", 
-            padding=True, 
-            truncation=True
+            formatted_prompts, return_tensors="pt", padding=True, truncation=True
         ).to(self.model.device)
 
         terminators = [
             self.tokenizer.eos_token_id,
-            self.tokenizer.convert_tokens_to_ids("<end_of_turn>")
+            self.tokenizer.convert_tokens_to_ids("<end_of_turn>"),
         ]
 
         with torch.no_grad():
@@ -186,16 +193,19 @@ class GemmaWrapper:
                 temperature=0.0,
                 repetition_penalty=1.0,
                 pad_token_id=self.tokenizer.pad_token_id,
-                eos_token_id=terminators
+                eos_token_id=terminators,
             )
 
         input_len = inputs["input_ids"].shape[1]
         generated_tokens = outputs[:, input_len:]
-        decoded_outputs = self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+        decoded_outputs = self.tokenizer.batch_decode(
+            generated_tokens, skip_special_tokens=True
+        )
 
         cleaned_outputs = [text.strip() for text in decoded_outputs]
         generations = [[Generation(text=text)] for text in cleaned_outputs]
-        return Generations(generations=generations)  
+        return Generations(generations=generations)
+
 
 def run_chembench(model_path, output_path):
     """
@@ -212,20 +222,26 @@ def run_chembench(model_path, output_path):
 
     timeout = InitProcessGroupKwargs(timeout=timedelta(seconds=7200))
     accelerator = Accelerator(kwargs_handlers=[timeout])
-    
+
     accelerator.wait_for_everyone()
-    print(f"[Init] Rank: {accelerator.process_index}/{accelerator.num_processes} | Device: {accelerator.device}", flush=True)
+    print(
+        f"[Init] Rank: {accelerator.process_index}/{accelerator.num_processes} | Device: {accelerator.device}",
+        flush=True,
+    )
 
     enable_logging()
 
-    model = GemmaWrapper(model_path, device=accelerator.device)  
+    model = GemmaWrapper(model_path, device=accelerator.device)
     prompter = PrompterBuilder.from_model_object(model=model, prompt_type="instruction")
 
     my_topics = [
-        topic for i, topic in enumerate(CHEMBENCH_TOPICS) 
+        topic
+        for i, topic in enumerate(CHEMBENCH_TOPICS)
         if i % accelerator.num_processes == accelerator.process_index
     ]
-    print(f"[Rank {accelerator.process_index}] Processing {len(my_topics)} topics: {my_topics}")
+    print(
+        f"[Rank {accelerator.process_index}] Processing {len(my_topics)} topics: {my_topics}"
+    )
 
     benchmark = ChemBenchmark.from_huggingface()
     if len(my_topics) > 0:
@@ -233,12 +249,13 @@ def run_chembench(model_path, output_path):
 
         os.makedirs(output_path, exist_ok=True)
         save_topic_reports(benchmark, results, output_path)
-    
+
     accelerator.wait_for_everyone()
     if accelerator.is_main_process:
         print("All ranks are done")
 
     # benchmark.submit(results)
+
 
 def run_chemiq(model_path, chemiq_path, output_path):
     """
@@ -251,12 +268,12 @@ def run_chemiq(model_path, chemiq_path, output_path):
     """
     questions = []
     jsonl_path = os.path.join(chemiq_path, "questions", "chemiq.jsonl")
-    with open(jsonl_path, 'r') as f:
+    with open(jsonl_path, "r") as f:
         for line in f:
             questions.append(json.loads(line))
 
     model = GemmaWrapper(model_path, device="cuda:0")
-    parser = AnswerParser(jsonl_path) 
+    parser = AnswerParser(jsonl_path)
     verifier = AnswerVerifier(jsonl_path)
 
     os.makedirs(output_path, exist_ok=True)
@@ -271,13 +288,17 @@ def run_chemiq(model_path, chemiq_path, output_path):
         print(f"Processing ChemiQ question ({i}/{len(questions)}) {id}...")
         try:
             generations = model.generate([messages])
-            
+
             raw_answer = None
-            if generations and hasattr(generations, 'generations') and len(generations.generations) > 0:
+            if (
+                generations
+                and hasattr(generations, "generations")
+                and len(generations.generations) > 0
+            ):
                 first_gen = generations.generations[0]
                 if first_gen and len(first_gen) > 0:
                     raw_answer = first_gen[0].text
-            
+
             if not raw_answer:
                 print(f"Warning: Model generated empty output for {id}")
                 raw_answer = ""
@@ -305,12 +326,14 @@ def run_chemiq(model_path, chemiq_path, output_path):
                     print(f"Failed to verify answer for {id}: {e}")
                     record.update({"is_correct": False, "opsin_smiles": None})
             else:
-                record.update({"is_correct": False if raw_answer else None, "opsin_smiles": None})
+                record.update(
+                    {"is_correct": False if raw_answer else None, "opsin_smiles": None}
+                )
 
             results.append(record)
-            with open(results_file, 'a') as f:
+            with open(results_file, "a") as f:
                 f.write(json.dumps(record) + "\n")
-        
+
         except Exception as e:
             print(f"CRITICAL ERROR on question {id}: {e}")
             continue
@@ -327,5 +350,5 @@ def run_chemiq(model_path, chemiq_path, output_path):
         summary["accuracy"] = summary["num_correct"] / summary["num_attempted"]
 
     summary_path = os.path.join(output_path, "chemiq_summary.json")
-    with open(summary_path, 'w') as f:
+    with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2)

@@ -7,24 +7,26 @@ from tqdm import tqdm
 from transformers import PreTrainedTokenizer
 from SmilesPE.pretokenizer import kmer_tokenizer
 
+
 class KmerTokenizer(PreTrainedTokenizer):
     """
     Tokenizer that splits text into k-mers (n-grams).
     """
+
     vocab_files_names = {"vocab_file": "vocab.json"}
     model_input_names = ["input_ids", "attention_mask"]
 
     def __init__(
-        self, 
-        vocab_file=None, 
-        unk_token="[UNK]", 
-        pad_token="[PAD]", 
-        bos_token="[BOS]", 
-        eos_token="[EOS]", 
-        ngram=4, 
+        self,
+        vocab_file=None,
+        unk_token="[UNK]",
+        pad_token="[PAD]",
+        bos_token="[BOS]",
+        eos_token="[EOS]",
+        ngram=4,
         stride=1,
         max_vocab_size=None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initializes the KmerTokenizer.
@@ -45,24 +47,24 @@ class KmerTokenizer(PreTrainedTokenizer):
         self.ngram = ngram
         self.stride = stride
         self.max_vocab_size = max_vocab_size
-        
+
         if vocab_file:
             with open(vocab_file, encoding="utf-8") as f:
                 self.vocab = json.load(f)
         else:
             self.vocab = {unk_token: 0, pad_token: 1, bos_token: 2, eos_token: 3}
-            
+
         self.decoder = {v: k for k, v in self.vocab.items()}
-        
+
         super().__init__(
-            unk_token=unk_token, 
-            pad_token=pad_token, 
-            bos_token=bos_token, 
-            eos_token=eos_token, 
+            unk_token=unk_token,
+            pad_token=pad_token,
+            bos_token=bos_token,
+            eos_token=eos_token,
             ngram=ngram,
             stride=stride,
             max_vocab_size=max_vocab_size,
-            **kwargs
+            **kwargs,
         )
 
     @property
@@ -125,7 +127,7 @@ class KmerTokenizer(PreTrainedTokenizer):
         else:
             vocab_file = "vocab.json"
         path = os.path.join(save_directory, vocab_file)
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(self.vocab, f, ensure_ascii=False, indent=2)
         return (path,)
 
@@ -137,8 +139,14 @@ class KmerTokenizer(PreTrainedTokenizer):
             dict: The vocabulary mapping tokens to IDs.
         """
         return self.vocab
-        
-    def create_vocabulary(self, text_iterator, append_to_existing_vocabulary=False, vocab_path="../json/vocab_symbol_to_number.json", save_vocabulary=False):
+
+    def create_vocabulary(
+        self,
+        text_iterator,
+        append_to_existing_vocabulary=False,
+        vocab_path="../json/vocab_symbol_to_number.json",
+        save_vocabulary=False,
+    ):
         """
         Creates a vocabulary from the provided text iterator.
 
@@ -153,21 +161,21 @@ class KmerTokenizer(PreTrainedTokenizer):
         """
         print(f"Counting k-mers (ngram={self.ngram}, limit={self.max_vocab_size})...")
         counter = collections.Counter()
-        
+
         for i, item in enumerate(tqdm(text_iterator)):
             text = item["text"] if isinstance(item, dict) else item
             tokens = self._tokenize(text)
             counter.update(tokens)
-            
+
         print(f"Total unique k-mers found: {len(counter)}")
 
         new_vocab = {
-            self.unk_token: 0, 
-            self.pad_token: 1, 
-            self.bos_token: 2, 
-            self.eos_token: 3
+            self.unk_token: 0,
+            self.pad_token: 1,
+            self.bos_token: 2,
+            self.eos_token: 3,
         }
-        
+
         if self.max_vocab_size:
             limit = self.max_vocab_size - len(new_vocab)
             most_common = counter.most_common(limit)
@@ -177,18 +185,18 @@ class KmerTokenizer(PreTrainedTokenizer):
         for token, count in most_common:
             if token not in new_vocab:
                 new_vocab[token] = len(new_vocab)
-        
+
         self.vocab = new_vocab
         self.decoder = {v: k for k, v in self.vocab.items()}
-        
+
         print(f"Final vocab size: {len(self.vocab)}")
-        
+
         if save_vocabulary and vocab_path:
-             with open(vocab_path, 'w', encoding='utf-8') as f:
+            with open(vocab_path, "w", encoding="utf-8") as f:
                 json.dump(self.vocab, f, ensure_ascii=False, indent=2)
 
         return self.vocab
-        
+
     def _load_vocab_from_json(self, path, append_to_existing_vocabulary=False):
         """
         Loads a vocabulary from a JSON file.
@@ -199,4 +207,6 @@ class KmerTokenizer(PreTrainedTokenizer):
         Returns:
             dict: The loaded vocabulary.
         """
-        return helpers._load_vocab_from_json(path, append_to_existing_vocabulary, self.vocab)
+        return helpers._load_vocab_from_json(
+            path, append_to_existing_vocabulary, self.vocab
+        )

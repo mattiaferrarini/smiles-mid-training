@@ -9,6 +9,7 @@ import re
 from datasets import load_dataset
 from dotenv import load_dotenv
 from utils.logging import get_logger
+import random
 
 LOGGER = get_logger(__name__)
 
@@ -86,6 +87,24 @@ def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path
 
     os.makedirs(output_folder, exist_ok=True)
     smiles = get_smiles_list_from_dataset(dataset_path, TEXT_FIELD)
+    
+    random.seed(42)
+
+    flat_smiles = []
+    for entry in smiles:
+        if isinstance(entry, list):
+            flat_smiles.extend(entry)
+        elif entry is not None:
+            flat_smiles.append(entry)
+
+    target = 1_000_000
+    total = len(flat_smiles)
+    if total > target:
+        smiles = random.sample(flat_smiles, target)
+        LOGGER.info(f"Randomly sampled {target} SMILES out of {total}.")
+    else:
+        smiles = flat_smiles
+        LOGGER.info(f"Total SMILES ({total}): using all SMILES")
     all_results = {}
 
     for config in configs:

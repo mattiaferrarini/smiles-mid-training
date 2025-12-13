@@ -22,8 +22,6 @@ from chembench.prompter import PrompterBuilder
 from chembench.types import Generation, Generations
 from chembench.evaluate import ChemBenchmark, save_topic_reports
 
-from ChemIQ.utils.parser import AnswerParser
-from ChemIQ.utils.answer_verifier import AnswerVerifier
 
 RDLogger.DisableLog("rdApp.*")
 AutoTokenizer.register("HybridTokenizer", HybridTokenizer)

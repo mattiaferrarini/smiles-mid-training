@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 import re
 from datasets import load_dataset
+from dotenv import load_dotenv
 
 TEXT_FIELD = "text_annotated_v1tags"
 
@@ -76,6 +77,7 @@ def evaluate_tokenizer(tokenizer, smiles_list):
 
 
 def evaluate_tokenizers_fertility(registry_path, dataset_path, output_folder):
+    load_dotenv()
     with open(registry_path, "r") as f:
         configs = json.load(f)
 

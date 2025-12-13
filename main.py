@@ -261,7 +261,7 @@ def run_fertility_eval_command(
         dir_okay=True,
     ),
 ):
-    evaluate_tokenizers_fertility(str(config_path), str(dataset_path), str(output_folder))
+    evaluate_tokenizers_fertility(str(registry_path), str(dataset_path), str(output_folder))
 
 
 @app.command("test-tokenizer")

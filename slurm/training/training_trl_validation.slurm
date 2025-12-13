@@ -16,7 +16,7 @@
 export ENV_NAME=ml4science
 
 # Activate conda
-source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
+source ~/miniconda3/etc/profile.d/conda.sh 
 
 # Create or update conda environment
 # if conda env list | grep -q "^$ENV_NAME "; then \

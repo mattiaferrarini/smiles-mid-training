@@ -18,6 +18,7 @@ from .elementaromatics_tokenizer import ElementAromaticsTokenizer
 from .elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from .elementrings_tokenizer import ElementRingsTokenizer
 from .smiles_bpe_tokenizer import SmilesBpeTokenizer
+from .smiles_wp_tokenizer import SmilesWPTokenizer
 from .ape_tokenizer import APETokenizer
 from .ape_hf_tokenizer import APEHFTokenizer
 from .ape_wp_hf_tokenizer import APEWPHFTokenizer
@@ -33,6 +34,7 @@ TOKENIZER_CLASSES = {
     "elementnoparenthesis": ElementNoParenthesisTokenizer,
     "elementrings": ElementRingsTokenizer,
     "smiles_bpe": SmilesBpeTokenizer,
+    "smiles_wp": SmilesWPTokenizer,
     "ape": APETokenizer,
     "ape_hf": APEHFTokenizer,
     "ape_wp_hf": APEWPHFTokenizer,

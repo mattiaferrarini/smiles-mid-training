@@ -8,6 +8,7 @@ from .elementaromatics_tokenizer import ElementAromaticsTokenizer
 from .elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
 from .elementrings_tokenizer import ElementRingsTokenizer
 from .smiles_bpe_tokenizer import SmilesBpeTokenizer
+from .smiles_wp_tokenizer import SmilesWPTokenizer
 from .ape_tokenizer import APETokenizer
 from .ape_hf_tokenizer import APEHFTokenizer
 from .ape_wp_hf_tokenizer import APEWPHFTokenizer
@@ -54,7 +55,7 @@ def assemble_tokenizer(config):
     elif tokenizer_type == "hybrid":
         chem_tokenizer = assemble_chem_tokenizer(config)
         base_tokenizer = AutoTokenizer.from_pretrained(config["model"]["name"])
-        
+
         # Assemble HybridTokenizer
         hybrid_tokenizer = HybridTokenizer(
             base_tokenizer=base_tokenizer,
@@ -80,13 +81,15 @@ def assemble_chem_tokenizer(config):
 
     chem_tokenizer = None
 
-    # Handle BPE-based tokenizers (use tokenizer.json)
-    if chem_type in ["smiles_bpe", "ape_hf", "ape_wp_hf"]:
+    # Handle BPE and WordPiece tokenizers separately
+    if chem_type in ["smiles_bpe", "ape_hf", "ape_wp_hf", "smiles_wp"]:
         tokenizer_file = os.path.join(tokenizer_dir, "tokenizer.json")
         if os.path.exists(tokenizer_file):
             LOGGER.info(f"Loading {chem_type} tokenizer from {tokenizer_file}")
             if chem_type == "smiles_bpe":
                 chem_tokenizer = SmilesBpeTokenizer(tokenizer_file=tokenizer_file)
+            elif chem_type == "smiles_wp":
+                chem_tokenizer = SmilesWPTokenizer(tokenizer_file=tokenizer_file)
             elif chem_type == "ape_hf":
                 chem_tokenizer = APEHFTokenizer.from_pretrained(tokenizer_dir)
             elif chem_type == "ape_wp_hf":

@@ -22,9 +22,6 @@ from chembench.prompter import PrompterBuilder
 from chembench.types import Generation, Generations
 from chembench.evaluate import ChemBenchmark, save_topic_reports
 
-from ChemIQ.utils.parser import AnswerParser
-from ChemIQ.utils.answer_verifier import AnswerVerifier
-
 RDLogger.DisableLog("rdApp.*")
 AutoTokenizer.register("HybridTokenizer", HybridTokenizer)
 
@@ -261,100 +258,4 @@ def run_chembench(model_path, output_path):
         LOGGER.info("All ranks are done")
 
     # benchmark.submit(results)
-
-
-def run_chemiq(model_path, chemiq_path, output_path):
-    """
-    Runs the ChemIQ benchmark on the specified Gemma model
-
-    Args:
-        model_path (str): Path to the Gemma model/adapter
-        chemiq_path (str): Root directory of the ChemIQ repository
-        output_path (str): Directory to save results
-    """
-    questions = []
-    jsonl_path = os.path.join(chemiq_path, "questions", "chemiq.jsonl")
-    with open(jsonl_path, "r") as f:
-        for line in f:
-            questions.append(json.loads(line))
-
-    model = GemmaWrapper(model_path, device="cuda:0")
-    parser = AnswerParser(jsonl_path)
-    verifier = AnswerVerifier(jsonl_path)
-
-    os.makedirs(output_path, exist_ok=True)
-    results_file = os.path.join(output_path, "chemiq_results.jsonl")
-
-    results = []
-    for i, question in enumerate(questions):
-        id = question.get("uuid")
-        prompt = question.get("prompt")
-        messages = [{"role": "user", "content": prompt}]
-
-        LOGGER.info(f"Processing ChemiQ question ({i}/{len(questions)}) {id}...")
-        try:
-            generations = model.generate([messages])
-
-            raw_answer = None
-            if (
-                generations
-                and hasattr(generations, "generations")
-                and len(generations.generations) > 0
-            ):
-                first_gen = generations.generations[0]
-                if first_gen and len(first_gen) > 0:
-                    raw_answer = first_gen[0].text
-
-            if not raw_answer:
-                LOGGER.warning(f"Model generated empty output for {id}")
-                raw_answer = ""
-
-            if raw_answer:
-                parsed_answer = parser.parse(id, raw_answer)
-            else:
-                parsed_answer = None
-
-            record = {
-                "uuid": id,
-                "question_category": question.get("question_category"),
-                "sub_category": question.get("sub_category"),
-                "prompt": prompt,
-                "expected_answer": question.get("answer"),
-                "verification_method": question.get("verification_method"),
-                "model_answer": raw_answer,
-            }
-
-            if parsed_answer:
-                try:
-                    check = verifier.check_answer(id, parsed_answer)
-                    record.update(check)
-                except Exception as e:
-                    LOGGER.warning(f"Failed to verify answer for {id}: {e}")
-                    record.update({"is_correct": False, "opsin_smiles": None})
-            else:
-                record.update(
-                    {"is_correct": False if raw_answer else None, "opsin_smiles": None}
-                )
-
-            results.append(record)
-            with open(results_file, "a") as f:
-                f.write(json.dumps(record) + "\n")
-
-        except Exception as e:
-            LOGGER.exception(f"Critical error on question {id}: {e}")
-            continue
-
-    summary = {
-        "num_questions": len(questions),
-        "num_processed": len(results),
-        "num_attempted": sum(1 for r in results if r.get("is_correct") is not None),
-        "num_correct": sum(1 for r in results if r.get("is_correct") is True),
-        "accuracy": 0.0,
-    }
-
-    if summary["num_attempted"] > 0:
-        summary["accuracy"] = summary["num_correct"] / summary["num_attempted"]
-
-    summary_path = os.path.join(output_path, "chemiq_summary.json")
-    with open(summary_path, "w") as f:
-        json.dump(summary, f, indent=2)
+    

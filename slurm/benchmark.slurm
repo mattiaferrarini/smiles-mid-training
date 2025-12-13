@@ -77,12 +77,5 @@ srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py run-che
     --model-path "$MODEL_PATH" \
     --output-path "$OUTPUT_DIR"
 
-# TODO: change the paths below accordingly
-echo "Running chemiq..."
-srun --ntasks=1 $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py run-chemiq \
-    --model-path "$MODEL_PATH" \
-    --chemiq-path "/users/$USER/smiles-mid-training/ChemIQ" \
-    --output-path "$OUTPUT_DIR"
-
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

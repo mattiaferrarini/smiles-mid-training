@@ -65,11 +65,13 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 # Fertility evaluation settings
 export OUTPUT_FOLDER="/iopsstor/scratch/cscs/$USER/fertility_eval"
 export REGISTRY_PATH="evaluate/tokenizer_configs/registry.json"
+export TOKENIZERS_FOLDER="//users/$USER/smiles-mid-training/json/tokenizers/"
 export DATASET_PATH="/capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1"
 
 # Run fertility evaluation
 python main.py fertility-eval \
     --registry-path "$REGISTRY_PATH" \
+    --tokenizers-folder "$TOKENIZERS_FOLDER" \
     --dataset-path "$DATASET_PATH" \
     --output-folder "$OUTPUT_FOLDER"
 

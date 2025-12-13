@@ -243,9 +243,9 @@ def run_fertility_eval_command(
         file_okay=True,
         dir_okay=False,
     ),
-    tokenizers_dir: Path = typer.Option(
+    tokenizers_folder: Path = typer.Option(
         ...,
-        "--tokenizers-dir",
+        "--tokenizers-folder",
         "-t",
         help="Directory containing the tokenizers to evaluate",
         exists=True,
@@ -270,7 +270,7 @@ def run_fertility_eval_command(
         dir_okay=True,
     ),
 ):
-    evaluate_tokenizers_fertility(str(registry_path), str(tokenizers_dir), str(dataset_path), str(output_folder))
+    evaluate_tokenizers_fertility(str(registry_path), str(tokenizers_folder), str(dataset_path), str(output_folder))
 
 
 @app.command("test-tokenizer")

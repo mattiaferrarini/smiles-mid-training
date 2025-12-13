@@ -8,6 +8,9 @@ from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 import re
 from datasets import load_dataset
 from dotenv import load_dotenv
+from utils.logging import get_logger
+
+LOGGER = get_logger(__name__)
 
 TEXT_FIELD = "text_annotated_v1tags"
 
@@ -60,11 +63,11 @@ def evaluate_tokenizer(tokenizer, smiles_list):
     percentile_25 = sorted(token_counts)[int(0.25 * total_smiles)] if total_smiles > 0 else 0
     percentile_75 = sorted(token_counts)[int(0.75 * total_smiles)] if total_smiles > 0 else 0
 
-    print(f"Total SMILES evaluated: {total_smiles}")
-    print(f"Average number of tokens per SMILES: {average_tokens:.2f}")
-    print(f"Median number of tokens per SMILES: {median_tokens}")
-    print(f"25th percentile of tokens per SMILES: {percentile_25}")
-    print(f"75th percentile of tokens per SMILES: {percentile_75}")
+    LOGGER.info(f"Total SMILES evaluated: {total_smiles}")
+    LOGGER.info(f"Average number of tokens per SMILES: {average_tokens:.2f}")
+    LOGGER.info(f"Median number of tokens per SMILES: {median_tokens}")
+    LOGGER.info(f"25th percentile of tokens per SMILES: {percentile_25}")
+    LOGGER.info(f"75th percentile of tokens per SMILES: {percentile_75}")
 
     return {
         "total_smiles": total_smiles,
@@ -86,7 +89,7 @@ def evaluate_tokenizers_fertility(registry_path, tokenizers_dir, dataset_path, o
     all_results = {}
 
     for config in configs:
-        print(f"Evaluating fertility for tokenizer config: {config['name']}")
+        LOGGER.info(f"Evaluating fertility for tokenizer config: {config['name']}")
         config["tokenizer"]["output_dir"] = tokenizers_dir
         tokenizer = assemble_tokenizer(config)
         results = evaluate_tokenizer(tokenizer, smiles)
@@ -95,5 +98,5 @@ def evaluate_tokenizers_fertility(registry_path, tokenizers_dir, dataset_path, o
     results_path = os.path.join(output_folder, "tokenizer_fertility_results.json")
     with open(results_path, "w") as f:
         json.dump(all_results, f, indent=4)
-    print(f"Fertility evaluation results saved to {results_path}")
+    LOGGER.info(f"Fertility evaluation results saved to {results_path}")
 

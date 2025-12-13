@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from utils.config import load_config
 from utils.logging import setup_logging
-from evaluate.benchmark import run_chemiq, run_chembench
+from evaluate.benchmark import run_chembench
 from training.baselines import download_baseline_artifacts
 from custom_tokenizers.build_tokenizer import build_tokenizer
 from instructions.instruction import run_instruction_tuning
@@ -198,38 +198,6 @@ def run_chembench_command(
     ),
 ):
     run_chembench(model_path, output_path)
-
-
-@app.command("run-chemiq")
-def run_chemiq_command(
-    model_path: Path = typer.Option(
-        ...,
-        "--model-path",
-        "-m",
-        help="Path to the model to benchmark",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-    ),
-    chemiq_path: Path = typer.Option(
-        ...,
-        "--chemiq-path",
-        help="Path to the ChemIQ repository",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-    ),
-    output_path: Path = typer.Option(
-        ...,
-        "--output-path",
-        "-o",
-        help="Where to save results",
-        file_okay=False,
-        dir_okay=True,
-    ),
-):
-    run_chemiq(model_path, chemiq_path, output_path)
-
 
 @app.command("test-tokenizer")
 def test_tokenizer_command(

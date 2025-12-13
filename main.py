@@ -128,7 +128,7 @@ def train_model_command(
 
 
 @app.command("instruction-tuning")
-def train_instruction_command(
+def instruction_tuning_command(
     config: Path = typer.Option(
         ...,
         "--config",

@@ -12,7 +12,7 @@ data:
 tokenizer:
   type: hybrid
   chem_type: chem_ape
-  output_dir: /users/$user/smiles-mid-training/json/tokenizers
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers
   output_subdir_name: chem_ape_5000_2
   params:
     max_vocab_size: 5000

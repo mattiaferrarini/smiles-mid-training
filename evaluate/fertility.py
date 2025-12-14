@@ -113,12 +113,19 @@ def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path
         None
     """
 
+    LOGGER.info("Starting fertility evaluation of tokenizers...")
+    print("Loading tokenizer configurations from registry...")
+
     load_dotenv()
     with open(registry_path, "r") as f:
         configs = json.load(f)
 
+    LOGGER.info(f"Loaded {len(configs)} tokenizer configurations from registry.")
+
     os.makedirs(output_folder, exist_ok=True)
     smiles = get_smiles_list_from_dataset(dataset_path, TEXT_FIELD)
+
+    LOGGER.info(f"Extracted {len(smiles)} SMILES entries from dataset.")
     
     random.seed(42)
 

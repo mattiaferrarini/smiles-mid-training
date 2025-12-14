@@ -274,7 +274,7 @@ def run_fertility_eval_command(
     evaluate_tokenizers_fertility(str(registry_path), str(tokenizers_folder), str(dataset_path), str(output_folder))
 
 
-@app.command("evaluate-embeddings")
+@app.command("embeddings-eval")
 def evaluate_embeddings_command(
     checkpoint_folder: str = typer.Option(
         ...,

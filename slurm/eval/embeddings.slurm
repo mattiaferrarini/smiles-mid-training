@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=fertility_eval
+#SBATCH --job-name=embeddings_eval
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=64
 #SBATCH --time=04:00:00
@@ -62,16 +62,18 @@ mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
-# Fertility evaluation settings
-export OUTPUT_FOLDER="/iopsstor/scratch/cscs/$USER/fertility_eval"
-export REGISTRY_PATH="evaluate/tokenizer_configs/registry.json"
-export TOKENIZERS_FOLDER="//users/$USER/smiles-mid-training/json/tokenizers/"
-export DATASET_PATH="/capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1"
+# Embeddings evaluation settings
+export CHECKPOINT_FOLDER="google/gemma-3-1b-pt"
+export OUTPUT_PATH="/iopsstor/scratch/cscs/$USER/embeddings_eval/base_res"
+export DATASET_PATH="data/coconut/coconut_csv-12-2025.csv"
+export SMILES_COL="canonical_smiles"
+export LABEL_COL="chemical_super_class"
 
-# Run fertility evaluation
-srun "$PYTHON_EXEC" -u main.py fertility-eval \
-    --registry-path "$REGISTRY_PATH" \
-    --tokenizers-folder "$TOKENIZERS_FOLDER" \
+# Run embeddings evaluation
+srun "$PYTHON_EXEC" -u main.py embeddings-eval \
+    --checkpoint-folder "$CHECKPOINT_FOLDER" \
+    --output-path "$OUTPUT_PATH" \
     --dataset-path "$DATASET_PATH" \
-    --output-folder "$OUTPUT_FOLDER"
+    --smiles-col "$SMILES_COL" \
+    --label-col "$LABEL_COL"
 

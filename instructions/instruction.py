@@ -127,7 +127,7 @@ def prepare_datasets(config):
     chat_dataset = load_dataset("trl-lib/Capybara", split="train")
     LOGGER.info(f"Loaded {len(chat_dataset)} samples from chat dataset")
 
-    sciq_path = config.get("data", {}).get("sciq_path", "sciq.jsonl")
+    sciq_path = os.path.expandvars(config.get("data", {}).get("sciq_path", "sciq.jsonl"))
     LOGGER.info(f"Using sciq path: {sciq_path}")
 
     # Only Rank 0 generates data
@@ -143,7 +143,7 @@ def prepare_datasets(config):
     sciq_dataset = load_dataset("json", data_files=sciq_path, split="train")
     LOGGER.info(f"Loaded {len(sciq_dataset)} samples from sciq dataset")
 
-    metamathqa_path = config.get("data", {}).get("metamathqa_path", "metamathqa.jsonl")
+    metamathqa_path = os.path.expandvars(config.get("data", {}).get("metamathqa_path", "metamathqa.jsonl"))
     LOGGER.info(f"Using methamathqa path: {metamathqa_path}")
 
     if local_rank == 0 and not os.path.exists(metamathqa_path):
@@ -199,6 +199,10 @@ def setup_tokenizer_and_model(config, model_path_override=None):
     if tokenizer is None:
         LOGGER.info(f"Loading tokenizer from model_path: {model_path}")
         tokenizer = AutoTokenizer.from_pretrained(model_path)
+
+    if not hasattr(tokenizer, "is_fast"):
+        LOGGER.info("Patching tokenizer with is_fast=False attribute")
+        tokenizer.is_fast = False
 
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     device_map = {"": local_rank}
@@ -258,7 +262,7 @@ def train(config, model, tokenizer, dataset_splits, base_config):
     )
 
     training_args = SFTConfig(
-        output_dir=config["training"]["output_dir"],
+        output_dir=os.path.expandvars(config["training"]["output_dir"]),
         num_train_epochs=config["training"]["epochs"],
         per_device_train_batch_size=config["training"]["batch_size"],
         gradient_accumulation_steps=config["training"]["gradient_accumulation_steps"],
@@ -275,7 +279,7 @@ def train(config, model, tokenizer, dataset_splits, base_config):
         ddp_find_unused_parameters=False,
         gradient_checkpointing=True,
         # for validation
-        evaluation_strategy="steps",
+        eval_strategy="steps",
         eval_steps=config["training"]["save_steps"],
         per_device_eval_batch_size=config["training"]["batch_size"],
         do_eval=True,
@@ -296,7 +300,7 @@ def train(config, model, tokenizer, dataset_splits, base_config):
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     if local_rank == 0:
         subdir = f"it-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
-        final_dir = os.path.join(config["training"]["output_dir"], subdir)
+        final_dir = os.path.join(os.path.expandvars(config["training"]["output_dir"]), subdir)
         os.makedirs(final_dir, exist_ok=True)
 
         if base_config and os.path.exists(base_config):

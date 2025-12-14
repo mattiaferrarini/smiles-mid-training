@@ -13,7 +13,7 @@
 export ENV_NAME=ml4science
 
 # Activate conda
-source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
+source ~/miniconda3/etc/profile.d/conda.sh 
 
 
 # Activate conda environment
@@ -94,29 +94,11 @@ export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
 # Run the training with jobreport
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training_trl.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py train-model --config "$CONFIG_PATH" --output-path "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"
 
-# --- Submit Evaluation Job ---
-echo "=================================================================="
-echo "Submitting Evaluation Job..."
 
-EVAL_MODEL_PATH="${OUTPUT_DIR}/final_model"
-# We run evaluation WITHOUT annotation by default (USE_ANNOTATION="false")
-USE_ANNOTATION="false"
-EVAL_JOB_NAME="eval_${TOKENIZER_NAME}_${EMBEDDING_INIT}_annotated_${USE_ANNOTATION}_train_${SLURM_JOB_ID}"
-EVAL_OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval/${EVAL_JOB_NAME}"
-
-# Submit the job with dependency on the current training job
-sbatch --dependency=afterok:$SLURM_JOB_ID \
-       --job-name="$EVAL_JOB_NAME" \
-       --export=ALL,MODEL_PATH="$EVAL_MODEL_PATH",OUTPUT_DIR="$EVAL_OUTPUT_DIR",USE_ANNOTATION="$USE_ANNOTATION" \
-       slurm/base_likelihood_eval.slurm
-
-echo "Evaluation job submitted with dependency afterok:$SLURM_JOB_ID"
-echo "Evaluation Job Name: $EVAL_JOB_NAME"
-echo "=================================================================="
 
 

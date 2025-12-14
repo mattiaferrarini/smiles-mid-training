@@ -45,10 +45,9 @@ else
 fi
 
 echo "Running tokenizer build script..."
-srun "$PYTHON_EXEC" custom_tokenizers/build_tokenizer.py \
+srun "$PYTHON_EXEC" main.py build-tokenizer \
     --config configs/tokenizers/bpe.yaml \
-    --output-dir "$OUTPUT_DIR" \
-    $ALL_FLAG
+    --output-dir "$OUTPUT_DIR"
 EXIT_CODE=$?
 
 echo "=================================================================="

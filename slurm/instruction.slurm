@@ -43,8 +43,9 @@ export MASTER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0
 export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
-export CONFIG_PATH="configs/instruction.yaml"
-export MODEL_PATH="/iopsstor/scratch/cscs/$USER/artifacts/baseliens/gemma-3-1b-pt"
+export CONFIG_PATH="configs/instructions/instruction.yaml"
+#export MODEL_PATH="/capstor/store/cscs/swissai/a131/ML4Science/mattia/finetuning/base_finetuning_1212555"
+export MODEL_PATH="/iopsstor/scratch/cscs/lprunotto/finetuning/train_hybrid_elementaromatics_elementwise_1227483"
 
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" instructions/instruction.py --config "$CONFIG_PATH" --model-path "$MODEL_PATH"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py instruction-tuning --config "$CONFIG_PATH" --model-path "$MODEL_PATH"
 $JOBREPORT print "$PROFILING_FOLDER"

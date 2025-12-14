@@ -140,13 +140,11 @@ class ElementRingsTokenizer(PreTrainedTokenizer):
     ELEMENTS = sorted(ELEMENTS, key=lambda x: -len(x))
     ELEMENT_PATTERN = "|".join(ELEMENTS)
 
-    # corrected regex
     ATOM_LEVEL_PATTERN = (
         r"(\[|\]|"
         + ELEMENT_PATTERN
         + r"|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9])"
     )
-    # ATOM_LEVEL_PATTERN = r"(\[|\]|Br?|Cl?|[A-Z][a-z]?|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9])"
 
     vocab_files_names = {"vocab_file": "vocab.json"}
     model_input_names = ["input_ids", "attention_mask"]
@@ -288,6 +286,30 @@ class ElementRingsTokenizer(PreTrainedTokenizer):
             dict: The vocabulary mapping tokens to IDs.
         """
         return self.vocab
+
+    def _add_tokens(self, new_tokens, special_tokens=False):
+        """
+        Adds new tokens to the vocabulary.
+
+        Args:
+            new_tokens (list): A list of tokens to add.
+            special_tokens (bool): Whether the tokens are special tokens. Defaults to False.
+
+        Returns:
+            int: The number of tokens added.
+        """
+        if not new_tokens:
+            return 0
+        
+        added = 0
+        for token in new_tokens:
+            token_str = str(token)
+            if token_str not in self.vocab:
+                new_id = len(self.vocab)
+                self.vocab[token_str] = new_id
+                self.decoder[new_id] = token_str
+                added += 1
+        return added
 
     def create_vocabulary(
         self,

@@ -2,7 +2,7 @@
 #SBATCH --job-name=BuildTokenizer
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
-#SBATCH --time=01:00:00
+#SBATCH --time=12:00:00
 #SBATCH --partition=normal
 #SBATCH --nodes=1
 #SBATCH --exclusive
@@ -33,20 +33,14 @@ echo "=================================================================="
 echo "STARTING TOKENIZER BUILD JOB at $(date)"
 echo "=================================================================="
 
-OUTPUT_DIR="/users/$USER/smiles-mid-training/json/tokenizers"
+OUTPUT_DIR="/users/$USER/json/tokenizers"
 mkdir -p "$OUTPUT_DIR"
 
-BUILD_ALL="false"
-
-if [ "$BUILD_ALL" = "true" ]; then
-    ALL_FLAG="--all"
-else
-    ALL_FLAG=""
-fi
+export PYTHONUNBUFFERED=1
 
 echo "Running tokenizer build script..."
-srun "$PYTHON_EXEC" main.py build-tokenizer \
-    --config configs/tokenizers/character.yaml \
+srun "$PYTHON_EXEC" -u main.py build-tokenizer \
+    --config configs/ape_wordpiece_100.yaml \
     --output-dir "$OUTPUT_DIR"
 EXIT_CODE=$?
 

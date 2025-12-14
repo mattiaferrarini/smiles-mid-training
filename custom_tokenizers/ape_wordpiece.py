@@ -1,7 +1,3 @@
-"""
-Optimized APE (Atom Pair Encoding) tokenizer using HuggingFace's fast WordPiece implementation.
-"""
-
 import os
 import json
 from pathlib import Path

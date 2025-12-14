@@ -16,6 +16,8 @@ from utils.logging import get_logger
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 from utils.config import load_config
 
+LOGGER = get_logger(__name__)
+
 
 def load_data(dataset_path, smiles_col, label_col):
     """
@@ -113,7 +115,8 @@ def plot_and_save_embeddings(embeddings, labels, output_path, topk=10):
             reduced_embeddings[idx, 1], 
             color=colors[i], 
             label=str(label),
-            alpha=0.7
+            alpha=0.7,
+            s=10
         )
 
     output_path_svg = output_path if output_path.endswith('.svg') else output_path + '.svg'
@@ -188,18 +191,7 @@ def evaluate_embeddings(checkpoint_folder, dataset_path, smiles_col, label_col, 
     model.to("cuda" if torch.cuda.is_available() else "cpu")
 
     smiles_list, labels = load_data(dataset_path, smiles_col, label_col)
+    LOGGER.info(f"Loaded {len(smiles_list)} SMILES from dataset.")
     embeddings = compute_embeddings(tokenizer, model, smiles_list, batch_size=16)
     plot_and_save_embeddings(embeddings, labels, output_path, topk=10)
     
-
-
-if __name__ == "__main__":
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
-    model = AutoModel.from_pretrained("gpt2")
-    model.eval()
-    model.to("cuda" if torch.cuda.is_available() else "cpu")
-    dataset_path = "data/coconut/coconut_csv-12-2025.csv"
-    smiles_list, labels = load_data(dataset_path, smiles_col="canonical_smiles", label_col="chemical_super_class")
-    smiles_list, labels = smiles_list[:1000], labels[:1000]  # Limit to first 100 for speed
-    embeddings = compute_embeddings(tokenizer, model, smiles_list, batch_size=16)
-    plot_and_save_embeddings(embeddings, labels, output_path="smiles_embeddings.svg", topk=10)

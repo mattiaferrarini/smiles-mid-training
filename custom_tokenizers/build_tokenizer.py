@@ -10,38 +10,7 @@ from datasets import load_dataset
 from utils.config import load_config
 from utils.logging import get_logger
 from utils.helpers import build_and_save_tokenizer
-
-from .character_tokenizer import CharacterTokenizer
-from .element_tokenizer import ElementTokenizer
-from .elementallparenthesis_tokenizer import ElementAllParenthesisTokenizer
-from .elementaromatics_tokenizer import ElementAromaticsTokenizer
-from .elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
-from .elementrings_tokenizer import ElementRingsTokenizer
-from .smiles_bpe_tokenizer import SmilesBpeTokenizer
-from .smiles_wp_tokenizer import SmilesWPTokenizer
-from .ape_tokenizer import APETokenizer
-from .ape_hf_tokenizer import APEHFTokenizer
-from .ape_wp_hf_tokenizer import APEWPHFTokenizer
-from .chem_ape import ChemAPETokenizer
-from .kmer_tokenizer import KmerTokenizer
-from .ape_wordpiece import APEWordPieceTokenizer
-
-TOKENIZER_CLASSES = {
-    "character": CharacterTokenizer,
-    "element": ElementTokenizer,
-    "elementallparenthesis": ElementAllParenthesisTokenizer,
-    "elementaromatics": ElementAromaticsTokenizer,
-    "elementnoparenthesis": ElementNoParenthesisTokenizer,
-    "elementrings": ElementRingsTokenizer,
-    "smiles_bpe": SmilesBpeTokenizer,
-    "smiles_wp": SmilesWPTokenizer,
-    "ape": APETokenizer,
-    "ape_hf": APEHFTokenizer,
-    "ape_wp_hf": APEWPHFTokenizer,
-    "chem_ape": ChemAPETokenizer,
-    "kmer": KmerTokenizer,
-    "ape_wordpiece": APEWordPieceTokenizer,
-}
+from .registry import TOKENIZER_CLASSES
 
 LOGGER = get_logger(__name__)
 

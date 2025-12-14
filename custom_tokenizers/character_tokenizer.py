@@ -16,6 +16,8 @@ class CharacterTokenizer(PreTrainedTokenizer):
     """
 
     CHAR_LEVEL_PATTERN = r"."
+    vocab_files_names = {"vocab_file": "vocab.json"}
+    model_input_names = ["input_ids", "attention_mask"]
 
     def __init__(
         self,
@@ -79,108 +81,6 @@ class CharacterTokenizer(PreTrainedTokenizer):
             int: The size of the vocabulary.
         """
         return len(self.vocab)
-
-    def save_pretrained(self, save_directory, **kwargs):
-        """
-        Saves the tokenizer vocabulary and configuration to the specified directory.
-
-        Args:
-            save_directory (str): The directory to save the tokenizer files.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            tuple: Paths to the saved files.
-        """
-        save_directory = Path(save_directory)
-
-        config_dict = {
-            "max_len": getattr(self, "model_max_length", 1024),
-            "unk_token": "[UNK]",
-            "model_type": "character_tokenizer",
-            # Aggiungi qui gli altri token speciali usati (pad_token, eos_token, ecc.)
-            # Esempio: "pad_token": self.pad_token,
-        }
-
-        vocab_file, config_file = helpers.save_tokenizer_files(
-            save_directory=save_directory,
-            vocab_dict=self.vocab,
-            config_dict=config_dict,
-        )
-
-        return vocab_file, config_file
-
-    @classmethod
-    def from_pretrained(cls, pretrained_model_name_or_path, **kwargs):
-        """
-        Loads a tokenizer from a pretrained model directory.
-
-        Args:
-            pretrained_model_name_or_path (str): The directory containing the pretrained tokenizer files.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            CharacterTokenizer: The loaded tokenizer instance.
-        """
-        tokenizer = cls()  # Crea una nuova istanza
-        vocab_path = Path(pretrained_model_name_or_path) / "vocab.json"
-        with open(vocab_path, "r", encoding="utf-8") as f:
-            tokenizer.vocab = json.load(f)
-
-        # special tokens and configs
-        return tokenizer
-
-    def _encode_plus(
-        self,
-        text,
-        text_pair=None,
-        add_special_tokens=True,  # Tipicamente True
-        padding_strategy="do_not_pad",
-        truncation_strategy="do_not_truncate",
-        max_length=None,
-        is_split_into_words=False,
-        **kwargs,
-    ):
-        """
-        Tokenizes and encodes the input text.
-
-        Args:
-            text (str): The input text to encode.
-            text_pair (str, optional): A second input text for sequence pairs.
-            add_special_tokens (bool): Whether to add special tokens. Defaults to True.
-            padding_strategy (str): The padding strategy. Defaults to "do_not_pad".
-            truncation_strategy (str): The truncation strategy. Defaults to "do_not_truncate".
-            max_length (int, optional): The maximum length of the sequence.
-            is_split_into_words (bool): Whether the input is already split into words. Defaults to False.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            BatchEncoding: The encoded output containing input_ids and attention_mask.
-        """
-
-        tokens = self._tokenize(text)
-
-        input_ids = [self.vocab.get(token, self.vocab["[UNK]"]) for token in tokens]
-
-        return {"input_ids": input_ids, "attention_mask": [1] * len(input_ids)}
-
-    def __call__(self, text, **kwargs):
-        """
-        Tokenizes and encodes the input text.
-        """
-        return self._encode_plus(text, **kwargs)
-
-    def decode(self, token_ids):
-        """
-        Decodes a sequence of token IDs back into a string.
-
-        Args:
-            token_ids (list): A list of token IDs.
-
-        Returns:
-            str: The decoded string.
-        """
-        reverse_vocab = {v: k for k, v in self.vocab.items()}
-        return "".join([reverse_vocab.get(tid, "[UNK]") for tid in token_ids])
 
     def _tokenize(self, text):
         """

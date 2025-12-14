@@ -99,24 +99,6 @@ srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py train-m
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"
 
-# --- Submit Evaluation Job ---
-echo "=================================================================="
-echo "Submitting Evaluation Job..."
 
-EVAL_MODEL_PATH="${OUTPUT_DIR}/final_model"
-# We run evaluation WITHOUT annotation by default (USE_ANNOTATION="false")
-USE_ANNOTATION="false"
-EVAL_JOB_NAME="eval_${TOKENIZER_NAME}_${EMBEDDING_INIT}_annotated_${USE_ANNOTATION}_train_${SLURM_JOB_ID}"
-EVAL_OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval/${EVAL_JOB_NAME}"
-
-# Submit the job with dependency on the current training job
-sbatch --dependency=afterok:$SLURM_JOB_ID \
-       --job-name="$EVAL_JOB_NAME" \
-       --export=ALL,MODEL_PATH="$EVAL_MODEL_PATH",OUTPUT_DIR="$EVAL_OUTPUT_DIR",USE_ANNOTATION="$USE_ANNOTATION" \
-       slurm/base_likelihood_eval.slurm
-
-echo "Evaluation job submitted with dependency afterok:$SLURM_JOB_ID"
-echo "Evaluation Job Name: $EVAL_JOB_NAME"
-echo "=================================================================="
 
 

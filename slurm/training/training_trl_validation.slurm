@@ -18,16 +18,6 @@ export ENV_NAME=ml4science
 # Activate conda
 source ~/miniconda3/etc/profile.d/conda.sh 
 
-# Create or update conda environment
-# if conda env list | grep -q "^$ENV_NAME "; then \
-#  echo "Conda env exists: updating"; \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# else \
-#  echo "Creating conda env"; \
-#  conda create -n "$ENV_NAME" --override-channels -c conda-forge python=3.12 -y && \
-#  conda run -n "$ENV_NAME" pip install -r requirements.txt; \
-# fi
-
 # Activate conda environment
 conda activate "$ENV_NAME"
 
@@ -112,26 +102,3 @@ srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" -m main train-m
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"
 
-# --- Submit Evaluation Job ---
-# echo "=================================================================="
-# echo "Submitting Evaluation Job..."
-
-# EVAL_MODEL_PATH="${OUTPUT_DIR}/final_model"
-# We run evaluation WITHOUT annotation by default (USE_ANNOTATION="false")
-# USE_ANNOTATION="false"
-# EVAL_JOB_NAME="eval_${TOKENIZER_NAME}_${EMBEDDING_INIT}_annotated_${USE_ANNOTATION}_train_${SLURM_JOB_ID}"
-# EVAL_OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/likelihood_eval/${EVAL_JOB_NAME}"
-
-# Submit the job with dependency on the current training job
-# sbatch --dependency=afterok:$SLURM_JOB_ID \
-#        --job-name="$EVAL_JOB_NAME" \
-#        --export=ALL,MODEL_PATH="$EVAL_MODEL_PATH",OUTPUT_DIR="$EVAL_OUTPUT_DIR",USE_ANNOTATION="$USE_ANNOTATION" \
-#        slurm/base_likelihood_eval.slurm
-
-# echo "Evaluation job submitted with dependency afterok:$SLURM_JOB_ID"
-# echo "Evaluation Job Name: $EVAL_JOB_NAME"
-# echo "=================================================================="
-
-# echo "--- Starting direct Python run for debugging (Job $SLURM_JOB_ID) ---"
-# srun --propagate=NONE --label "$PYTHON_EXEC" training/training.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
-# echo "--- Python run finished ---"

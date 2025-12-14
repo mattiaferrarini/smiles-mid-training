@@ -34,9 +34,19 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # Silence standard Python warnings for cleaner logs
 export PYTHONWARNINGS="ignore"
 
+# HF cache folders
+export HF_HOME="/iopsstor/scratch/cscs/$USER/cache/huggingface"
+export HF_DATASETS_CACHE="/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
+
+# WandB settings (uncomment if using WandB)
+# export WANDB_API_KEY=$(grep WANDB_API_KEY .env | cut -d '=' -f 2)
+# export WANDB_PROJECT="slurm"
+
 # Create needed folders
 mkdir -p /iopsstor/scratch/cscs/$USER/logs
 mkdir -p /iopsstor/scratch/cscs/$USER/jobreports
+mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface"
+mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 
 # Jobreport
 export JOBREPORT=/users/$USER/jobreport

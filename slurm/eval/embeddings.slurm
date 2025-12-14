@@ -70,7 +70,7 @@ export SMILES_COL="canonical_smiles"
 export LABEL_COL="chemical_super_class"
 
 # Run embeddings evaluation
-srun "$PYTHON_EXEC" -u main.py embeddings-eval \
+srun python -u main.py embeddings-eval \
     --checkpoint-folder "$CHECKPOINT_FOLDER" \
     --output-path "$OUTPUT_PATH" \
     --dataset-path "$DATASET_PATH" \

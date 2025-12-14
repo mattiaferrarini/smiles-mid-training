@@ -69,7 +69,7 @@ export TOKENIZERS_FOLDER="//users/$USER/smiles-mid-training/json/tokenizers/"
 export DATASET_PATH="/capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1"
 
 # Run fertility evaluation
-srun "$PYTHON_EXEC" -u main.py fertility-eval \
+srun python -u main.py fertility-eval \
     --registry-path "$REGISTRY_PATH" \
     --tokenizers-folder "$TOKENIZERS_FOLDER" \
     --dataset-path "$DATASET_PATH" \

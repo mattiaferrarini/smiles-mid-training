@@ -356,16 +356,6 @@ def train(config, accelerator, output_dir):
     training_args = prepare_training_args(config, output_dir)
     resource_logging_steps = config["training"]["resource_logging_steps"]
 
-    # Initialize Trainer
-    # trainer = SFTTrainer(
-    #     model=model,
-    #     args=training_args,
-    #     train_dataset=combined_dataset,
-    #     processing_class=tokenizer,  # pass tokenizer here
-    #     callbacks=[
-    #         MultiGPUResourcesCallback(resource_logging_steps),
-    #     ],
-    # )
     trainer = SFTTrainer(
         model=model,
         args=training_args,

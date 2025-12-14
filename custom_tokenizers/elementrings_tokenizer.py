@@ -287,6 +287,30 @@ class ElementRingsTokenizer(PreTrainedTokenizer):
         """
         return self.vocab
 
+    def _add_tokens(self, new_tokens, special_tokens=False):
+        """
+        Adds new tokens to the vocabulary.
+
+        Args:
+            new_tokens (list): A list of tokens to add.
+            special_tokens (bool): Whether the tokens are special tokens. Defaults to False.
+
+        Returns:
+            int: The number of tokens added.
+        """
+        if not new_tokens:
+            return 0
+        
+        added = 0
+        for token in new_tokens:
+            token_str = str(token)
+            if token_str not in self.vocab:
+                new_id = len(self.vocab)
+                self.vocab[token_str] = new_id
+                self.decoder[new_id] = token_str
+                added += 1
+        return added
+
     def create_vocabulary(
         self,
         text,

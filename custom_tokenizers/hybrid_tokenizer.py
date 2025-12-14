@@ -452,3 +452,39 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             data["overflow_to_sample_mapping"] = overflow_to_sample_mapping
 
         return BatchEncoding(data, tensor_type=return_tensors)
+
+    def _add_tokens(self, new_tokens, special_tokens=False):
+        """
+        Adds new tokens to the vocabulary.
+        Required by Hugging Face to handle special tokens like [PAD].
+
+        Args:
+            new_tokens (list): A list of tokens to add.
+            special_tokens (bool): Whether the tokens are special tokens. Defaults to False.
+
+        Returns:
+            int: The number of tokens added.
+        """
+        if hasattr(self, "tokenizer"):
+            return self.tokenizer.add_tokens(new_tokens, special_tokens=special_tokens)
+        
+        elif hasattr(self, "base_tokenizer"):
+            return self.base_tokenizer.add_tokens(new_tokens, special_tokens=special_tokens)
+            
+        elif hasattr(self, "vocab") and isinstance(self.vocab, dict):
+            added = 0
+            for token in new_tokens:
+                token_str = str(token)
+                if token_str not in self.vocab:
+                    new_id = len(self.vocab)
+                    self.vocab[token_str] = new_id
+                    if hasattr(self, "decoder"):
+                        self.decoder[new_id] = token_str
+                    added += 1
+            return added
+
+        print(f"Warning: {self.__class__.__name__} cannot add tokens (no 'tokenizer' or 'vocab' found). Skipping.")
+        return 0
+
+    
+        

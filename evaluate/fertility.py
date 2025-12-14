@@ -31,7 +31,7 @@ def get_smiles_list_from_dataset(dataset_path, text_field):
         data_files="**/*.arrow",
         split="train",
     )
-
+    print("loaded", len(dataset))
     def extract_smiles_batch(batch):
         extracted_smiles = []
         pattern = r"\[START_SMILES\](.*?)\[END_SMILES\]"
@@ -49,7 +49,9 @@ def get_smiles_list_from_dataset(dataset_path, text_field):
         batched=True,
         batch_size=10000,
         remove_columns=dataset.column_names,
-        num_proc=8,
+        num_proc=1,
+        load_from_cache_file=False,
+        desc="Extracting SMILES",
     )
 
     smiles_list = []

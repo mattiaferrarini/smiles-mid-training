@@ -47,5 +47,5 @@ export CONFIG_PATH="configs/instructions/instruction.yaml"
 #export MODEL_PATH="/capstor/store/cscs/swissai/a131/ML4Science/mattia/finetuning/base_finetuning_1212555"
 export MODEL_PATH="/iopsstor/scratch/cscs/lprunotto/finetuning/train_hybrid_elementaromatics_elementwise_1227483"
 
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py instruction-tuning --config "cd$CONFIG_PATH" --model-path "$MODEL_PATH"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py instruction-tuning --config "$CONFIG_PATH" --model-path "$MODEL_PATH"
 $JOBREPORT print "$PROFILING_FOLDER"

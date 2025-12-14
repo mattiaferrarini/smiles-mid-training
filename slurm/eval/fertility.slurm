@@ -17,16 +17,6 @@ source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded An
 # Activate conda environment
 conda activate "$ENV_NAME"
 
-# Ensure the GPU version of PyTorch is installed
-# pip uninstall -y torch torchvision torchaudio
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-
-# Update requirements with specific CUDA versions for cluster
-# echo "Updating requirements.txt with current environment packages..."
-# pip freeze > requirements.txt
-
-export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
-
 # Distributed settings
 export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
 # export NCCL_DEBUG=INFO
@@ -44,19 +34,9 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # Silence standard Python warnings for cleaner logs
 export PYTHONWARNINGS="ignore"
 
-# HF cache folders
-export HF_HOME="/iopsstor/scratch/cscs/$USER/cache/huggingface"
-export HF_DATASETS_CACHE="/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
-
-# WandB settings (uncomment if using WandB)
-# export WANDB_API_KEY=$(grep WANDB_API_KEY .env | cut -d '=' -f 2)
-# export WANDB_PROJECT="slurm"
-
 # Create needed folders
 mkdir -p /iopsstor/scratch/cscs/$USER/logs
 mkdir -p /iopsstor/scratch/cscs/$USER/jobreports
-mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface"
-mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 
 # Jobreport
 export JOBREPORT=/users/$USER/jobreport

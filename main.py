@@ -271,7 +271,6 @@ def run_fertility_eval_command(
         dir_okay=True,
     ),
 ): 
-    print("evaluating aaaaaa")
     evaluate_tokenizers_fertility(str(registry_path), str(tokenizers_folder), str(dataset_path), str(output_folder))
 
 

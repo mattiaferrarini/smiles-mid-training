@@ -16,7 +16,7 @@ LOGGER = get_logger(__name__)
 TEXT_FIELD = "text_annotated_v1tags"
 
 
-def get_smiles_list_from_dataset(dataset_path, text_field):
+def get_smiles_list_from_dataset(dataset_path, text_field, target=1_000_000):
     """
     Extracts SMILES strings from a dataset stored in Arrow format.
     Args:
@@ -31,7 +31,7 @@ def get_smiles_list_from_dataset(dataset_path, text_field):
         data_files="**/*.arrow",
         split="train",
     )
-    print("loaded", len(dataset))
+
     def extract_smiles_batch(batch):
         extracted_smiles = []
         pattern = r"\[START_SMILES\](.*?)\[END_SMILES\]"
@@ -49,16 +49,19 @@ def get_smiles_list_from_dataset(dataset_path, text_field):
         batched=True,
         batch_size=10000,
         remove_columns=dataset.column_names,
-        num_proc=1,
+        num_proc=8,
         load_from_cache_file=False,
         desc="Extracting SMILES",
     )
 
-    smiles_list = []
-    for i in range(len(chem_dataset)):
-        smiles_list.append(chem_dataset[i][text_field])
+    if len(chem_dataset) > target:
+        LOGGER.info(f"Shuffling and selecting {target} samples...")
+        sampled_dataset = chem_dataset.shuffle(seed=42).select(range(target))
+        smiles = sampled_dataset[TEXT_FIELD]
+    else:
+        smiles = chem_dataset[TEXT_FIELD]
 
-    return smiles_list
+    return smiles
 
 
 def evaluate_tokenizer(tokenizer, smiles_list):
@@ -88,6 +91,8 @@ def evaluate_tokenizer(tokenizer, smiles_list):
     percentile_75 = sorted(token_counts)[int(0.75 * total_smiles)] if total_smiles > 0 else 0
 
     LOGGER.info(f"Total SMILES evaluated: {total_smiles}")
+    LOGGER.info(f"Total tokens counted: {sum(token_counts)}")
+    LOGGER.info(f"Standard deviation of tokens per SMILES: {std:.2f}")
     LOGGER.info(f"Average number of tokens per SMILES: {average_tokens:.2f}")
     LOGGER.info(f"Median number of tokens per SMILES: {median_tokens}")
     LOGGER.info(f"25th percentile of tokens per SMILES: {percentile_25}")
@@ -95,6 +100,7 @@ def evaluate_tokenizer(tokenizer, smiles_list):
 
     return {
         "total_smiles": total_smiles,
+        "total_tokens": sum(token_counts),
         "average_tokens": average_tokens,
         "std_tokens": std,
         "median_tokens": median_tokens,
@@ -103,7 +109,7 @@ def evaluate_tokenizer(tokenizer, smiles_list):
     }
 
 
-def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path, output_folder):
+def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path, output_folder, target=1_000_000):
     """
     Evaluates the fertility of multiple tokenizers defined in a registry file on a dataset of SMILES strings.
     Args:
@@ -114,10 +120,6 @@ def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path
     Returns:
         None
     """
-
-    LOGGER.info("Starting fertility evaluation of tokenizers...")
-    print("Loading tokenizer configurations from registry...")
-
     load_dotenv()
     with open(registry_path, "r") as f:
         configs = json.load(f)
@@ -125,27 +127,9 @@ def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path
     LOGGER.info(f"Loaded {len(configs)} tokenizer configurations from registry.")
 
     os.makedirs(output_folder, exist_ok=True)
-    smiles = get_smiles_list_from_dataset(dataset_path, TEXT_FIELD)
-
+    smiles = get_smiles_list_from_dataset(dataset_path, TEXT_FIELD, target=1_000_000)
     LOGGER.info(f"Extracted {len(smiles)} SMILES entries from dataset.")
     
-    random.seed(42)
-
-    flat_smiles = []
-    for entry in smiles:
-        if isinstance(entry, list):
-            flat_smiles.extend(entry)
-        elif entry is not None:
-            flat_smiles.append(entry)
-
-    target = 1_000_000
-    total = len(flat_smiles)
-    if total > target:
-        smiles = random.sample(flat_smiles, target)
-        LOGGER.info(f"Randomly sampled {target} SMILES out of {total}.")
-    else:
-        smiles = flat_smiles
-        LOGGER.info(f"Total SMILES ({total}): using all SMILES")
     all_results = {}
 
     for config in configs:

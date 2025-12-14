@@ -116,9 +116,12 @@ def plot_and_save_embeddings(embeddings, labels, output_path, topk=10):
             alpha=0.7
         )
 
+    output_path_svg = output_path if output_path.endswith('.svg') else output_path + '.svg'
+    output_path_png = output_path if output_path.endswith('.png') else output_path + '.png'
     plt.legend(title=f"Classes")
     plt.title("t-SNE of SMILES Embeddings")
-    plt.savefig(output_path, format='svg', bbox_inches='tight')
+    plt.savefig(output_path_svg, format='svg', bbox_inches='tight')
+    plt.savefig(output_path_png, format='png', bbox_inches='tight')
     plt.close()
 
 

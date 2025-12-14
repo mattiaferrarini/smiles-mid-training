@@ -73,6 +73,10 @@ def evaluate_tokenizer(tokenizer, smiles_list):
     token_counts = []
     for smiles in smiles_list:
         tokens = tokenizer.tokenize(smiles)
+        if len(tokens) == 0:
+            LOGGER.info(tokens)
+            LOGGER.info(smiles)
+            raise ValueError(f"{tokens}: {smiles}")
         token_counts.append(len(tokens))
 
     average_tokens = sum(token_counts) / total_smiles if total_smiles > 0 else 0

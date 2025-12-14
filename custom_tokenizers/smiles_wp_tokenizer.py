@@ -46,9 +46,11 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
         """
         # Store config parameters
         self.config = config or {}
-        self.max_vocab_size = self.config.get('max_vocab_size', 2000)
-        self.min_freq_for_merge = self.config.get('min_freq_for_merge', 2)
+        self.max_vocab_size = self.config["tokenizer"]["params"].get('max_vocab_size', 20000) if config else 20000
+        self.min_freq_for_merge = self.config["tokenizer"]["params"].get('min_freq_for_merge', 2) if config else 2
         
+        print(f"Tokenizer config - max_vocab_size: {self.max_vocab_size}, min_freq_for_merge: {self.min_freq_for_merge}")
+
         # If loading from files
         if tokenizer_file:
             super().__init__(

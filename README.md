@@ -32,11 +32,22 @@ smiles-mid-training/
 
 ### Tokenization
 
-We implement specialized tokenizers to better represent molecular strings
+We implement specialized tokenizers to better represent molecular strings.
+
+The special tokenizers are applied exclusively to the smiles formula, that are between the tags [START_SMILES] and [END_SMILES]. The rest of the text is tokenized with Huggingface BaseTokenizer.
+
+In order to use any tokenizer different from the base one to tokenize the smiles string, its vocabulary has to be built first. It is built either running "build_tokenizer.slurm" with the desired tokenizer in the field "['tokenizer']['chem_type']" of "configs/tokenizers/tokenizer" or running the dedicated slurm file. The script iterates on the whole dataset and builds a json with the tokenizer vocabulary. These vocabularies are already built and saved in "json/tokenizers".
+
+In order to choose the right tokenizer when the model is trained, the right config file has to be passed to the "training.py" file. The ready-to-use configs are in the folder "configs/tokenizers" and are passed to the file setting "['tokenizer']['chem_type']" as desired in the file "configs/training/defaul_trl.yaml".
 
 TODO
 
 ### Embeddings & Initialization
+
+We implement three different embedding strategies for the embedding of the tokens created by the chemical tokenization.
+The possible tokenizations are "random", "average" and "elementwise", with the latter that finds the embeddings of the elements that compose the token and average just them to initialize it.
+In order to choose the embedding strategy for the training, it has to be specified in "['tokenizer']['embedding_initialization']" in the file "configs/training/default_trl.yaml".
+
 
 TODO
 
@@ -46,6 +57,8 @@ We use the trl and accelerate libraries to perform continued pre-training and su
 TODO
 
 ### Instruction-Tuning
+
+
 
 ### Evaluation & Benchmarking
 

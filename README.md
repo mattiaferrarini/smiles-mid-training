@@ -13,12 +13,11 @@ The goal of this project is to improve the chemical reasoning and understanding 
 - Mid-Stage Training: aligning the model's latent space with chemical concepts using large domain-specific datasets
 - Smart Embedding Initialization: utilizing chemical priors like element properties to initialize new tokens
 
-We validate these strategies by fine-tuning open-source models like gemma-3-1b and benchmarking them against industry standards like ChemBench for general chemistry and ChemIQ for structural reasoning 
+We validate these strategies by fine-tuning open-source models like gemma-3-1b and benchmarking them against industry standards like ChemBench for general chemistry
 
 ### Repository Structure
 ```text
 smiles-mid-training/
-    ChemIQ/                 # ChemIQ benchmark dataset, verifiers, and analysis notebooks
     configs/                # YAML configurations for training, tokenizers, and evaluation
     custom_tokenizers/      # Implementations of different tokenizers
     embeddings/             # Logic for chemically-aware embedding initialization
@@ -194,8 +193,3 @@ Probably we need to set it = ``--gres=gpu`` to have one task per GPU.
 
 ### Jobreport
 Just use it as in the examples we were given.
-
-## Benchmarks
-To be able to run ChemIQ benchmarks, make sure to clone the repository inside `smiles-mid-training` with:
-
-`git clone https://github.com/oxpig/ChemIQ.git`

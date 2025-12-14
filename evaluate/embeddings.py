@@ -29,6 +29,11 @@ def load_data(dataset_path, smiles_col, label_col):
     Returns:
         tuple: A tuple containing a list of SMILES strings and a list of labels.
     """
+    if not os.path.exists(dataset_path):
+        LOGGER.info(f"Dataset file not found: {dataset_path}, trying sample dataset.")
+        dataset_path = dataset_path.replace('coconut', 'sample_coconut')
+    if not os.path.exists(dataset_path):
+        raise FileNotFoundError(f"Dataset file not found: {dataset_path}")
     dataset = pd.read_csv(dataset_path)
     smiles_list = [f"[START_SMILES]{s}[END_SMILES]" for s in dataset[smiles_col].tolist()]
     labels = dataset[label_col].tolist()

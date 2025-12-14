@@ -95,6 +95,23 @@ class APETokenizer(PreTrainedTokenizer):
         """
         return len(self.vocab)
 
+    def _add_tokens(self, new_tokens, special_tokens=False):
+        """
+        Adds new tokens to the vocabulary.
+        """
+        if not new_tokens:
+            return 0
+        
+        added = 0
+        for token in new_tokens:
+            token_str = str(token)
+            if token_str not in self.vocab:
+                new_id = len(self.vocab)
+                self.vocab[token_str] = new_id
+                self.decoder[new_id] = token_str
+                added += 1
+        return added
+
     @property
     def unk_token_id(self):
         """

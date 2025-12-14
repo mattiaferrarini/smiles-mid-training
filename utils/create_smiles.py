@@ -209,7 +209,7 @@ def is_smiles(token, previous_word=None):
     if clean_token[0].isdigit():
         return False
 
-    # Rule: Ambiguous Formula Context Check (e.g. IF, HF)
+    # Ambiguous Formula Context Check (e.g. IF, HF)
     if clean_token in AMBIGUOUS_FORMULAS:
         if previous_word:
             clean_prev = previous_word.strip(".,;:!?\"'()[]{}").lower()
@@ -224,7 +224,7 @@ def is_smiles(token, previous_word=None):
         else:
             return False
 
-    # Rule: Single Element Context Check
+    # Single Element Context Check
     # If the token is exactly one element symbol (e.g. "Na", "O", "C")
     # It is valid ONLY if the previous word corresponds to the element name (e.g. "Sodium")
     if clean_token in ELEMENT_NAME_MAP:

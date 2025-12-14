@@ -38,6 +38,7 @@ import json
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 from embeddings.embedding_initializer import initialize_embeddings as init_embeddings_fn
 
+import math
 
 LOGGER = get_logger(__name__)
 
@@ -59,6 +60,16 @@ class MultiGPUResourcesCallback(TrainerCallback):
                 LOGGER.info(
                     f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)"
                 )
+
+
+class PerplexityCallback(TrainerCallback):
+    def on_evaluate(self, args, state, control, metrics, **kwargs):
+        if "eval_loss" in metrics:
+            try:
+                metrics["eval_perplexity"] = math.exp(metrics["eval_loss"])
+                LOGGER.info(f"Perplexity: {metrics['eval_perplexity']:.2f}")
+            except Exception:
+                metrics["eval_perplexity"] = float("inf")
 
 
 def prepare_training_args(config, output_dir):
@@ -96,6 +107,9 @@ def prepare_training_args(config, output_dir):
         "max_length": config["training"]["max_length"],
         "include_tokens_per_second": True,
         "include_num_input_tokens_seen": True,
+        "eval_strategy": config["training"].get("eval_strategy", "no"),
+        "eval_steps": config["training"].get("eval_steps", None),
+        "per_device_eval_batch_size": config["training"].get("per_device_eval_batch_size", 1),
     }
 
     if config["tokenizer"]["type"] == "hybrid":
@@ -277,7 +291,16 @@ def prepare_dataset(tokenizer, config, accelerator):
         seed=config["training"]["seed"],
         stopping_strategy="first_exhausted",
     )
-    return combined_dataset
+
+    eval_ratio = config["training"].get("eval_ratio", 0.0)
+    if eval_ratio > 0:
+        LOGGER.info(f"Splitting dataset with eval_ratio={eval_ratio}")
+        split_dataset = combined_dataset.train_test_split(
+            test_size=eval_ratio, seed=config["training"]["seed"]
+        )
+        return split_dataset["train"], split_dataset["test"]
+
+    return combined_dataset, None
 
 
 def get_last_checkpoint(output_dir):
@@ -326,20 +349,22 @@ def train(config, accelerator, output_dir):
         model.gradient_checkpointing_enable()
 
     # Prepare dataset
-    combined_dataset = prepare_dataset(tokenizer, config, accelerator)
+    # combined_dataset = prepare_dataset(tokenizer, config, accelerator)
+    train_dataset, eval_dataset = prepare_dataset(tokenizer, config, accelerator)
 
     # Training arguments
     training_args = prepare_training_args(config, output_dir)
     resource_logging_steps = config["training"]["resource_logging_steps"]
 
-    # Initialize Trainer
     trainer = SFTTrainer(
         model=model,
         args=training_args,
-        train_dataset=combined_dataset,
-        processing_class=tokenizer,  # pass tokenizer here
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        processing_class=tokenizer,
         callbacks=[
             MultiGPUResourcesCallback(resource_logging_steps),
+            PerplexityCallback(),
         ],
     )
 

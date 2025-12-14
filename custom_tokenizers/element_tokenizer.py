@@ -139,7 +139,6 @@ class ElementTokenizer(PreTrainedTokenizer):
     ELEMENTS = sorted(ELEMENTS, key=lambda x: -len(x))  # longest first
 
     ELEMENT_PATTERN = "|".join(ELEMENTS)  # NO parentheses
-    # Modified pattern: Treat [ and ] as separate tokens, and tokenize content inside them element-wise
     ATOM_LEVEL_PATTERN = (
         r"\[|\]|"
         + ELEMENT_PATTERN
@@ -293,6 +292,30 @@ class ElementTokenizer(PreTrainedTokenizer):
         )
         self.decoder = {v: k for k, v in self.vocab.items()}
         return self.vocab
+
+    def _add_tokens(self, new_tokens, special_tokens=False):
+        """
+        Adds new tokens to the vocabulary.
+
+        Args:
+            new_tokens (list): A list of tokens to add.
+            special_tokens (bool): Whether the tokens are special tokens. Defaults to False.
+
+        Returns:
+            int: The number of tokens added.
+        """
+        if not new_tokens:
+            return 0
+        
+        added = 0
+        for token in new_tokens:
+            token_str = str(token)
+            if token_str not in self.vocab:
+                new_id = len(self.vocab)
+                self.vocab[token_str] = new_id
+                self.ids_to_tokens[new_id] = token_str
+                added += 1
+        return added
 
     # Legacy methods kept for compatibility if needed, but redirected or simplified
     def _load_vocab_from_json(self, path, append_to_existing_vocabulary=False):

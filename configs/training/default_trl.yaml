@@ -40,7 +40,10 @@ training:
   resource_logging_steps: 100
   bf16: true
   fp16: false
-  evaluation_strategy: "no"
+  eval_steps: 100
+  eval_ratio: 0.05
+  per_device_eval_batch_size: 1
+  eval_strategy: "steps"
   save_strategy: "steps"
   seed: 42
   gradient_checkpointing: true
@@ -55,9 +58,9 @@ training:
 
 tokenizer:
   type: hybrid
-  chem_type: smiles_bpe 
+  chem_type: element 
   embedding_initialization: "elementwise" 
-  output_dir: /users/$user/json/tokenizers
+  output_dir: /users/$USER/json/tokenizers
   special_tokens:
     start_smiles: "[START_SMILES]"
     end_smiles: "[END_SMILES]"

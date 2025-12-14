@@ -13,7 +13,7 @@
 export ENV_NAME=ml4science
 
 # Activate conda
-source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
+source ~/miniconda3/etc/profile.d/conda.sh 
 
 # Activate conda environment
 conda activate "$ENV_NAME"
@@ -105,7 +105,7 @@ srun --ntasks-per-node=1 \
     --rdzv_id=$SLURM_JOB_ID \
     --rdzv_backend=c10d \
     --rdzv_endpoint=$MASTER_ADDR:$MASTER_PORT \
-    evaluate/likelihood_eval.py --model_path "$MODEL_PATH" --output_dir "$OUTPUT_DIR"
+    main.py likelihood-eval --model-path "$MODEL_PATH" --output-dir "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

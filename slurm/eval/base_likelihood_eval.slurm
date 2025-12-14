@@ -14,7 +14,7 @@
 export ENV_NAME=ml4science
 
 # Activate conda
-source ~/miniconda3/etc/profile.d/conda.sh # or the path where you downloaded Anaconda (usually in your /home folder)
+source ~/miniconda3/etc/profile.d/conda.sh 
 
 
 # Allow overriding USE_ANNOTATION from environment, use false as default, true if you want to annotate the dataset used for evaluation

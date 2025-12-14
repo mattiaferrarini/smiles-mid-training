@@ -1,8 +1,3 @@
-"""
-APE (Atom Pair Encoding) tokenizer using HuggingFace's fast WordPiece implementation.
-This uses WordPiece algorithm instead of BPE for subword tokenization.
-"""
-
 import os
 import json
 from pathlib import Path

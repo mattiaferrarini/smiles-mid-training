@@ -23,7 +23,6 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             chem_end (str): The token marking the end of a chemical sequence.
             **kwargs: Additional keyword arguments passed to `PreTrainedTokenizerBase`.
         """
-        # 1. Sync special tokens from base_tokenizer if not provided in kwargs
         # This prevents eos_token or pad_token from being None
         for token_attr in ["pad_token", "eos_token", "bos_token", "unk_token"]:
             if token_attr not in kwargs and hasattr(base_tokenizer, token_attr):
@@ -206,18 +205,18 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         return [self._convert_id_to_token_single(i, skip_special_tokens) for i in ids]
 
     def _convert_id_to_token_single(self, index, skip_special_tokens):
-        # 1. Check special hybrid tokens
+        # Check special hybrid tokens
         if index == self.chem_start_id:
             return "" if skip_special_tokens else self.chem_start
         if index == self.chem_end_id:
             return "" if skip_special_tokens else self.chem_end
 
-        # 2. Check if it's a mapped chemical ID
+        # Check if it's a mapped chemical ID
         if index in self.id_to_chem_map:
             original_chem_id = self.id_to_chem_map[index]
             return self.chem_tokenizer.convert_ids_to_tokens(original_chem_id)
 
-        # 3. Fallback to base tokenizer
+        # Fallback to base tokenizer
         return self.base_tokenizer.convert_ids_to_tokens(index)
 
     def convert_tokens_to_ids(self, tokens):
@@ -230,7 +229,6 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         Returns:
             int or list: The token ID or list of IDs.
         """
-        # FIX: Handle None input (which happens if pad_token is missing)
         if tokens is None:
             return None
 
@@ -249,23 +247,22 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         Returns:
             int: The token ID.
         """
-        # 1. Check special tokens
+        # Check special tokens
         if token == self.chem_start:
             return self.chem_start_id
         if token == self.chem_end:
             return self.chem_end_id
 
-        # 2. Try base tokenizer
+        # Try base tokenizer
         base_id = self.base_tokenizer.convert_tokens_to_ids(token)
         if base_id != self.base_tokenizer.unk_token_id:
             return base_id
 
-        # 3. If not in base, try chemical tokenizer
+        # If not in base, try chemical tokenizer
         chem_id = self.chem_tokenizer.convert_tokens_to_ids(token)
         if chem_id in self.chem_ids_map:
             return self.chem_ids_map[chem_id]
 
-        # 4. Return UNK
         return self.base_tokenizer.unk_token_id
 
     def decode(self, token_ids, **kwargs):
@@ -316,7 +313,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         input_ids = []
 
         for i, segment in enumerate(segments):
-            if not segment:  # Skip empty segments
+            if not segment:  
                 continue
             if segment.startswith(self.chem_start) and segment.endswith(self.chem_end):
                 # Extract content between tags
@@ -327,7 +324,6 @@ class HybridTokenizer(PreTrainedTokenizerBase):
                     content, add_special_tokens=False
                 )
 
-                # Handle different return types
                 if isinstance(chem_token_results, (dict, BatchEncoding)):
                     chem_ids = chem_token_results["input_ids"]
                 else:
@@ -370,7 +366,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         if text is None:
             return None
 
-        # 1. Normalize input to list
+        # Normalize input to list
         if isinstance(text, str):
             text_list = [text]
         elif isinstance(text, (list, tuple)):
@@ -386,10 +382,10 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         return_overflowing_tokens = kwargs.get("return_overflowing_tokens", False)
         truncation = kwargs.get("truncation", False)
 
-        # 2. Tokenize all texts fully
+        # Tokenize all texts fully
         batch_full_ids = [self._tokenize_single_text(t) for t in text_list]
 
-        # 3. Apply truncation and windowing (stride)
+        # Apply truncation and windowing (stride)
         final_input_ids = []
         overflow_to_sample_mapping = []
 
@@ -425,7 +421,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
                     if i + max_length >= total_len:
                         break
 
-        # 4. Handle Padding
+        # Handle Padding
         if padding and final_input_ids:
             max_len_in_batch = max(len(x) for x in final_input_ids)
             pad_id = (
@@ -439,7 +435,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
                 if diff > 0:
                     final_input_ids[i] = final_input_ids[i] + [pad_id] * diff
 
-        # 5. Create Attention Masks
+        # Create Attention Masks
         attention_mask = []
         pad_id = (
             self.pad_token_id if self.pad_token_id is not None else self.eos_token_id
@@ -449,7 +445,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
             mask = [1 if token != pad_id else 0 for token in ids]
             attention_mask.append(mask)
 
-        # 6. Construct Output
+        # Construct Output
         data = {"input_ids": final_input_ids, "attention_mask": attention_mask}
 
         if return_overflowing_tokens:

@@ -140,13 +140,11 @@ class ElementRingsTokenizer(PreTrainedTokenizer):
     ELEMENTS = sorted(ELEMENTS, key=lambda x: -len(x))
     ELEMENT_PATTERN = "|".join(ELEMENTS)
 
-    # corrected regex
     ATOM_LEVEL_PATTERN = (
         r"(\[|\]|"
         + ELEMENT_PATTERN
         + r"|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9])"
     )
-    # ATOM_LEVEL_PATTERN = r"(\[|\]|Br?|Cl?|[A-Z][a-z]?|b|c|n|o|s|p|\(|\)|\.|=|#|-|\+|\\\\|\/|:|~|@|\?|>|\*|\$|%[0-9]{2}|[0-9])"
 
     vocab_files_names = {"vocab_file": "vocab.json"}
     model_input_names = ["input_ids", "attention_mask"]

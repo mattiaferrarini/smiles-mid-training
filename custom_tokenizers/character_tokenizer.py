@@ -97,8 +97,6 @@ class CharacterTokenizer(PreTrainedTokenizer):
             "max_len": getattr(self, "model_max_length", 1024),
             "unk_token": "[UNK]",
             "model_type": "character_tokenizer",
-            # Aggiungi qui gli altri token speciali usati (pad_token, eos_token, ecc.)
-            # Esempio: "pad_token": self.pad_token,
         }
 
         vocab_file, config_file = helpers.save_tokenizer_files(
@@ -121,19 +119,18 @@ class CharacterTokenizer(PreTrainedTokenizer):
         Returns:
             CharacterTokenizer: The loaded tokenizer instance.
         """
-        tokenizer = cls()  # Crea una nuova istanza
+        tokenizer = cls() 
         vocab_path = Path(pretrained_model_name_or_path) / "vocab.json"
         with open(vocab_path, "r", encoding="utf-8") as f:
             tokenizer.vocab = json.load(f)
 
-        # special tokens and configs
         return tokenizer
 
     def _encode_plus(
         self,
         text,
         text_pair=None,
-        add_special_tokens=True,  # Tipicamente True
+        add_special_tokens=True,  
         padding_strategy="do_not_pad",
         truncation_strategy="do_not_truncate",
         max_length=None,

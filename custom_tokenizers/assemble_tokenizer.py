@@ -30,7 +30,6 @@ def assemble_tokenizer(config):
     Returns:
         PreTrainedTokenizerBase: The assembled tokenizer instance.
     """
-    # Recupera i valori dal config
     tokenizer_type = config["tokenizer"]["type"]
     special_tokens = config["tokenizer"].get("special_tokens", {})
     START_SMILES = special_tokens.get("start_smiles", "[START_SMILES]")

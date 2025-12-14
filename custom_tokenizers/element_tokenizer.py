@@ -139,7 +139,6 @@ class ElementTokenizer(PreTrainedTokenizer):
     ELEMENTS = sorted(ELEMENTS, key=lambda x: -len(x))  # longest first
 
     ELEMENT_PATTERN = "|".join(ELEMENTS)  # NO parentheses
-    # Modified pattern: Treat [ and ] as separate tokens, and tokenize content inside them element-wise
     ATOM_LEVEL_PATTERN = (
         r"\[|\]|"
         + ELEMENT_PATTERN

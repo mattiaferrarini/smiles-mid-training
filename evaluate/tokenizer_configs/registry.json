@@ -1,4 +1,12 @@
 [
+{
+        "name": "2-mer Tokenizer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "kmer",
+            "output_subdir_name": "kmer2"
+        }
+    },
     {
         "name": "Base",
         "tokenizer": {

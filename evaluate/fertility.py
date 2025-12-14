@@ -55,7 +55,7 @@ def get_smiles_list_from_dataset(dataset_path, text_field, target=1_000_000):
     )
 
     if len(chem_dataset) > target:
-        LOGGER.info(f"Shuffling and selecting {target} samples...")
+        LOGGER.info(f"Shuffling and selecting {target} samples.")
         sampled_dataset = chem_dataset.shuffle(seed=42).select(range(target))
         smiles = sampled_dataset[TEXT_FIELD]
     else:

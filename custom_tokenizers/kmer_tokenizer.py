@@ -59,9 +59,9 @@ class KmerTokenizer(PreTrainedTokenizer):
             max_vocab_size = params.get("max_vocab_size", max_vocab_size)
         
         # Override with kwargs (e.g. from from_pretrained)
-        self.ngram = kwargs.get("ngram", ngram)
-        self.stride = kwargs.get("stride", stride)
-        self.max_vocab_size = kwargs.get("max_vocab_size", max_vocab_size)
+        self.ngram = kwargs.pop("ngram", ngram)
+        self.stride = kwargs.pop("stride", stride)
+        self.max_vocab_size = kwargs.pop("max_vocab_size", max_vocab_size)
 
         if vocab_file:
             with open(vocab_file, encoding="utf-8") as f:
@@ -101,7 +101,15 @@ class KmerTokenizer(PreTrainedTokenizer):
         Returns:
             list: A list of k-mer tokens.
         """
-        return kmer_tokenizer(text, ngram=self.ngram, stride=self.stride)
+        tokens = kmer_tokenizer(text, ngram=self.ngram, stride=self.stride)
+       
+        # Fallbacks for short SMILES 
+        if not tokens and text:
+            tokens = kmer_tokenizer(text, ngram=1, stride=self.stride)
+        if not tokens:
+            tokens = [""]
+            
+        return tokens
 
     def _convert_token_to_id(self, token):
         """

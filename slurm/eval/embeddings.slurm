@@ -63,12 +63,13 @@ export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
 # Embeddings evaluation settings
-export CHECKPOINT_FOLDER="google/gemma-3-1b-pt"
-export OUTPUT_PATH="/iopsstor/scratch/cscs/$USER/embeddings_eval/base_res"
+# export CHECKPOINT_FOLDER="google/gemma-3-1b-pt"
+export CHECKPOINT_FOLDER="/iopsstor/scratch/cscs/mattiaferrarini/finetuning/base_finetuning_1224195/final_model"
+export OUTPUT_PATH="/iopsstor/scratch/cscs/$USER/embeddings_eval/chem_ape"
 export DATASET_PATH="data/coconut/coconut_csv-12-2025.csv"
 export SMILES_COL="canonical_smiles"
 export LABEL_COL="chemical_super_class"
-export PLOT_TITLE="Coconut Dataset Embeddings Visualization"
+export PLOT_TITLE="Coconut Dataset Embeddings Visualization - Chem APE"
 
 # Run embeddings evaluation
 srun python -u main.py embeddings-eval \

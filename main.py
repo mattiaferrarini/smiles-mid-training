@@ -12,34 +12,7 @@ from evaluate.likelihood_eval import run_likelihood_eval
 from evaluate.fertility import evaluate_tokenizers_fertility
 from evaluate.embeddings import evaluate_embeddings
 from training.training_trl import train_model
-
-from custom_tokenizers import (
-    CharacterTokenizer,
-    ElementTokenizer,
-    ElementAllParenthesisTokenizer,
-    ElementAromaticsTokenizer,
-    ElementNoParenthesisTokenizer,
-    ElementRingsTokenizer,
-    HybridTokenizer,
-    APETokenizer,
-    APEHFTokenizer,
-    APEWPHFTokenizer,
-    ChemAPETokenizer,
-)
-
-TOKENIZERS = {
-    "CharacterTokenizer": CharacterTokenizer,
-    "ElementTokenizer": ElementTokenizer,
-    "ElementAllParenthesisTokenizer": ElementAllParenthesisTokenizer,
-    "ElementAromaticsTokenizer": ElementAromaticsTokenizer,
-    "ElementNoParenthesisTokenizer": ElementNoParenthesisTokenizer,
-    "ElementRingsTokenizer": ElementRingsTokenizer,
-    "HybridTokenizer": HybridTokenizer,
-    "APETokenizer": APETokenizer,
-    "APEHFTokenizer": APEHFTokenizer,
-    "APEWPHFTokenizer": APEWPHFTokenizer,
-    "ChemAPETokenizer": ChemAPETokenizer,
-}
+from custom_tokenizers.registry import TOKENIZER_CLASSES as TOKENIZERS
 
 app = typer.Typer(
     help="Test novel tokenisation schemes and mid-stage training strategies for open-source chemical LLMs"

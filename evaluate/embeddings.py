@@ -30,7 +30,7 @@ def load_data(dataset_path, smiles_col, label_col):
         tuple: A tuple containing a list of SMILES strings and a list of labels.
     """
     dataset = pd.read_csv(dataset_path)
-    smiles_list = dataset[smiles_col].tolist()
+    smiles_list = [f"[START_SMILES]{s}[END_SMILES]" for s in dataset[smiles_col].tolist()]
     labels = dataset[label_col].tolist()
     return smiles_list, labels
 
@@ -103,8 +103,8 @@ def plot_and_save_embeddings(embeddings, labels, output_path, plot_title, topk=1
     labels_arr = labels_arr[non_na_mask]
 
     most_common = Counter(labels_arr).most_common(topk)
-    top_classes = [label for label, count in most_common]
-    print(f"Plotting the following classes: {top_classes}")
+    top_classes = [label for label, count in most_common if str(label).lower() != 'nan']
+    LOGGER.info(f"Plotting the following classes: {top_classes}")
     mask = np.isin(labels_arr, top_classes)
     
     filtered_embeddings = embeddings_arr[mask]
@@ -155,21 +155,21 @@ def get_tokenizer(checkpoint_folder):
             training_config_path = os.path.join(
                 os.path.dirname(checkpoint_folder), "training_config.yaml"
             )
-        else:
-            # Folder with multiple checkpoints
-            training_config_path = os.path.join(checkpoint_folder, "training_config.yaml")
-
         if os.path.exists(training_config_path):
             # Assemble tokenizer from training config
-            print(
+            LOGGER.info(
                 f"Assembling tokenizer from training config at: {training_config_path}"
             )
-            tokenizer = assemble_tokenizer(load_config(training_config_path))
+            config = load_config(training_config_path)
+            tokenizer = assemble_tokenizer(config)
         else:
+            LOGGER.info(
+                f"Loading tokenizer from local checkpoint folder: {checkpoint_folder}"
+            )
             tokenizer = AutoTokenizer.from_pretrained(checkpoint_folder)
     else:
         # Assume it's a model name on HuggingFace
-        print(f"Loading tokenizer from HuggingFace model: {checkpoint_folder}")
+        LOGGER.info(f"Loading tokenizer from HuggingFace model: {checkpoint_folder}")
         tokenizer = AutoTokenizer.from_pretrained(checkpoint_folder)
 
     return tokenizer

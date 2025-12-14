@@ -306,13 +306,20 @@ def evaluate_embeddings_command(
         "-o",
         help="Path to save the embeddings plot",
     ),
+    plot_title: str = typer.Option(
+        "Embeddings Visualization",
+        "--plot-title",
+        "-t",
+        help="Title for the embeddings plot",
+    ),
 ):
     evaluate_embeddings(
-        checkpoint_folder,
-        dataset_path,
-        smiles_col,
-        label_col,
-        output_path,
+        checkpoint_folder=checkpoint_folder,
+        dataset_path=dataset_path,
+        smiles_col=smiles_col,
+        label_col=label_col,
+        output_path=output_path,
+        plot_title=plot_title
     )
 
 

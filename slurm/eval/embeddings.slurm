@@ -68,6 +68,7 @@ export OUTPUT_PATH="/iopsstor/scratch/cscs/$USER/embeddings_eval/base_res"
 export DATASET_PATH="data/coconut/coconut_csv-12-2025.csv"
 export SMILES_COL="canonical_smiles"
 export LABEL_COL="chemical_super_class"
+export PLOT_TITLE="Coconut Dataset Embeddings Visualization"
 
 # Run embeddings evaluation
 srun python -u main.py embeddings-eval \
@@ -75,5 +76,6 @@ srun python -u main.py embeddings-eval \
     --output-path "$OUTPUT_PATH" \
     --dataset-path "$DATASET_PATH" \
     --smiles-col "$SMILES_COL" \
-    --label-col "$LABEL_COL"
+    --label-col "$LABEL_COL" \
+    --plot-title "$PLOT_TITLE"
 

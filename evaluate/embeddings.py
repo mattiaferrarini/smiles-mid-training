@@ -83,7 +83,7 @@ def compute_embeddings(tokenizer, model, smiles_list, batch_size=32):
     return embeddings
 
 
-def plot_and_save_embeddings(embeddings, labels, output_path, topk=10):
+def plot_and_save_embeddings(embeddings, labels, output_path, plot_title, topk=10):
     """
     Plots embeddings using t-SNE and saves the plot to a file (SVG format).
     Args:
@@ -94,6 +94,13 @@ def plot_and_save_embeddings(embeddings, labels, output_path, topk=10):
 
     embeddings_arr = np.array(embeddings)
     labels_arr = np.array(labels)
+
+    # Exclude missing labels so they don't appear as a class in the plot
+    non_na_mask = ~pd.isna(labels_arr)
+    if not non_na_mask.all():
+        LOGGER.info(f"Excluding {np.sum(~non_na_mask)} samples with missing labels.")
+    embeddings_arr = embeddings_arr[non_na_mask]
+    labels_arr = labels_arr[non_na_mask]
 
     most_common = Counter(labels_arr).most_common(topk)
     top_classes = [label for label, count in most_common]
@@ -116,13 +123,13 @@ def plot_and_save_embeddings(embeddings, labels, output_path, topk=10):
             color=colors[i], 
             label=str(label),
             alpha=0.7,
-            s=10
+            s=5
         )
 
     output_path_svg = output_path if output_path.endswith('.svg') else output_path + '.svg'
     output_path_png = output_path if output_path.endswith('.png') else output_path + '.png'
     plt.legend(title=f"Classes")
-    plt.title("t-SNE of SMILES Embeddings")
+    plt.title(plot_title)
     plt.savefig(output_path_svg, format='svg', bbox_inches='tight')
     plt.savefig(output_path_png, format='png', bbox_inches='tight')
     plt.close()
@@ -168,7 +175,7 @@ def get_tokenizer(checkpoint_folder):
     return tokenizer
 
 
-def evaluate_embeddings(checkpoint_folder, dataset_path, smiles_col, label_col, output_path):
+def evaluate_embeddings(checkpoint_folder, dataset_path, smiles_col, label_col, output_path, plot_title):
     """
     Evaluates embeddings of a model checkpoint on a dataset and plots the results.
     Args:
@@ -193,5 +200,5 @@ def evaluate_embeddings(checkpoint_folder, dataset_path, smiles_col, label_col, 
     smiles_list, labels = load_data(dataset_path, smiles_col, label_col)
     LOGGER.info(f"Loaded {len(smiles_list)} SMILES from dataset.")
     embeddings = compute_embeddings(tokenizer, model, smiles_list, batch_size=16)
-    plot_and_save_embeddings(embeddings, labels, output_path, topk=10)
+    plot_and_save_embeddings(embeddings, labels, output_path, plot_title, topk=10)
     

@@ -200,6 +200,10 @@ def setup_tokenizer_and_model(config, model_path_override=None):
         LOGGER.info(f"Loading tokenizer from model_path: {model_path}")
         tokenizer = AutoTokenizer.from_pretrained(model_path)
 
+    if not hasattr(tokenizer, "is_fast"):
+        LOGGER.info("Patching tokenizer with is_fast=False attribute")
+        tokenizer.is_fast = False
+
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     device_map = {"": local_rank}
     LOGGER.info(f"Loading model on local rank {local_rank}")
@@ -275,7 +279,7 @@ def train(config, model, tokenizer, dataset_splits, base_config):
         ddp_find_unused_parameters=False,
         gradient_checkpointing=True,
         # for validation
-        evaluation_strategy="steps",
+        eval_strategy="steps",
         eval_steps=config["training"]["save_steps"],
         per_device_eval_batch_size=config["training"]["batch_size"],
         do_eval=True,

@@ -33,6 +33,8 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         # Initialize base class (handles special tokens logic)
         super().__init__(**kwargs)
 
+        self.is_fast = False
+
         self.base_tokenizer = base_tokenizer
         self.chem_tokenizer = chem_tokenizer
         self.chem_start = chem_start

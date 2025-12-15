@@ -1,6 +1,6 @@
 # Configs
 
-This folder contains configuration files to build tokenizers and to train models. The configurations are specified as YAML and split into two main categories: tokenizer construction and model training.
+This folder contains configuration files to build tokenizers and to train models. The configurations are specified as YAML and split into three categories: tokenizer construction, continued pre-training, instruction-tuning.
 
 ## Tokenizer Building Configurations
 
@@ -16,7 +16,7 @@ They are structured to contain:
     - `output_dir` and `output_subdir_name`: Locations where the resulting JSON files are saved.
     - `params`: Tokenizer-specific parameters that will be used in initialization.
 
-## Model Training Configurations
+## Continued Pretraining Configurations
 
 Files used to configure the training loop, environment, and hyperparameters.
 
@@ -40,3 +40,21 @@ They are structure to contain:
     - `chem_type`: Specific chemical (sub-)tokenizer to use.
     - `embedding_initialization`: Strategy to initialize embeddings for new tokens.
     - `special_tokens`: Dictionary of domain-specific control tokens.
+
+## Instruction-Tuning Configurations
+
+Files used to configure instruction-tuning.
+
+They are structured to contain:
+- `model`: Base model specification.
+    - `name`: The Hugging Face ID or path to the base model.
+- `data`: Instruction dataset configuration.
+    - Includes paths or IDs for specific datasets (e.g., `chat_dataset`, `sciq_path`, `metamathqa_path`).
+- `training`: Training hyperparameters and environment settings.
+    - `output_dir`: Directory where the fine-tuned model and logs will be saved.
+    - Includes `epochs`, `batch_size`, `learning_rate`, `warmup_steps`, `gradient_accumulation_steps`, and `max_length`.
+    - Controls precision (`bf16`, `fp16`), logging (`logging_steps`), and checkpointing (`save_steps`).
+- `peft`: Parameter-Efficient Fine-Tuning settings.
+    - `use_lora`: Boolean flag to enable LoRA (Low-Rank Adaptation).
+    - Includes LoRA-specific parameters: `lora_r`, `lora_alpha`, `lora_dropout`.
+    - `lora_target_modules`: List of specific model layers to apply adaptation (e.g., `q_proj`, `k_proj`, etc.).

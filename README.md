@@ -32,24 +32,22 @@ smiles-mid-training/
 
 ### Tokenization
 
-We implement specialized tokenizers to better represent molecular strings.
+We implement specialized tokenizers to better represent molecular strings.For detailed implementation and usage, refer to the `custom_tokenizers/` folder.
 
-The special tokenizers are applied exclusively to the smiles formula, that are between the tags [START_SMILES] and [END_SMILES]. The rest of the text is tokenized with Huggingface BaseTokenizer.
 
-In order to use any tokenizer different from the base one to tokenize the smiles string, its vocabulary has to be built first. It is built either running "build_tokenizer.slurm" with the desired tokenizer in the field "['tokenizer']['chem_type']" of "configs/tokenizers/tokenizer" or running the dedicated slurm file. The script iterates on the whole dataset and builds a json with the tokenizer vocabulary. These vocabularies are already built and saved in "json/tokenizers".
+The special tokenizers are applied exclusively to the smiles formula, that are between the tags [START_SMILES] and [END_SMILES]. The rest of the text is tokenized with Gemma 3 BaseTokenizer.
 
-In order to choose the right tokenizer when the model is trained, the right config file has to be passed to the "training.py" file. The ready-to-use configs are in the folder "configs/tokenizers" and are passed to the file setting "['tokenizer']['chem_type']" as desired in the file "configs/training/defaul_trl.yaml".
+In order to use any tokenizer different from the base one to tokenize the smiles string, its vocabulary has to be built first. It is built either running `build_tokenizer.slurm` with the desired tokenizer in the field `['tokenizer']['chem_type']` of `configs/tokenizers/tokenizer` or running the dedicated slurm file. The script iterates on the whole dataset and builds a json with the tokenizer vocabulary. These vocabularies are already built and saved in `json/tokenizers`.
 
-TODO
+In order to choose the right tokenizer when the model is trained, the right config file has to be passed to the "training.py" file. The ready-to-use configs are in the folder `configs/tokenizers` and are passed to the file setting `['tokenizer']['chem_type']` as desired in the file `configs/training/defaul_trl.yaml`.
+
 
 ### Embeddings & Initialization
 
 We implement three different embedding strategies for the embedding of the tokens created by the chemical tokenization.
-The possible tokenizations are "random", "average" and "elementwise", with the latter that finds the embeddings of the elements that compose the token and average just them to initialize it.
-In order to choose the embedding strategy for the training, it has to be specified in "['tokenizer']['embedding_initialization']" in the file "configs/training/default_trl.yaml".
+For detailed implementation and usage, refer to the `embedding/` folder.
+In order to choose the embedding strategy for the training, it has to be specified in `['tokenizer']['embedding_initialization']` in the file `configs/training/default_trl.yaml`.
 
-
-TODO
 
 ### Fine-Tuning
 We use the trl and accelerate libraries to perform continued pre-training and supervised fine-tuning 
@@ -58,9 +56,22 @@ TODO
 
 ### Instruction-Tuning
 
+To improve the model's ability to answer question in a structured way, we perform Supervised Fine-Tuning (SFT) using **LoRA**. The `instruction.py` script manages the training on a dynamic mixture of:
+- **General Instructions:** `trl-lib/Capybara` for conversational flow.
+- **Scientific Reasoning:** `allenai/sciq` (reformatted for MCQA).
+- **Math Reasoning:** `meta-math/MetaMathQA` (reformatted for numerical answers).
 
+For detailed implementation and usage, refer to the `instruction/` folder.
 
 ### Evaluation & Benchmarking
+
+To validate our model's performances, we employ a comprehensive evaluation suite of tools located in the `evaluate/` directory:
+- **ChemBench**: We assess general chemistry knowledge using both generation-based (`benchmark.py`) and likelihood-based (`likelihood_eval.py`) scoring.
+- **Tokenizer Efficiency**: The `fertility.py` script computes fertility statistics to measure how compactly different tokenizers represent SMILES strings.
+- **Semantic Analysis**: We visualize the model's latent space using t-SNE (`embeddings.py`) to verify that chemically similar molecules cluster together.
+
+For detailed implementation and usage, refer to the `evaluate/` folder.
+
 
 ## Project Setup and Usage Guide
 
@@ -136,6 +147,49 @@ source ~/.bashrc
 
 ### Conda and SLURM
 My idea is to create and update conda environments directly within the SLURM jobs (see `slurm/baseline.slurm` for an example) as that seems the easiest way to run jobs without having to remember to do many things.
+
+### Flash Attention
+
+Since we are working on an `aarch64` architecture (Grace Hopper nodes), official pre-built wheels for Flash Attention are not available. We must build and install it from source. This allows the library to compile specifically for the cluster's GPU architecture.
+
+**Warning:** This process involves compiling complex CUDA kernels and takes **approx. 40-60 minutes**. Do not run this on a login node; it will likely fail or get killed.
+
+**Step-by-Step Build Instructions:**
+
+1.  **Start an Interactive Session:**
+    Request a GPU node for 1 hour to ensure the compilation has access to the GPU driver and sufficient resources.
+    ```bash
+    srun --partition=normal --nodes=1 --gres=gpu:1 --time=01:00:00 --pty /bin/bash
+    ```
+
+2.  **Prepare the Environment:**
+    Activate your conda environment and install the necessary build tools. `ninja` is crucial to speed up compilation.
+    ```bash
+    source ~/miniconda3/etc/profile.d/conda.sh
+    conda activate ml4science
+    pip install packaging ninja setuptools
+    ```
+
+3.  **Verify Setup:**
+    Ensure PyTorch is installed and `nvcc` (CUDA compiler) is accessible.
+    ```bash
+    python -c "import torch; print(torch.__version__, torch.version.cuda)"
+    nvcc --version
+    ```
+
+4.  **Install Flash Attention:**
+    Run the following command to compile and install the library directly. We use `--no-build-isolation` to force the builder to use the PyTorch version currently installed in your environment.
+    ```bash
+    # This command will take ~40 minutes. Do not interrupt it.
+    pip install flash_attn --no-build-isolation
+    ```
+
+5.  **Verify Installation:**
+    Run this Python one-liner to confirm the library can be imported and loaded correctly:
+    ```bash
+    python -c "import flash_attn; print(f'Flash Attention {flash_attn.__version__} is successfully installed')"
+    ```
+    If this prints the version number without errors, the installation was successful.
 
 
 ### Jobreport

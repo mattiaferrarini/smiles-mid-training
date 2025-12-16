@@ -9,35 +9,10 @@ from training.baselines import download_baseline_artifacts
 from custom_tokenizers.build_tokenizer import build_tokenizer
 from instructions.instruction import run_instruction_tuning
 from evaluate.likelihood_eval import run_likelihood_eval
+from evaluate.fertility import evaluate_tokenizers_fertility
+from evaluate.embeddings import evaluate_embeddings
 from training.training_trl import train_model
-
-from custom_tokenizers import (
-    CharacterTokenizer,
-    ElementTokenizer,
-    ElementAllParenthesisTokenizer,
-    ElementAromaticsTokenizer,
-    ElementNoParenthesisTokenizer,
-    ElementRingsTokenizer,
-    HybridTokenizer,
-    APETokenizer,
-    APEHFTokenizer,
-    APEWPHFTokenizer,
-    ChemAPETokenizer,
-)
-
-TOKENIZERS = {
-    "CharacterTokenizer": CharacterTokenizer,
-    "ElementTokenizer": ElementTokenizer,
-    "ElementAllParenthesisTokenizer": ElementAllParenthesisTokenizer,
-    "ElementAromaticsTokenizer": ElementAromaticsTokenizer,
-    "ElementNoParenthesisTokenizer": ElementNoParenthesisTokenizer,
-    "ElementRingsTokenizer": ElementRingsTokenizer,
-    "HybridTokenizer": HybridTokenizer,
-    "APETokenizer": APETokenizer,
-    "APEHFTokenizer": APEHFTokenizer,
-    "APEWPHFTokenizer": APEWPHFTokenizer,
-    "ChemAPETokenizer": ChemAPETokenizer,
-}
+from custom_tokenizers.registry import TOKENIZER_CLASSES as TOKENIZERS
 
 app = typer.Typer(
     help="Test novel tokenisation schemes and mid-stage training strategies for open-source chemical LLMs"
@@ -198,6 +173,97 @@ def run_chembench_command(
     ),
 ):
     run_chembench(model_path, output_path)
+
+
+@app.command("fertility-eval")
+def run_fertility_eval_command(
+    registry_path: Path = typer.Option(
+        ...,
+        "--registry-path",
+        "-r",
+        help="Path to registry of tokenizer configurations",
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+    ),
+    tokenizers_folder: Path = typer.Option(
+        ...,
+        "--tokenizers-folder",
+        "-t",
+        help="Directory containing the tokenizers to evaluate",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+    ),
+    dataset_path: Path = typer.Option(
+        ...,
+        "--dataset-path",
+        "-d",
+        help="Path to dataset containing SMILES",
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+    ),
+    output_folder: Path = typer.Option(
+        ...,
+        "--output-folder",
+        "-o",
+        help="Where to save fertility evaluation results",
+        file_okay=False,
+        dir_okay=True,
+    ),
+): 
+    evaluate_tokenizers_fertility(str(registry_path), str(tokenizers_folder), str(dataset_path), str(output_folder))
+
+
+@app.command("embeddings-eval")
+def evaluate_embeddings_command(
+    checkpoint_folder: str = typer.Option(
+        ...,
+        "--checkpoint-folder",
+        "-c",
+        help="Path to the model checkpoint folder",
+    ),
+    dataset_path: str = typer.Option(
+        ...,
+        "--dataset-path",
+        "-d",
+        help="Path to the dataset CSV file",
+    ),
+    smiles_col: str = typer.Option(
+        ...,
+        "--smiles-col",
+        "-s",
+        help="Name of the column containing SMILES strings",
+    ),
+    label_col: str = typer.Option(
+        ...,
+        "--label-col",
+        "-l",
+        help="Name of the column containing labels",
+    ),
+    output_path: str = typer.Option(
+        ...,
+        "--output-path",
+        "-o",
+        help="Path to save the embeddings plot",
+    ),
+    plot_title: str = typer.Option(
+        "Embeddings Visualization",
+        "--plot-title",
+        "-t",
+        help="Title for the embeddings plot",
+    ),
+):
+    evaluate_embeddings(
+        checkpoint_folder=checkpoint_folder,
+        dataset_path=dataset_path,
+        smiles_col=smiles_col,
+        label_col=label_col,
+        output_path=output_path,
+        plot_title=plot_title
+    )
+
 
 @app.command("test-tokenizer")
 def test_tokenizer_command(

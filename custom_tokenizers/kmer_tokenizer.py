@@ -26,9 +26,7 @@ class KmerTokenizer(PreTrainedTokenizer):
         pad_token="[PAD]",
         bos_token="[BOS]",
         eos_token="[EOS]",
-        ngram=4,
-        stride=1,
-        max_vocab_size=None,
+        config=None,
         **kwargs,
     ):
         """
@@ -47,13 +45,28 @@ class KmerTokenizer(PreTrainedTokenizer):
         """
         self.vocab = {}
         self.decoder = {}
-        self.ngram = ngram
-        self.stride = stride
-        self.max_vocab_size = max_vocab_size
+        
+        # Default values
+        ngram = 4
+        stride = 1
+        max_vocab_size = None
+
+        # Load from config if available
+        if config and isinstance(config, dict) and "tokenizer" in config and "params" in config["tokenizer"]:
+            params = config["tokenizer"]["params"]
+            ngram = params.get("ngram", ngram)
+            stride = params.get("stride", stride)
+            max_vocab_size = params.get("max_vocab_size", max_vocab_size)
+        
+        # Override with kwargs (e.g. from from_pretrained)
+        self.ngram = kwargs.pop("ngram", ngram)
+        self.stride = kwargs.pop("stride", stride)
+        self.max_vocab_size = kwargs.pop("max_vocab_size", max_vocab_size)
 
         if vocab_file:
             with open(vocab_file, encoding="utf-8") as f:
                 self.vocab = json.load(f)
+            print(f"Loaded vocabulary from {vocab_file} with size {len(self.vocab)}")
         else:
             self.vocab = {unk_token: 0, pad_token: 1, bos_token: 2, eos_token: 3}
 
@@ -112,7 +125,15 @@ class KmerTokenizer(PreTrainedTokenizer):
         Returns:
             list: A list of k-mer tokens.
         """
-        return kmer_tokenizer(text, ngram=self.ngram, stride=self.stride)
+        tokens = kmer_tokenizer(text, ngram=self.ngram, stride=self.stride)
+       
+        # Fallbacks for short SMILES 
+        if not tokens and text:
+            tokens = kmer_tokenizer(text, ngram=1, stride=self.stride)
+        if not tokens:
+            tokens = [""]
+            
+        return tokens
 
     def _convert_token_to_id(self, token):
         """

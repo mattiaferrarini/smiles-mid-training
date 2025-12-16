@@ -1,5 +1,5 @@
 job:                                               
-  name: gemma_chem_training
+  name: gemma_spe_training
 
 model:
   name: google/gemma-3-1b-pt
@@ -8,7 +8,7 @@ data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow"
   text_field: "text_annotated_v1tags"
-  portion_of_data_used: 0.5 # Portion of the main dataset to use
+  portion_of_data_used: 0.5
 
 data_mix:
   external_dataset_name: HuggingFaceFW/fineweb-edu
@@ -30,8 +30,8 @@ distributed:
 training:
   epochs: 1 
   gradient_accumulation_steps: 1
-  learning_rate: 1.0e-3
-  max_steps: 20000 #50000
+  learning_rate: 2.0e-4
+  max_steps: 50000
   warmup_ratio: 0.1
   lr_scheduler_type: "cosine"
   weight_decay: 0.05
@@ -58,9 +58,9 @@ training:
 
 tokenizer:
   type: hybrid
-  chem_type: smiles_bpe 
-  embedding_initialization: "elementwise" 
-  output_dir: /users/monti/smiles-mid-training/json/tokenizers
+  chem_type: spe 
+  embedding_initialization: random
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers/spe
   special_tokens:
     start_smiles: "[START_SMILES]"
     end_smiles: "[END_SMILES]"

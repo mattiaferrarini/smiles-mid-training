@@ -1,16 +1,15 @@
 job:
-  name: tokenizer_building_experiment
+  name: bpe_tokenizer
 
 data:
-
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow" 
   text_field: text_annotated_v1tags
   count_field: text_annotated_v1tags_smiles_count
+  portion_of_data: 1.0
 
 tokenizer:
-  type: base
-  chem_type: smiles_bpe
+  type: hybrid
+  chem_type: bpe
   output_dir: /users/$USER/json/tokenizers
-  params:
-    max_vocab_size: 2000 
+  output_subdir_name: bpe

@@ -31,7 +31,7 @@ def build_tokenizer(output_dir, config_path):
     LOGGER.info("Loading dataset...")
     dataset = load_dataset(
         "arrow",
-        data_dir=config["data"]["data_folder"],
+        data_dir=os.path.expandvars(config["data"]["data_folder"]),
         data_files=config["data"].get("data_files_pattern", "**/*.arrow"),
         split="train",
     )

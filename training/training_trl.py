@@ -178,7 +178,7 @@ def prepare_dataset(tokenizer, config, accelerator):
     # Load and process main dataset
     dataset = load_dataset(
         "arrow",
-        data_dir=config["data"]["data_folder"],
+        data_dir=os.path.expandvars(config["data"]["data_folder"]),
         data_files=config["data"]["data_files_pattern"],
         split="train",
         # streaming=True
@@ -391,7 +391,7 @@ def init_wandb(config):
             "lr": config["training"]["learning_rate"],
             "batch_size": config["training"]["per_device_batch_size"],
             "epochs": config["training"]["epochs"],
-            "data_folder": config["data"]["data_folder"],
+            "data_folder": os.path.expandvars(config["data"]["data_folder"]),
             "text_field": config["data"]["text_field"],
             "num_workers": config["training"]["num_workers"],
         },

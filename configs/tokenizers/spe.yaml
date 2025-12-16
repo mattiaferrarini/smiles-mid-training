@@ -1,8 +1,7 @@
 job:
-  name: tokenizer_building_experiment
+  name: spe_tokenizer
 
 data:
-
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow" 
   text_field: text_annotated_v1tags
@@ -11,9 +10,9 @@ data:
 
 tokenizer:
   type: hybrid
-  chem_type: ape_hf
+  chem_type: spe
   output_dir: /users/$USER/json/tokenizers
-  output_subdir_name: ape_hf_5000
+  output_subdir_name: spe
   params:
-    max_vocab_size: 5000
+    max_vocab_size: 20000
     min_freq_for_merge: 2

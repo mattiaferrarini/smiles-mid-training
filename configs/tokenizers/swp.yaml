@@ -1,16 +1,18 @@
 job:
-  name: tokenizer_building_experiment
+  name: swp_tokenizer
 
 data:
-
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow" 
   text_field: text_annotated_v1tags
   count_field: text_annotated_v1tags_smiles_count
+  portion_of_data: 1.0
 
 tokenizer:
-  type: base
-  chem_type: smiles_bpe
-  output_dir: /users/$USER/json/tokenizers
+  type: hybrid
+  chem_type: swp
+  output_dir: /users/mattiaferrarini/smiles-mid-training/json/tokenizers
+  output_subdir_name: swp
   params:
-    max_vocab_size: 2000 
+    max_vocab_size: 20000 
+    min_freq_for_merge: 2

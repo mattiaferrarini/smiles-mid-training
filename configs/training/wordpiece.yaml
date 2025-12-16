@@ -1,5 +1,5 @@
-job:
-  name: gemma_chem_training
+job:                                               
+  name: gemma_wordpiece_training
 
 model:
   name: google/gemma-3-1b-pt
@@ -8,7 +8,7 @@ data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow"
   text_field: "text_annotated_v1tags"
-  portion_of_data_used: 0.5 # Portion of the main dataset to use
+  portion_of_data_used: 0.5
 
 data_mix:
   external_dataset_name: HuggingFaceFW/fineweb-edu
@@ -31,22 +31,25 @@ training:
   epochs: 1 
   gradient_accumulation_steps: 1
   learning_rate: 2.0e-4
-  max_steps: 20000 #50000
+  max_steps: 50000
   warmup_ratio: 0.1
   lr_scheduler_type: "cosine"
   weight_decay: 0.05
-  save_steps: 400
+  save_steps: 200
   logging_steps: 100
   resource_logging_steps: 100
   bf16: true
   fp16: false
-  evaluation_strategy: "no"
+  eval_strategy: "steps"
+  eval_steps: 100
+  eval_ratio: 0.05
+  per_device_eval_batch_size: 1
   save_strategy: "steps"
   seed: 42
   gradient_checkpointing: true
   num_workers: 4
   preprocessing_num_workers: 64
-  preprocessing_batch_size: 100
+  preprocessing_batch_size: 5000
   prefetch_factor: 4
   per_device_batch_size: 4
   max_length: 4096
@@ -54,11 +57,10 @@ training:
   report_to: "wandb"
 
 tokenizer:
-  type: "hybrid"
-  chem_type: "ape_wp_hf"
-  output_dir: "/users/$USER/smiles-mid-training/json/tokenizers"
-  output_subdir_name: "ape_wp_hf_5000"
-  embedding_initialization: "random" 
+  type: hybrid
+  chem_type: wordpiece 
+  embedding_initialization: random
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers/wordpiece
   special_tokens:
     start_smiles: "[START_SMILES]"
     end_smiles: "[END_SMILES]"

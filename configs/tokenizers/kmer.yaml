@@ -1,8 +1,7 @@
 job:
-  name: kmer_tokenizer_ngram2
+  name: kmer_tokenizer
 
 data:
-
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow" 
   text_field: text_annotated_v1tags
@@ -13,7 +12,7 @@ tokenizer:
   type: hybrid
   chem_type: kmer
   output_dir: /users/$USER/json/tokenizers
-  output_subdir_name: kmer2
+  output_subdir_name: kmer
   params:
-    ngram: 2
+    ngram: 4
     max_vocab_size: 20000

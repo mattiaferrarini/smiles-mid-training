@@ -1,8 +1,7 @@
 job:
-  name: tokenizer_building_experiment
+  name: scored_spe_tokenizer
 
 data:
-
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
   data_files_pattern: "**/*.arrow" 
   text_field: text_annotated_v1tags
@@ -11,9 +10,12 @@ data:
 
 tokenizer:
   type: hybrid
-  chem_type: ape
-  output_dir: /users/$USER/json/tokenizers
-  output_subdir_name: ape_10000_1
+  chem_type: scored_spe
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers
+  output_subdir_name: scored_spe
   params:
-    max_vocab_size: 10000
-    min_freq_for_merge: 0
+    max_vocab_size: 2000
+    min_freq_for_merge: 2
+    base_score: 1.0
+    bonus_pattern: 1.2
+    bonus_valid: 1.5

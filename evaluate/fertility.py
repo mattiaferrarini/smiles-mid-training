@@ -89,6 +89,8 @@ def evaluate_tokenizer(tokenizer, smiles_list):
     median_tokens = sorted(token_counts)[total_smiles // 2] if total_smiles > 0 else 0
     percentile_25 = sorted(token_counts)[int(0.25 * total_smiles)] if total_smiles > 0 else 0
     percentile_75 = sorted(token_counts)[int(0.75 * total_smiles)] if total_smiles > 0 else 0
+    max_tokens = max(token_counts) if total_smiles > 0 else 0
+    min_tokens = min(token_counts) if total_smiles > 0 else 0
 
     LOGGER.info(f"Total SMILES evaluated: {total_smiles}")
     LOGGER.info(f"Total tokens counted: {sum(token_counts)}")
@@ -97,6 +99,8 @@ def evaluate_tokenizer(tokenizer, smiles_list):
     LOGGER.info(f"Median number of tokens per SMILES: {median_tokens}")
     LOGGER.info(f"25th percentile of tokens per SMILES: {percentile_25}")
     LOGGER.info(f"75th percentile of tokens per SMILES: {percentile_75}")
+    LOGGER.info(f"Max tokens in a SMILES: {max_tokens}")
+    LOGGER.info(f"Min tokens in a SMILES: {min_tokens}")
 
     return {
         "total_smiles": total_smiles,
@@ -106,6 +110,8 @@ def evaluate_tokenizer(tokenizer, smiles_list):
         "median_tokens": median_tokens,
         "percentile_25": percentile_25,
         "percentile_75": percentile_75,
+        "max_tokens": max_tokens,
+        "min_tokens": min_tokens,
     }
 
 

@@ -15,7 +15,7 @@ from .registry import TOKENIZER_CLASSES
 LOGGER = get_logger(__name__)
 
 
-def build_tokenizer(output_dir, config_path):
+def build_tokenizer(config_path):
     """
     Builds and saves a tokenizer based on the provided configuration
 
@@ -36,7 +36,7 @@ def build_tokenizer(output_dir, config_path):
         split="train",
     )
 
-    base_output_dir = output_dir
+    base_output_dir = os.path.expandvars(config["tokenizer"]["output_dir"])
     text_field = config["data"]["text_field"]
     tokenizer_type = config["tokenizer"]["type"]
 
@@ -51,12 +51,11 @@ def build_tokenizer(output_dir, config_path):
 
     Path(base_output_dir).mkdir(parents=True, exist_ok=True)
 
-    output_subdir_name = config["tokenizer"].get(
-        "output_subdir_name", f"{tokenizer_type}_tokenizer"
-    )
-    LOGGER.info(
-        f"Output directory for tokenizer: {base_output_dir}/{output_subdir_name}"
-    )
+    output_subdir_name = config["tokenizer"].get("output_subdir_name") or ""
+    full_output_dir = os.path.join(base_output_dir, output_subdir_name)
+    os.makedirs(full_output_dir, exist_ok=True)
+
+    LOGGER.info(f"Output directory for tokenizer: {full_output_dir}")
 
     if tokenizer_type in TOKENIZER_CLASSES:
         tokenizerclass = TOKENIZER_CLASSES[tokenizer_type]
@@ -116,14 +115,14 @@ def build_tokenizer(output_dir, config_path):
             )
 
         LOGGER.info(
-            f"Building and saving tokenizer to {base_output_dir}/{output_subdir_name} ..."
+            f"Building and saving tokenizer to {full_output_dir} ..."
         )
 
         build_and_save_tokenizer(
             TokenizerClass=tokenizerclass,
             dataset=chem_dataset,
             text_field=text_field,
-            output_dir=f"{base_output_dir}/{output_subdir_name}",
+            output_dir=full_output_dir,
             config=config,
         )
 

@@ -2,6 +2,9 @@ import os
 import logging
 import re
 import json
+import time
+
+from matplotlib.style import context
 
 # Load Periodic Table for Element Name validation
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -139,6 +142,7 @@ ELEMENTS = [
     "Ts",
     "Og",
 ]
+# it is necessary to order them by length to avoid to confuse elements
 ELEMENTS.sort(key=len, reverse=True)
 AROMATICS = ["b", "c", "n", "o", "p", "s"]
 AROMATICS_SET = set(AROMATICS)
@@ -182,6 +186,11 @@ EXCLUDE_WORDS = {
     "Mt",
     "UV",
     "at",
+    # False Positives Blacklist
+    "BIS", "BWB", "CISCO", "COOKBOOK", "CV", "FON", "HH", "HNH", "IP", "ISBN",
+    "NOS", "NSF", "PPO", "SH", "SI", "SS", "UPS", "UNKNOWN", "WHY", "WWI",
+    "US", "UK", "U.S", "W.H", "II", "III", "IV", "VI", "VII", "VIII", "IX",
+    "[HAW93]", "B/c", "C-2", "C-4", "Sc1", "SS1", "SS2", "SS3", "SS4", "SS5", "SS6"
 }
 
 # Map of Ambiguous Formulas -> Required previous word (lowercase)
@@ -194,12 +203,46 @@ AMBIGUOUS_FORMULAS = {
 }
 
 
-def is_smiles(token, previous_word=None):
+def is_smiles(token, previous_word=None, USE_LLM=False, context=None, model=None):
+    """
+    It determines whether a given token is a valid SMILES string based on regex rules and optional LLM classification.
+    
+    Args:
+        token (str): The token to evaluate.
+        previous_word (str, optional): The word preceding the token in the text, used for context.
+        USE_LLM (bool, optional): Whether to use an LLM for additional validation.
+        context (str, optional): Surrounding text context for LLM evaluation.
+        model (object, optional): An LLM model instance with a generate_content method.
+
+    Returns:
+        bool: True if the token is a valid SMILES string, False otherwise.
+    """
     clean_token = token.strip(".,;:!?\"'")
     if not clean_token:
         return False
     if clean_token in EXCLUDE_WORDS:
         return False
+
+    # Exclude patterns like "-1", "C-2", "B-3" (could be section numbers or codes)
+    if re.search(r"-\d", clean_token):
+        return False
+
+    # Exclude patterns like ".1", "C.2", "B.3" (could be decimal numbers or codes)
+    if re.search(r"\.\d", clean_token):
+        return False
+
+    # Exclude patterns like SS1, SS2.1, SC5.1 (Sections/Codes)
+    if re.match(r"^(SS|SC)\d+(\.\d+)*$", clean_token):
+        return False
+    
+    # Exclude Roman Numerals (II, III, IV, VI, etc.)
+    if re.match(r"^(II|III|IV|VI|VII|VIII|IX)$", clean_token):
+        return False
+    
+    # Exclude Roman Numerals in parentheses (e.g. (IV), (IX))
+    if re.search(r"\((?:I{1,3}|IV|VI{0,3}|IX)\)", clean_token):
+        return False
+
 
     # Rule: Must contain at least one capital letter OR one number
     if not (re.search(r"[A-Z]", clean_token) or re.search(r"\d", clean_token)):
@@ -207,6 +250,40 @@ def is_smiles(token, previous_word=None):
 
     # SMILES cannot start with a number
     if clean_token[0].isdigit():
+        return False
+
+
+    if USE_LLM and model and len(clean_token) <= 6:
+        try:
+            time.sleep(1.5)
+            prompt = (
+                f"Role: You are a strict chemical entity classifier.\n"
+                f"Task: Determine if the 'Target Token' below is a valid SMILES string or Chemical Formula acting as a molecule identifier in the given context.\n\n"
+                f"Context: \"...{context}...\"\n"
+                f"Target Token: \"{clean_token}\"\n\n"
+                f"Rules:\n"
+                f"1. YES if it is a SMILES string (e.g., 'c1ccccc1', 'C(=O)O') or a specific chemical formula (e.g., 'H2SO4', 'CH4') used to denote a substance.\n"
+                f"2. NO if it is an English word (e.g., 'At', 'Is', 'No', 'Us').\n"
+                f"3. NO if it is a non-chemical abbreviation (e.g., 'IF' for Intermediate Frequency, 'IT' for Information Technology).\n"
+                f"4. NO if it is a mathematical variable, unit, or section label (e.g., 'V', 'C', '1a').\n"
+                f"5. NO if it is a Roman numeral (e.g., 'IV', 'VI').\n\n"
+                f"Question: Is the Target Token exclusively representing a chemical structure or formula in this context?\n"
+                f"Answer (strictly 'YES' or 'NO'):"
+            )
+            response = model.generate_content(prompt)
+            if response and response.text:
+                answer = response.text.strip().upper()
+                if "YES" in answer:
+                    return True
+                if "NO" in answer:
+                    return False
+                # If answer is unclear, fall through to standard rules
+        except Exception as e:
+            # If LLM fails, silently fall back to regex rules
+            pass
+
+    # Exclude patterns like "-Abc", which are likely not SMILES
+    if re.search(r"-[A-Z][a-z]{2,}", clean_token):
         return False
 
     # Ambiguous Formula Context Check (e.g. IF, HF)
@@ -272,7 +349,19 @@ def is_smiles(token, previous_word=None):
     return True
 
 
-def annotate_smiles(text):
+def annotate_smiles(text, USE_LLM=False, model=None):
+    """
+    Annotates SMILES strings in the input text by wrapping them with [START_SMILES] and [END_SMILES] tags.
+
+    Args:
+        text (str): The input text to annotate.
+        USE_LLM (bool, optional): Whether to use an LLM for additional validation.
+        model (object, optional): An LLM model instance with a generate_content method.
+
+    Returns:
+        str: The annotated text with SMILES strings tagged.
+        int: The count of SMILES strings annotated.
+    """
     tokens = text.split()
     new_tokens = []
     smiles_count = 0
@@ -283,14 +372,19 @@ def annotate_smiles(text):
             continue
 
         previous_word = tokens[i - 1] if i > 0 else None
-
+        context = None
+        if USE_LLM:
+            start_index = max(0, i - 7)
+            end_index = min(len(tokens), i + 3) 
+            context_tokens = tokens[start_index:end_index]
+            context = " ".join(context_tokens)
         # Check if the token (or stripped version) is a SMILES
         # "C[C@]12...," -> "[START_SMILES]C[C@]12...[END_SMILES],"
         # Modified regex to NOT strip brackets [] as they are essential for SMILES (e.g. [Na+])
         match = re.match(r"^([^\w\s\[\]]*)(.*?)([^\w\s\[\]]*)$", token)
         if match:
             prefix, core, suffix = match.groups()
-            if is_smiles(core, previous_word):
+            if is_smiles(core, previous_word, USE_LLM, context, model):
                 new_tokens.append(f"{prefix}[START_SMILES]{core}[END_SMILES]{suffix}")
                 smiles_count += 1
             else:

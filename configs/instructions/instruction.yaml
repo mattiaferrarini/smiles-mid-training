@@ -1,13 +1,10 @@
 model:
-  name: "google/gemma-3-1b-it" 
+  name: "google/gemma-3-1b-pt" 
 
 data:
   chat_dataset: "trl-lib/Capybara"
-  sciq_path: /iopsstor/scratch/cscs/$USER/sciq.jsonl
-  metamathqa_path: /iopsstor/scratch/cscs/$USER/metamathqa.jsonl
-
-# tokenizer:
-#   path: ""
+  sciq_path: /users/$USER/smiles-mid-training/data/instruction_tuning/sciq.jsonl
+  metamathqa_path: /users/$USER/smiles-mid-training/data/instruction_tuning/metamathqa.jsonl
 
 training:
   output_dir: "/iopsstor/scratch/cscs/$USER/instruction_tuning"

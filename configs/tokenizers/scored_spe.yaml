@@ -1,5 +1,5 @@
 job:
-  name: element_tokenizer
+  name: scored_spe_tokenizer
 
 data:
   data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
@@ -10,6 +10,12 @@ data:
 
 tokenizer:
   type: hybrid
-  chem_type: element
+  chem_type: scored_spe
   output_dir: /users/$USER/json/tokenizers
-  output_subdir_name: element
+  output_subdir_name: scored_spe
+  params:
+    max_vocab_size: 2000
+    min_freq_for_merge: 2
+    base_score: 1.0
+    bonus_pattern: 1.2
+    bonus_valid: 1.5

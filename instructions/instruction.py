@@ -17,7 +17,7 @@ from trl import SFTTrainer, SFTConfig
 from utils.config import load_config, hf_auth
 from utils.logging import get_logger
 from datasets import load_dataset, interleave_datasets
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, EarlyStoppingCallback
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 
 LOGGER = get_logger(__name__)
@@ -281,9 +281,17 @@ def train(config, model, tokenizer, dataset_splits, base_config):
         # for validation
         eval_strategy="steps",
         eval_steps=config["training"]["save_steps"],
+        save_strategy="steps",
         per_device_eval_batch_size=config["training"]["batch_size"],
         do_eval=True,
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        greater_is_better=False,
+        save_total_limit=2,
     )
+
+    patience = config["training"].get("early_stopping_patience", 5)
+    LOGGER.info(f"Initializing EarlyStoppingCallback with patience={patience}")
 
     trainer = SFTTrainer(
         model=model,
@@ -292,6 +300,9 @@ def train(config, model, tokenizer, dataset_splits, base_config):
         args=training_args,
         peft_config=peft_config,
         processing_class=tokenizer,
+        callbacks=[
+            EarlyStoppingCallback(early_stopping_patience=patience)
+        ]
     )
 
     trainer.train()

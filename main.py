@@ -66,16 +66,8 @@ def build_tokenizer_command(
         file_okay=True,
         dir_okay=False,
     ),
-    output_dir: Path = typer.Option(
-        ...,
-        "--output-dir",
-        "-o",
-        help="Directory where to save the tokenizer",
-        file_okay=False,
-        dir_okay=True,
-    ),
 ):
-    build_tokenizer(output_dir=str(output_dir), config_path=str(config))
+    build_tokenizer(config_path=str(config))
 
 
 @app.command("train-model")

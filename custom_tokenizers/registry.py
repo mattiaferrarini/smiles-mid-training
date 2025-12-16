@@ -8,12 +8,12 @@ from .kmer_tokenizer import KmerTokenizer
 from .character_tokenizer import CharacterTokenizer
 
 TOKENIZER_CLASSES = {
+    "bpe": SmilesBpeTokenizer,
     "character": CharacterTokenizer,
     "element": ElementTokenizer,
     "kmer": KmerTokenizer,
-    "smiles_bpe": SmilesBpeTokenizer,
-    "smiles_wp": SmilesWPTokenizer,
-    "ape_hf": APEHFTokenizer,
-    "ape_wp_hf": APEWPHFTokenizer,
-    "chem_ape": ChemAPETokenizer,
+    "scored_spe": ChemAPETokenizer,
+    "spe": APEHFTokenizer,
+    "swp": APEWPHFTokenizer,
+    "wordpiece": SmilesWPTokenizer,
 }

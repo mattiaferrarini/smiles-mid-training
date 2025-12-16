@@ -67,9 +67,9 @@ def assemble_chem_tokenizer(config):
     chem_type = config["tokenizer"].get("chem_type", "element")
     LOGGER.info(f"Assembling Hybrid Tokenizer with chem_type: {chem_type}")
 
-    base_output_dir = config["tokenizer"]["output_dir"]
+    base_output_dir = os.path.expandvars(config["tokenizer"]["output_dir"])
     output_subdir_name = config["tokenizer"].get(
-        "output_subdir_name", f"{chem_type}_tokenizer"
+        "output_subdir_name", ""
     )
     tokenizer_dir = os.path.join(base_output_dir, output_subdir_name)
     LOGGER.info(f"Tokenizer dir: {tokenizer_dir}")

@@ -52,10 +52,6 @@ export PYTHONWARNINGS="ignore"
 export HF_HOME="/iopsstor/scratch/cscs/$USER/cache/huggingface"
 export HF_DATASETS_CACHE="/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 
-# WandB settings (uncomment if using WandB)
-# export WANDB_API_KEY=$(grep WANDB_API_KEY .env | cut -d '=' -f 2)
-# export WANDB_PROJECT="slurm"
-
 # Create needed folders
 mkdir -p /iopsstor/scratch/cscs/$USER/logs
 mkdir -p /iopsstor/scratch/cscs/$USER/jobreports

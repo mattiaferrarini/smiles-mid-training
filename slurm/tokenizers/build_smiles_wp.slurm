@@ -29,27 +29,9 @@ mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
-echo "=================================================================="
-echo "STARTING TOKENIZER BUILD JOB at $(date)"
-echo "=================================================================="
-
-OUTPUT_DIR="/users/$USER/smiles-mid-training/json/tokenizers"
-mkdir -p "$OUTPUT_DIR"
-
 export PYTHONUNBUFFERED=1
 
 echo "Running tokenizer build script..."
 srun "$PYTHON_EXEC" -u main.py build-tokenizer \
     --config configs/tokenizers/smiles_wp.yaml \
-    --output-dir "$OUTPUT_DIR"
 EXIT_CODE=$?
-
-echo "=================================================================="
-if [ $EXIT_CODE -eq 0 ]; then
-    echo "SUCCESS: Tokenizer build completed successfully at $(date)"
-else
-    echo "FAILURE: Tokenizer build failed with exit code $EXIT_CODE at $(date)"
-fi
-echo "=================================================================="
-
-echo "Job finished."

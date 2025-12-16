@@ -11,9 +11,9 @@ data:
 
 tokenizer:
   type: hybrid
-  chem_type: ape_hf
+  chem_type: kmer
   output_dir: /users/$USER/json/tokenizers
   output_subdir_name: kmer3
   params:
     ngram: 3
-    max_vocab_size: 50000
+    max_vocab_size: 20000

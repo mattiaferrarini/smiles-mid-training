@@ -5,3 +5,4 @@ __pycache__
 wandb
 artifacts
 Miniconda3*
+data/coconut/

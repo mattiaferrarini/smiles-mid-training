@@ -55,9 +55,9 @@ class SmilesBpeTokenizer(PreTrainedTokenizerFast):
                 **kwargs
             )
         elif vocab_file and merges_file:
+            tokenizer_object = Tokenizer(models.BPE.from_file(vocab_file, merges_file))
             super().__init__(
-                vocab_file=vocab_file,
-                merges_file=merges_file,
+                tokenizer_object=tokenizer_object,
                 unk_token=unk_token,
                 pad_token=pad_token,
                 bos_token=bos_token,

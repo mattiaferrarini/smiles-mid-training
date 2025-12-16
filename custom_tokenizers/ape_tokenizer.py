@@ -9,12 +9,12 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 from utils.logging import get_logger
-from transformers import PreTrainedTokenizerBase
+from transformers import PreTrainedTokenizer
 
 LOGGER = get_logger(__name__)
 
 
-class APETokenizer(PreTrainedTokenizerBase):
+class APETokenizer(PreTrainedTokenizer):
     """
     APE tokenizer without using HuggingFace's optimized BPE implementation.
     Compatible with build_tokenizer.py and assemble_tokenizer.py workflows.
@@ -40,7 +40,7 @@ class APETokenizer(PreTrainedTokenizerBase):
             bos_token (str): The beginning of sequence token. Defaults to "[BOS]".
             eos_token (str): The end of sequence token. Defaults to "[EOS]".
             config (dict, optional): A dictionary containing tokenizer configuration parameters
-            **kwargs: Additional keyword arguments passed to `PreTrainedTokenizerBase`.
+            **kwargs: Additional keyword arguments passed to `PreTrainedTokenizer`.
         """
 
         self.max_vocab_size = (
@@ -120,55 +120,6 @@ class APETokenizer(PreTrainedTokenizerBase):
         """
         return self.vocab.get(self.unk_token, 0)
 
-    def _encode_plus(
-        self,
-        text,
-        text_pair=None,
-        add_special_tokens=True,
-        padding_strategy="do_not_pad",
-        truncation_strategy="do_not_truncate",
-        max_length=None,
-        is_split_into_words=False,
-        **kwargs,
-    ):
-        """
-        Tokenizes text and prepares model inputs.
-
-        This method provides a basic encoding implementation compatible with the `PreTrainedTokenizerBase` interface.
-
-        Args:
-            text (str): The input text to tokenize.
-            text_pair (str, optional): A second sequence to be tokenized with the first.
-            add_special_tokens (bool): Whether to add special tokens like BOS/EOS.
-            padding_strategy (str): Padding strategy to use.
-            truncation_strategy (str): Truncation strategy to use.
-            max_length (int, optional): Maximum length of the sequence.
-            is_split_into_words (bool): Whether the input is already split into words.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            dict: A dictionary containing `input_ids` and `attention_mask`.
-        """
-        input_ids = self.encode(text)
-
-        return {"input_ids": input_ids, "attention_mask": [1] * len(input_ids)}
-
-    def __call__(self, text, add_special_tokens=False, return_tensors=None, **kwargs):
-        """
-        Main entry point for tokenization (e.g., tokenizer(text)).
-        Redirects to `_encode_plus` for compatibility.
-
-        Args:
-            text (str): The input text to tokenize.
-            add_special_tokens (bool): Whether to add special tokens.
-            return_tensors (str, optional): The type of tensors to return.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            dict: A dictionary containing `input_ids` and `attention_mask`.
-        """
-        return self._encode_plus(text, **kwargs)
-
     def __len__(self):
         """
         Returns:
@@ -178,15 +129,34 @@ class APETokenizer(PreTrainedTokenizerBase):
 
     def _tokenize(self, text):
         """
-        Tokenizes the input text into tokens.
-        Required by PreTrainedTokenizerBase.
+        Tokenizes the input text into merged tokens using the learned vocabulary.
+        Implements a greedy longest-match strategy (APE inference).
 
         Args:
             text (str): The input text to tokenize.
         Returns:
             List[str]: A list of string tokens.
         """
-        return self.pre_tokenize(text)
+        tokens = []
+        i = 0
+        n = len(text)
+        while i < n:
+            match = None
+            # Scan for the longest substring starting at i that exists in the vocabulary
+            for j in range(n, i, -1):
+                possible_match = text[i:j]
+                if possible_match in self.vocab:
+                    match = possible_match
+                    break
+            
+            if match:
+                tokens.append(match)
+                i += len(match)
+            else:
+                # If no match found, use the unknown token
+                tokens.append(self.unk_token)
+                i += 1
+        return tokens
 
     def _convert_token_to_id(self, token):
         """
@@ -216,6 +186,7 @@ class APETokenizer(PreTrainedTokenizerBase):
     def pre_tokenize(self, molecule):
         """
         Pre-tokenizes a SMILES string into initial tokens based on atom-level patterns.
+        Used during training.
 
         Args:
             molecule (str): The SMILES string to pre-tokenize.
@@ -445,56 +416,6 @@ class APETokenizer(PreTrainedTokenizerBase):
             List[str]: The corresponding list of string tokens.
         """
         return self.vocab.copy()
-
-    def decode(self, token_ids):
-        """
-        Decodes a sequence of IDs back into a single string.
-        Required by PreTrainedTokenizerBase.
-
-        Args:
-            token_ids (List[int]): The sequence of token IDs.
-
-        Returns:
-            str: The decoded string (concatenated tokens).
-        """
-        tokens = self.convert_ids_to_tokens(token_ids)
-        return "".join(tokens)
-
-    def encode(self, text):
-        """
-        Tokenizes a text string into a list of token IDs using the learned vocabulary.
-
-        It scans the text and attempts to match the longest possible substring present in the vocabulary at each position.
-
-        Args:
-            text (str): The input text to encode.
-
-        Returns:
-            List[int]: The list of token IDs.
-        """
-        # Initialize the list of encoded tokens
-        encoded_tokens = []
-
-        # Scan and tokenize the text based on the vocabulary
-        i = 0
-        while i < len(text):
-            match = None
-            # Check for the longest sequence in the vocabulary that matches the text
-            for j in range(len(text), i, -1):
-                possible_match = text[i:j]
-                if possible_match in self.vocab:
-                    match = possible_match
-                    break
-            if match:
-                # Add the token's index to the encoded tokens
-                encoded_tokens.append(self.vocab[match])
-                i += len(match)  # Move past the matched text
-            else:
-                # If no match is found, use the unknown token and move one character forward
-                encoded_tokens.append(self.vocab.get(self.unk_token, 0))
-                i += 1
-
-        return encoded_tokens
 
     def save_vocabulary(self, save_directory, filename_prefix=None):
         """

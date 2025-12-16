@@ -34,19 +34,15 @@ echo "STARTING TOKENIZER BUILD JOB at $(date)"
 echo "=================================================================="
 
 OUTPUT_DIR="/users/$USER/smiles-mid-training/json/tokenizers"
+CONFIG_FILE="configs/tokenizers/kmer4.yaml"
+
 mkdir -p "$OUTPUT_DIR"
 
-BUILD_ALL="false"
-
-if [ "$BUILD_ALL" = "true" ]; then
-    ALL_FLAG="--all"
-else
-    ALL_FLAG=""
-fi
+export PYTHONUNBUFFERED=1
 
 echo "Running tokenizer build script..."
-srun "$PYTHON_EXEC" main.py build-tokenizer \
-    --config configs/tokenizers/kmer4.yaml \
+srun "$PYTHON_EXEC" -u main.py build-tokenizer \
+    --config "$CONFIG_FILE" \
     --output-dir "$OUTPUT_DIR"
 EXIT_CODE=$?
 

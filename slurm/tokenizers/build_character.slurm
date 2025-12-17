@@ -33,5 +33,5 @@ export PYTHONUNBUFFERED=1
 
 echo "Running tokenizer build script..."
 srun "$PYTHON_EXEC" -u main.py build-tokenizer \
-    --config configs/tokenizers/character.yaml \
+    --config configs/tokenizers/character.yaml
 EXIT_CODE=$?

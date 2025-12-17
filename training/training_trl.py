@@ -109,7 +109,9 @@ def prepare_training_args(config, output_dir):
         "include_num_input_tokens_seen": True,
         "eval_strategy": config["training"].get("eval_strategy", "no"),
         "eval_steps": config["training"].get("eval_steps", None),
-        "per_device_eval_batch_size": config["training"].get("per_device_eval_batch_size", 1),
+        "per_device_eval_batch_size": config["training"].get(
+            "per_device_eval_batch_size", 1
+        ),
     }
 
     if config["tokenizer"]["type"] == "hybrid":

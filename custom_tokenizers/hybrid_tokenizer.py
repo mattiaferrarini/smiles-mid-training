@@ -315,7 +315,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         input_ids = []
 
         for i, segment in enumerate(segments):
-            if not segment:  
+            if not segment:
                 continue
             if segment.startswith(self.chem_start) and segment.endswith(self.chem_end):
                 # Extract content between tags
@@ -469,10 +469,12 @@ class HybridTokenizer(PreTrainedTokenizerBase):
         """
         if hasattr(self, "tokenizer"):
             return self.tokenizer.add_tokens(new_tokens, special_tokens=special_tokens)
-        
+
         elif hasattr(self, "base_tokenizer"):
-            return self.base_tokenizer.add_tokens(new_tokens, special_tokens=special_tokens)
-            
+            return self.base_tokenizer.add_tokens(
+                new_tokens, special_tokens=special_tokens
+            )
+
         elif hasattr(self, "vocab") and isinstance(self.vocab, dict):
             added = 0
             for token in new_tokens:
@@ -485,8 +487,7 @@ class HybridTokenizer(PreTrainedTokenizerBase):
                     added += 1
             return added
 
-        print(f"Warning: {self.__class__.__name__} cannot add tokens (no 'tokenizer' or 'vocab' found). Skipping.")
+        print(
+            f"Warning: {self.__class__.__name__} cannot add tokens (no 'tokenizer' or 'vocab' found). Skipping."
+        )
         return 0
-
-    
-        

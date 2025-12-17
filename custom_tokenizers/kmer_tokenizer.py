@@ -45,19 +45,24 @@ class KmerTokenizer(PreTrainedTokenizer):
         """
         self.vocab = {}
         self.decoder = {}
-        
+
         # Default values
         ngram = 4
         stride = 1
         max_vocab_size = None
 
         # Load from config if available
-        if config and isinstance(config, dict) and "tokenizer" in config and "params" in config["tokenizer"]:
+        if (
+            config
+            and isinstance(config, dict)
+            and "tokenizer" in config
+            and "params" in config["tokenizer"]
+        ):
             params = config["tokenizer"]["params"]
             ngram = params.get("ngram", ngram)
             stride = params.get("stride", stride)
             max_vocab_size = params.get("max_vocab_size", max_vocab_size)
-        
+
         # Override with kwargs (e.g. from from_pretrained)
         self.ngram = kwargs.pop("ngram", ngram)
         self.stride = kwargs.pop("stride", stride)
@@ -104,7 +109,7 @@ class KmerTokenizer(PreTrainedTokenizer):
         """
         if not new_tokens:
             return 0
-        
+
         added = 0
         for token in new_tokens:
             token_str = str(token)
@@ -126,13 +131,13 @@ class KmerTokenizer(PreTrainedTokenizer):
             list: A list of k-mer tokens.
         """
         tokens = kmer_tokenizer(text, ngram=self.ngram, stride=self.stride)
-       
-        # Fallbacks for short SMILES 
+
+        # Fallbacks for short SMILES
         if not tokens and text:
             tokens = kmer_tokenizer(text, ngram=1, stride=self.stride)
         if not tokens:
             tokens = [""]
-            
+
         return tokens
 
     def _convert_token_to_id(self, token):

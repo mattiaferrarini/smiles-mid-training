@@ -1,12 +1,4 @@
 [
-{
-        "name": "2-mer Tokenizer",
-        "tokenizer": {
-            "type": "chem_only",
-            "chem_type": "kmer",
-            "output_subdir_name": "kmer2"
-        }
-    },
     {
         "name": "Base",
         "tokenizer": {
@@ -17,88 +9,67 @@
         }
     },
     {
-        "name": "Character Tokenizer",
+        "name": "Character",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "character"
+            "chem_type": "character",
+            "output_subdir_name": "character"
         }
     },
     {
-        "name": "Element Tokenizer",
+        "name": "Element",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "element"
+            "chem_type": "element",
+            "output_subdir_name": "element"
         }
     },
     {
-        "name": "SMILES BPE Tokenizer",
+        "name": "BPE",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "smiles_bpe"
+            "chem_type": "bpe",
+            "output_subdir_name": "bpe"
         }
     },
     {
-        "name": "APE Tokenizer",
+        "name": "WordPiece",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "ape_hf",
-            "output_subdir_name": "ape_hf_5000"
+            "chem_type": "wordpiece",
+            "output_subdir_name": "wordpiece"
         }
     },
     {
-        "name": "APE WordPiece Tokenizer",
+        "name": "SMILES Pair Encoding",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "ape_wp_hf",
-            "output_subdir_name": "ape_wp_hf_5000"
+            "chem_type": "spe",
+            "output_subdir_name": "spe"
         }
     },
     {
-        "name": "Chem APE Tokenizer",
+        "name": "Scored SPE",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "chem_ape",
-            "output_subdir_name": "chem_ape_2000"
+            "chem_type": "scored_spe",
+            "output_subdir_name": "scored_spe"
         }
     },
     {
-        "name": "2-mer Tokenizer",
+        "name": "4-mer",
         "tokenizer": {
             "type": "chem_only",
             "chem_type": "kmer",
-            "output_subdir_name": "kmer2"
+            "output_subdir_name": "kmer"
         }
     },
     {
-        "name": "3-mer Tokenizer",
+        "name": "SMILES WordPiece",
         "tokenizer": {
             "type": "chem_only",
-            "chem_type": "kmer",
-            "output_subdir_name": "kmer3"
-        }
-    },
-    {
-        "name": "4-mer Tokenizer",
-        "tokenizer": {
-            "type": "chem_only",
-            "chem_type": "kmer",
-            "output_subdir_name": "kmer4"
-        }
-    },
-    {
-        "name": "5-mer Tokenizer",
-        "tokenizer": {
-            "type": "chem_only",
-            "chem_type": "kmer",
-            "output_subdir_name": "kmer5"
-        }
-    },
-    {
-        "name": "6-mer Tokenizer",
-        "tokenizer": {
-            "type": "chem_only",
-            "chem_type": "kmer",
-            "output_subdir_name": "kmer6"
+            "chem_type": "swp",
+            "output_subdir_name": "swp"
         }
     }
 ]

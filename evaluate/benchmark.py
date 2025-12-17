@@ -4,7 +4,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import os
-import json
 import torch
 from rdkit import RDLogger
 from datetime import timedelta
@@ -258,4 +257,3 @@ def run_chembench(model_path, output_path):
         LOGGER.info("All ranks are done")
 
     # benchmark.submit(results)
-    

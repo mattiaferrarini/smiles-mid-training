@@ -3,7 +3,7 @@
 This folder contains data used in the experiments.
 
 - `sample_dataset` contains a small sample of the training dataset.
-- `instruction-tuning` contains ...
+- `instruction-tuning` contains datatsets used for instruction-tuning.
 - `sample_coconut` contains a small sample of the coconut dataset used for the evaluation of the models' embeddings.
 
 If you would like to run the embedding evaluation, you can download the Coconut dataset with:

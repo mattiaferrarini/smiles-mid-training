@@ -1,7 +1,7 @@
 try:
-    from .ape_tokenizer import APETokenizer
+    from .manual_spe_tokenizer import ManualSPETokenizer
 except ImportError:
-    from ape_tokenizer import APETokenizer
+    from custom_tokenizers.manual_spe_tokenizer import ManualSPETokenizer
 
 try:
     from .scorers.chem_scorer import ChemScorer
@@ -9,18 +9,18 @@ except ImportError:
     from scorers.chem_scorer import ChemScorer
 
 
-class ChemAPETokenizer(APETokenizer):
+class ScoredSPETokenizer(ManualSPETokenizer):
     """
-    Chemical APE tokenizer that uses chemical validity and patterns to score merges.
+    Modified SPE tokenizer to score merges based on chemical validity and patterns.
     """
 
     def __init__(self, *args, **kwargs):
         """
-        Initializes the ChemAPETokenizer.
+        Initializes the ScoredSPE tokenizer.
 
         Args:
-            *args: Variable length argument list passed to APETokenizer.
-            **kwargs: Arbitrary keyword arguments passed to APETokenizer.
+            *args: Variable length argument list passed to ManualSPE.
+            **kwargs: Arbitrary keyword arguments passed to ManualSPE.
         """
         super().__init__(*args, **kwargs)
         config = kwargs.get("config")

@@ -6,14 +6,13 @@ from tokenizers import decoders, models, pre_tokenizers, trainers, Tokenizer
 LOGGER = get_logger(__name__)
 
 
-class SmilesWPTokenizer(PreTrainedTokenizerFast):
+class WordPieceTokenizer(PreTrainedTokenizerFast):
     """
     WordPiece tokenizer trained specifically on SMILES strings.
     """
 
     vocab_files_names = {
-        "vocab_file": "vocab.json",
-        "merges_file": "merges.txt",
+        "vocab_file": "vocab.txt",
         "tokenizer_file": "tokenizer.json",
     }
     model_input_names = ["input_ids", "attention_mask"]
@@ -21,7 +20,6 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
     def __init__(
         self,
         vocab_file=None,
-        merges_file=None,
         tokenizer_file=None,
         unk_token="[UNK]",
         pad_token="[PAD]",
@@ -31,11 +29,10 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
         **kwargs,
     ):
         """
-        Initializes the SmilesBpeTokenizer.
+        Initializes the tokenizer.
 
         Args:
-            vocab_file (str, optional): Path to a JSON file containing the vocabulary mapping.
-            merges_file (str, optional): Path to a merges.txt file.
+            vocab_file (str, optional): Path to a vocabulary file.
             tokenizer_file (str, optional): Path to a tokenizer.json file.
             unk_token (str): The unknown token. Defaults to "[UNK]".
             pad_token (str): The padding token. Defaults to "[PAD]".
@@ -71,10 +68,10 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
                 eos_token=eos_token,
                 **kwargs,
             )
-        elif vocab_file and merges_file:
+
+        elif vocab_file:
             super().__init__(
                 vocab_file=vocab_file,
-                merges_file=merges_file,
                 unk_token=unk_token,
                 pad_token=pad_token,
                 bos_token=bos_token,
@@ -83,7 +80,6 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
             )
         else:
             # Initialize with a dummy WordPiece if no file provided (for training phase)
-            # This allows instantiation before training
             tokenizer_object = Tokenizer(models.WordPiece(unk_token=unk_token))
 
             # Define special tokens
@@ -100,7 +96,6 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
                 if t is not None
             ]
 
-            # Add special tokens to the dummy tokenizer so it doesn't complain
             tokenizer_object.add_special_tokens(special_tokens)
 
             super().__init__(
@@ -124,18 +119,15 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
             vocab_size (int, optional): The desired vocabulary size. Uses config value if not provided.
             min_frequency (int, optional): The minimum frequency for a token to be included. Uses config value if not provided.
         """
-        LOGGER.info("Training WordPiece tokenizer...")
+        LOGGER.info("Training WordPiece tokenizer.")
 
-        # Use config values if not explicitly provided
         vocab_size = vocab_size or self.max_vocab_size
         min_frequency = min_frequency or self.min_freq_for_merge
 
-        # Initialize WordPiece Tokenizer
         tokenizer = Tokenizer(models.WordPiece(unk_token=self.unk_token))
         tokenizer.pre_tokenizer = pre_tokenizers.Whitespace()
         tokenizer.decoder = decoders.WordPiece()
 
-        # Define special tokens
         special_tokens = [
             self.unk_token if self.unk_token else "[UNK]",
             self.bos_token if self.bos_token else "[BOS]",
@@ -144,7 +136,6 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
             "[START_SMILES]",
             "[END_SMILES]",
         ]
-        # Filter duplicates and None
         special_tokens = list(set([t for t in special_tokens if t]))
 
         trainer = trainers.WordPieceTrainer(
@@ -153,16 +144,12 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
             special_tokens=special_tokens,
         )
 
-        # Train on the provided text
-        # text can be a single string or a list of strings
         if isinstance(text, str):
             iterator = [text]
         else:
             iterator = text
 
         tokenizer.train_from_iterator(iterator, trainer=trainer)
-
-        # Update the underlying tokenizer of this instance
         self._tokenizer = tokenizer
 
         return self.get_vocab()
@@ -170,19 +157,10 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
     def save_vocabulary(self, save_directory, filename_prefix=None):
         """
         Saves the vocabulary to a file.
-
-        Args:
-            save_directory (str): The directory to save the vocabulary.
-            filename_prefix (str, optional): Prefix for the vocabulary file name.
-
-        Returns:
-            tuple: Path to the saved vocabulary file.
         """
         if not os.path.isdir(save_directory):
             os.makedirs(save_directory, exist_ok=True)
 
-        # Save vocab.json and merges.txt
-        # The model.save method of tokenizers returns the paths
         files = self._tokenizer.model.save(save_directory, prefix=filename_prefix)
 
         return tuple(files)
@@ -191,7 +169,6 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
         """
         Resets the vocabulary to an empty state.
         """
-        # Reset to a fresh WordPiece model with special tokens
         tokenizer_object = Tokenizer(models.WordPiece(unk_token=self.unk_token))
         special_tokens = [
             t
@@ -210,8 +187,4 @@ class SmilesWPTokenizer(PreTrainedTokenizerFast):
 
     @property
     def vocab_size(self):
-        """
-        Returns:
-            int: The size of the vocabulary.
-        """
         return self._tokenizer.get_vocab_size()

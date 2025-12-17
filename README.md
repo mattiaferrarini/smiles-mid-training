@@ -179,10 +179,30 @@ For detailed implementation and usage, refer to the `embedding/` folder.
 In order to choose the embedding strategy for the training, it has to be specified in `['tokenizer']['embedding_initialization']` in the file `configs/training/default_trl.yaml`.
 
 
-### Fine-Tuning
-We use the trl and accelerate libraries to perform continued pre-training and supervised fine-tuning 
 
-TODO
+### Continued Pre-Training (CPT)
+
+We perform Continued Pre-Training (CPT) to teach the base LLM (gemma-3-1b) our new chemical language. By training on a mix of specialized chemical data and general text, we help the model understand our new chemical tokens while preserving its existing knowledge.
+
+We use the Hugging Face `trl` and `accelerate` libraries for efficient, distributed training on the CSCS cluster.
+
+**Key Features:**
+- **Dynamic Data Mixing:** The training script supports mixing chemical data with general text (FineWeb) to prevent catastrophic forgetting.
+- **Custom Tokenizer Integration:** It swaps the standard tokenizer for our chemical-aware implementations specifically for content within `[START_SMILES]` tags.
+- **Embedding Resizing:** It automatically resizes the model's embedding layer to accommodate the new vocabulary and initializes new tokens using the strategies defined in `embeddings/`.
+
+**Configuration:**
+The main configuration file is in `configs/training`. There is a config file per tokenizer Key parameters include:
+- `tokenizer.chem_type`: Selects the tokenizer type matching the vocabulary built in the previous step.
+- `data_mix`: Controls the ratio of chemical vs. general data.
+- `distributed.strategy`: Sets up `ddp` or `fsdp` for multi-GPU training.
+
+**Running CPT:**
+We prepared a dedicated script for training every tokenizer they are in `slurm/training`
+To launch the training job on the cluster, use the desired slurm file:
+```bash
+sbatch slurm/training/training_bpe.slurm
+```
 
 ### Instruction-Tuning
 

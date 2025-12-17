@@ -33,13 +33,16 @@ They are structure to contain:
     - Includes `learning_rate`, `epochs`, `max_steps`, `warmup_ratio`, and `weight_decay`.
     - Controls precision (`bf16`, `fp16`), logging (`wandb`), and checkpointing frequency.
 - `tokenizer`: Tokenizer specification.
-    - `type`: Strategy type.
-        - `base`: Base model tokenizer.
-        - `hrybid`: Hybrid tokenizer with a chemical (sub-)tokenizer for SMILES strings.
-        - `chem_only`: Only chemical tokenizer.
-    - `chem_type`: Specific chemical (sub-)tokenizer to use.
+    - `type`: Strategy type. Allowed values:
+        - `base`: Use the base model tokenizer (loaded with `AutoTokenizer.from_pretrained(model.name)`).
+        - `base_special`: Same as `base` but adds SMILES control tokens (e.g. `[START_SMILES]`, `[END_SMILES]`) as additional special tokens.
+        - `hybrid`: Combine a base tokenizer with a chemical sub-tokenizer (requires `chem_type`).
+        - `chem_only`: Use only a chemical tokenizer (no base tokenizer).
+        - Alternatively, you may set `type` directly to a chemical tokenizer key to build/load it: `bpe`, `character`, `element`, `kmer`, `scored_spe`, `spe`, `swp`, `wordpiece`.
+    - `chem_type`: When using `hybrid`, `base`+`chem_type`, or `chem_only`, one of the chemical tokenizer keys above. The available chemical tokenizers are:
+        - `bpe`, `character`, `element`, `kmer`, `scored_spe`, `spe`, `swp`, `wordpiece`.
     - `embedding_initialization`: Strategy to initialize embeddings for new tokens.
-    - `special_tokens`: Dictionary of domain-specific control tokens.
+    - `special_tokens`: Dictionary of domain-specific control tokens (e.g. `start_smiles`, `end_smiles`).
 
 ## Instruction-Tuning Configurations
 

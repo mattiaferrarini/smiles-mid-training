@@ -11,7 +11,7 @@ data:
 tokenizer:
   type: hybrid
   chem_type: spe
-  output_dir: /users/$USER/json/tokenizers
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers
   output_subdir_name: spe
   params:
     max_vocab_size: 20000

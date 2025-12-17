@@ -11,5 +11,5 @@ data:
 tokenizer:
   type: hybrid
   chem_type: element
-  output_dir: /users/$USER/json/tokenizers
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers
   output_subdir_name: element

@@ -94,6 +94,15 @@ class BPETokenizer(PreTrainedTokenizerFast):
                 eos_token=eos_token,
                 **kwargs
             )
+    
+        self.max_vocab_size = (
+            config["tokenizer"]["params"].get("max_vocab_size", 2000)
+            if config
+            else 2000
+        )
+        self.min_freq_for_merge = (
+            config["tokenizer"]["params"].get("min_freq_for_merge", 2) if config else 2
+        )
 
     def create_vocabulary(
         self, text, save_vocabulary=False, vocab_size=2000, min_frequency=2
@@ -127,8 +136,8 @@ class BPETokenizer(PreTrainedTokenizerFast):
         special_tokens = list(set([t for t in special_tokens if t]))
 
         trainer = trainers.BpeTrainer(
-            vocab_size=vocab_size,
-            min_frequency=min_frequency,
+            vocab_size=self.max_vocab_size,
+            min_frequency=self.min_freq_for_merge,
             special_tokens=special_tokens,
         )
 

@@ -1,7 +1,7 @@
 {
   "added_tokens_decoder": {
     "0": {
-      "content": "[BOS]",
+      "content": "[END_SMILES]",
       "lstrip": false,
       "normalized": false,
       "rstrip": false,
@@ -9,14 +9,6 @@
       "special": true
     },
     "1": {
-      "content": "[UNK]",
-      "lstrip": false,
-      "normalized": false,
-      "rstrip": false,
-      "single_word": false,
-      "special": true
-    },
-    "2": {
       "content": "[START_SMILES]",
       "lstrip": false,
       "normalized": false,
@@ -24,8 +16,16 @@
       "single_word": false,
       "special": true
     },
+    "2": {
+      "content": "[BOS]",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
     "3": {
-      "content": "[PAD]",
+      "content": "[UNK]",
       "lstrip": false,
       "normalized": false,
       "rstrip": false,
@@ -33,7 +33,7 @@
       "special": true
     },
     "4": {
-      "content": "[END_SMILES]",
+      "content": "[PAD]",
       "lstrip": false,
       "normalized": false,
       "rstrip": false,
@@ -55,6 +55,6 @@
   "extra_special_tokens": {},
   "model_max_length": 1000000000000000019884624838656,
   "pad_token": "[PAD]",
-  "tokenizer_class": "SmilesBpeTokenizer",
+  "tokenizer_class": "BPETokenizer",
   "unk_token": "[UNK]"
 }

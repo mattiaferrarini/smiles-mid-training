@@ -4,7 +4,7 @@
     "pad_token": "[PAD]",
     "bos_token": "[BOS]",
     "eos_token": "[EOS]",
-    "model_type": "ape_wp_hf_tokenizer",
+    "model_type": "smiles_wordpiece_tokenizer",
     "max_vocab_size": 20000,
     "min_freq_for_merge": 2
 }

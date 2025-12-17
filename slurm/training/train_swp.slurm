@@ -1,0 +1,96 @@
+#!/bin/bash
+#SBATCH --job-name=TrainGemma_SWP
+#SBATCH --ntasks-per-node=4
+#SBATCH --cpus-per-task=64
+#SBATCH --time=12:00:00
+#SBATCH --partition=normal
+#SBATCH --nodes=16
+#SBATCH --gres=gpu:4
+#SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
+#SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
+#SBATCH -A a131
+
+# Check GPU state before starting
+# srun --ntasks=$SLURM_NTASKS --ntasks-per-node=$SLURM_NTASKS_PER_NODE bash -c 'nvidia-smi'
+
+export ENV_NAME=ml4science
+
+# Activate conda
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate "$ENV_NAME"
+
+# Ensure the GPU version of PyTorch is installed
+# pip uninstall -y torch torchvision torchaudio
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# Update requirements with specific CUDA versions for cluster
+# echo "Updating requirements.txt with current environment packages..."
+# pip freeze > requirements.txt
+
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+
+# Distributed settings
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
+# export NCCL_DEBUG=INFO
+# export TORCH_DISTRIBUTED_DEBUG=DETAIL
+export PYTHONUNBUFFERED=1
+export TOKENIZERS_PARALLELISM=false
+
+# Increase synchronization timeout
+export TORCH_DISTRIBUTED_DEFAULT_TIMEOUT=5400  # 90 minutes
+export NCCL_TIMEOUT=5400 # 90 minutes
+
+# Memory Management
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+
+# Silence standard Python warnings for cleaner logs
+export PYTHONWARNINGS="ignore"
+
+# HF cache folders
+export HF_HOME="/iopsstor/scratch/cscs/$USER/cache/huggingface"
+export HF_DATASETS_CACHE="/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
+
+# Create needed folders
+mkdir -p /iopsstor/scratch/cscs/$USER/logs
+mkdir -p /iopsstor/scratch/cscs/$USER/jobreports
+mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface"
+mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
+
+# Jobreport
+export JOBREPORT=/users/$USER/jobreport
+export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
+
+# Training settings
+if [ -z "$CONFIG_PATH" ]; then
+    export CONFIG_PATH=configs/training/swp.yaml
+fi
+
+# Extract config values for dynamic naming
+TOKENIZER_TYPE=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['tokenizer']['type'])")
+CHEM_TYPE=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['tokenizer'].get('chem_type', 'none'))")
+EMBEDDING_INIT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['tokenizer'].get('embedding_initialization', 'default'))")
+
+# Construct Job Name
+if [ "$TOKENIZER_TYPE" == "base" ] || [ "$TOKENIZER_TYPE" == "hybrid" ]; then
+    TOKENIZER_NAME="${TOKENIZER_TYPE}_${CHEM_TYPE}"
+else
+    TOKENIZER_NAME="$TOKENIZER_TYPE"
+fi
+
+export JOB_NAME="train_${TOKENIZER_NAME}_${EMBEDDING_INIT}"
+export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}_${SLURM_JOB_ID}"
+
+# Get master host address
+export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+# Ask the OS for a free port for the master
+export MASTER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')
+
+# Get full path to python exec
+export PYTHON_EXEC=$(which python)
+echo "Using Python at: $PYTHON_EXEC"
+
+# Run the training with jobreport
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" -m main train-model -c "$CONFIG_PATH" -o "$OUTPUT_DIR"
+
+# Print report
+$JOBREPORT print "$PROFILING_FOLDER"

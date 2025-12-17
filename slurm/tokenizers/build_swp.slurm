@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=BuildTokenizer
+#SBATCH --job-name=BuildTokenizer_SWP
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=64
 #SBATCH --time=12:00:00
@@ -29,27 +29,9 @@ mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
-echo "=================================================================="
-echo "STARTING TOKENIZER BUILD JOB at $(date)"
-echo "=================================================================="
-
-OUTPUT_DIR="/users/$USER/smiles-mid-training/json/tokenizers"
-mkdir -p "$OUTPUT_DIR"
-
 export PYTHONUNBUFFERED=1
 
 echo "Running tokenizer build script..."
 srun "$PYTHON_EXEC" -u main.py build-tokenizer \
-    --config configs/tokenizers/chem_ape.yaml \
-    --output-dir "$OUTPUT_DIR"
+    --config configs/tokenizers/swp.yaml \
 EXIT_CODE=$?
-
-echo "=================================================================="
-if [ $EXIT_CODE -eq 0 ]; then
-    echo "SUCCESS: Tokenizer build completed successfully at $(date)"
-else
-    echo "FAILURE: Tokenizer build failed with exit code $EXIT_CODE at $(date)"
-fi
-echo "=================================================================="
-
-echo "Job finished."

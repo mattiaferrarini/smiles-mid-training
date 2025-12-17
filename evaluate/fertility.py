@@ -9,7 +9,6 @@ import re
 from datasets import load_dataset
 from dotenv import load_dotenv
 from utils.logging import get_logger
-import random
 
 LOGGER = get_logger(__name__)
 
@@ -67,7 +66,7 @@ def get_smiles_list_from_dataset(dataset_path, text_field, target=1_000_000):
 def evaluate_tokenizer(tokenizer, smiles_list):
     """
     Evaluates the tokenizer's performance on a list of SMILES strings.
-    
+
     Args:
         tokenizer: The tokenizer to evaluate.
         smiles_list (list): A list of SMILES strings.
@@ -85,10 +84,18 @@ def evaluate_tokenizer(tokenizer, smiles_list):
         token_counts.append(len(tokens))
 
     average_tokens = sum(token_counts) / total_smiles if total_smiles > 0 else 0
-    std = (sum((x - average_tokens) ** 2 for x in token_counts) / total_smiles) ** 0.5 if total_smiles > 0 else 0
+    std = (
+        (sum((x - average_tokens) ** 2 for x in token_counts) / total_smiles) ** 0.5
+        if total_smiles > 0
+        else 0
+    )
     median_tokens = sorted(token_counts)[total_smiles // 2] if total_smiles > 0 else 0
-    percentile_25 = sorted(token_counts)[int(0.25 * total_smiles)] if total_smiles > 0 else 0
-    percentile_75 = sorted(token_counts)[int(0.75 * total_smiles)] if total_smiles > 0 else 0
+    percentile_25 = (
+        sorted(token_counts)[int(0.25 * total_smiles)] if total_smiles > 0 else 0
+    )
+    percentile_75 = (
+        sorted(token_counts)[int(0.75 * total_smiles)] if total_smiles > 0 else 0
+    )
     max_tokens = max(token_counts) if total_smiles > 0 else 0
     min_tokens = min(token_counts) if total_smiles > 0 else 0
 
@@ -115,7 +122,9 @@ def evaluate_tokenizer(tokenizer, smiles_list):
     }
 
 
-def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path, output_folder, target=1_000_000):
+def evaluate_tokenizers_fertility(
+    registry_path, tokenizers_folder, dataset_path, output_folder, target=1_000_000
+):
     """
     Evaluates the fertility of multiple tokenizers defined in a registry file on a dataset of SMILES strings.
     Args:
@@ -135,7 +144,7 @@ def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path
     os.makedirs(output_folder, exist_ok=True)
     smiles = get_smiles_list_from_dataset(dataset_path, TEXT_FIELD, target=1_000_000)
     LOGGER.info(f"Extracted {len(smiles)} SMILES entries from dataset.")
-    
+
     all_results = {}
 
     for config in configs:
@@ -143,10 +152,9 @@ def evaluate_tokenizers_fertility(registry_path, tokenizers_folder, dataset_path
         config["tokenizer"]["output_dir"] = tokenizers_folder
         tokenizer = assemble_tokenizer(config)
         results = evaluate_tokenizer(tokenizer, smiles)
-        all_results[config['name']] = results
-    
+        all_results[config["name"]] = results
+
     results_path = os.path.join(output_folder, "tokenizer_fertility_results.json")
     with open(results_path, "w") as f:
         json.dump(all_results, f, indent=4)
     LOGGER.info(f"Fertility evaluation results saved to {results_path}")
-

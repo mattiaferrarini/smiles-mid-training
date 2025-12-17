@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=gemma_ddp_trl_validation
+#SBATCH --job-name=TrainGemma_ScoredSPE
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
 #SBATCH --time=12:00:00
@@ -16,9 +16,7 @@
 export ENV_NAME=ml4science
 
 # Activate conda
-source ~/miniconda3/etc/profile.d/conda.sh 
-
-# Activate conda environment
+source ~/miniconda3/etc/profile.d/conda.sh
 conda activate "$ENV_NAME"
 
 # Ensure the GPU version of PyTorch is installed
@@ -64,7 +62,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 
 # Training settings
 if [ -z "$CONFIG_PATH" ]; then
-    export CONFIG_PATH=configs/training/default_trl_validation.yaml
+    export CONFIG_PATH=configs/training/scored_spe.yaml
 fi
 
 # Extract config values for dynamic naming
@@ -92,9 +90,7 @@ export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
 # Run the training with jobreport
-# srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" training/training_trl.py --config-path "$CONFIG_PATH" --output-dir "$OUTPUT_DIR"
 srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" -m main train-model -c "$CONFIG_PATH" -o "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"
-

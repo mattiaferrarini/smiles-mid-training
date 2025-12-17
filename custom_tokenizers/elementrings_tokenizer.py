@@ -300,7 +300,7 @@ class ElementRingsTokenizer(PreTrainedTokenizer):
         """
         if not new_tokens:
             return 0
-        
+
         added = 0
         for token in new_tokens:
             token_str = str(token)

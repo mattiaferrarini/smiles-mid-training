@@ -1,7 +1,3 @@
-"""
-Adapted and simplified from https://github.com/mikemayuare/apetokenizer.
-"""
-
 import os
 import re
 import json
@@ -14,10 +10,11 @@ from transformers import PreTrainedTokenizer
 LOGGER = get_logger(__name__)
 
 
-class APETokenizer(PreTrainedTokenizer):
+class ManualSPETokenizer(PreTrainedTokenizer):
     """
-    APE tokenizer without using HuggingFace's optimized BPE implementation.
-    Compatible with build_tokenizer.py and assemble_tokenizer.py workflows.
+    Non-optimized implementation of SPE to allow custom merge scoring.
+    Adapted and simplified from both https://github.com/mikemayuare/apetokenizer 
+    and https://github.com/XinhaoLi74/SmilesPE.
     """
 
     def __init__(
@@ -31,7 +28,7 @@ class APETokenizer(PreTrainedTokenizer):
         **kwargs,
     ):
         """
-        Initializes the APETokenizer.
+        Initializes the tokenizer.
 
         Args:
             vocab_file (str, optional): Path to a JSON file containing the vocabulary mapping.
@@ -101,7 +98,7 @@ class APETokenizer(PreTrainedTokenizer):
         """
         if not new_tokens:
             return 0
-        
+
         added = 0
         for token in new_tokens:
             token_str = str(token)
@@ -130,7 +127,7 @@ class APETokenizer(PreTrainedTokenizer):
     def _tokenize(self, text):
         """
         Tokenizes the input text into merged tokens using the learned vocabulary.
-        Implements a greedy longest-match strategy (APE inference).
+        Implements a greedy longest-match strategy.
 
         Args:
             text (str): The input text to tokenize.
@@ -148,7 +145,7 @@ class APETokenizer(PreTrainedTokenizer):
                 if possible_match in self.vocab:
                     match = possible_match
                     break
-            
+
             if match:
                 tokens.append(match)
                 i += len(match)
@@ -232,7 +229,7 @@ class APETokenizer(PreTrainedTokenizer):
 
     def _train(self, corpus, max_vocab_size=None, min_freq_for_merge=None):
         """
-        Executes the APE training algorithm
+        Executes the training algorithm.
 
         It pre-tokenizes the corpus, then iteratively merges the most frequent adjacent pairs
         until the target vocabulary size is reached or no more pairs satisfy the minimum frequency.
@@ -248,8 +245,8 @@ class APETokenizer(PreTrainedTokenizer):
             min_freq_for_merge = self.min_freq_for_merge
 
         # Preprocessing: Tokenize and count word frequencies upfront
-        LOGGER.info(f"Starting tokenization training on {len(corpus)} sequences...")
-        print("Pretokenizing corpus...", end="\r")
+        LOGGER.info(f"Starting tokenization training on {len(corpus)} sequences.")
+        print("Pretokenizing corpus.", end="\r")
         words = [word for sentence in corpus for word in self.pre_tokenize(sentence)]
         vocabulary_frequency = defaultdict(int)
         for word in words:
@@ -262,7 +259,7 @@ class APETokenizer(PreTrainedTokenizer):
         iteration = 0
 
         LOGGER.info(
-            f"Starting merge iterations (target vocab size: {max_vocab_size}, min frequency: {min_freq_for_merge})..."
+            f"Starting merge iterations (target vocab size: {max_vocab_size}, min frequency: {min_freq_for_merge})."
         )
 
         while True:
@@ -347,7 +344,7 @@ class APETokenizer(PreTrainedTokenizer):
     ):
         """
         Wrapper method compatible with build_and_save_tokenizer.
-        Accepts a list of strings (SMILES) and trains the APE tokenizer on them.
+        Accepts a list of strings (SMILES) and trains the tokenizer on them.
 
         Args:
             text: List of strings or single string to train on
@@ -364,7 +361,7 @@ class APETokenizer(PreTrainedTokenizer):
         else:
             corpus = text
 
-        LOGGER.info(f"Training APE tokenizer on {len(corpus)} sequences...")
+        LOGGER.info(f"Training Manual SPE tokenizer on {len(corpus)} sequences.")
         self._train(
             corpus,
             max_vocab_size=self.max_vocab_size,
@@ -466,7 +463,7 @@ class APETokenizer(PreTrainedTokenizer):
             "pad_token": self.pad_token,
             "bos_token": self.bos_token,
             "eos_token": self.eos_token,
-            "model_type": "ape_tokenizer",
+            "model_type": "manual_spe",
             "max_vocab_size": self.max_vocab_size,
             "min_freq_for_merge": self.min_freq_for_merge,
         }
@@ -504,7 +501,7 @@ class APETokenizer(PreTrainedTokenizer):
             **kwargs: Additional keyword arguments passed to the constructor.
 
         Returns:
-            APETokenizer: The loaded tokenizer instance.
+            ManualSPE: The loaded tokenizer instance.
 
         Raises:
             FileNotFoundError: If `vocab.json` is missing.

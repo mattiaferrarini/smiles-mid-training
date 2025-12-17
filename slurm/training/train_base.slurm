@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=gemma_ddp_trl
+#SBATCH --job-name=TrainGemma_Base
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
 #SBATCH --time=12:00:00
@@ -10,13 +10,13 @@
 #SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH -A a131
 
+# Check GPU state before starting
+# srun --ntasks=$SLURM_NTASKS --ntasks-per-node=$SLURM_NTASKS_PER_NODE bash -c 'nvidia-smi'
+
 export ENV_NAME=ml4science
 
 # Activate conda
-source ~/miniconda3/etc/profile.d/conda.sh 
-
-
-# Activate conda environment
+source ~/miniconda3/etc/profile.d/conda.sh
 conda activate "$ENV_NAME"
 
 # Ensure the GPU version of PyTorch is installed
@@ -50,10 +50,6 @@ export PYTHONWARNINGS="ignore"
 export HF_HOME="/iopsstor/scratch/cscs/$USER/cache/huggingface"
 export HF_DATASETS_CACHE="/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 
-# WandB settings (uncomment if using WandB)
-# export WANDB_API_KEY=$(grep WANDB_API_KEY .env | cut -d '=' -f 2)
-# export WANDB_PROJECT="slurm"
-
 # Create needed folders
 mkdir -p /iopsstor/scratch/cscs/$USER/logs
 mkdir -p /iopsstor/scratch/cscs/$USER/jobreports
@@ -66,7 +62,7 @@ export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLUR
 
 # Training settings
 if [ -z "$CONFIG_PATH" ]; then
-    export CONFIG_PATH=configs/default_trl.yaml
+    export CONFIG_PATH=configs/training/base.yaml
 fi
 
 # Extract config values for dynamic naming
@@ -94,11 +90,7 @@ export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
 # Run the training with jobreport
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py train-model --config "$CONFIG_PATH" --output-path "$OUTPUT_DIR"
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" -m main train-model -c "$CONFIG_PATH" -o "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"
-
-
-
-

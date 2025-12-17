@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=instruction_tuning
+#SBATCH --job-name=InstructionTuning
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
 #SBATCH --time=3:00:00
@@ -44,7 +44,6 @@ export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
 export CONFIG_PATH="configs/instructions/instruction.yaml"
-#export MODEL_PATH="/capstor/store/cscs/swissai/a131/ML4Science/mattia/finetuning/base_finetuning_1212555"
 export MODEL_PATH="/iopsstor/scratch/cscs/lprunotto/finetuning/train_hybrid_elementaromatics_elementwise_1227483"
 
 srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py instruction-tuning --config "$CONFIG_PATH" --model-path "$MODEL_PATH"

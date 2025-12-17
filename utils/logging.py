@@ -23,7 +23,7 @@ def get_logger(name=None):
 
     Args:
         name (str, optional): Name of the logger. If None, the root logger is returned
-    
+
     Returns:
         logging.Logger: Configured logger instance
     """

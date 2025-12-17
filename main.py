@@ -204,8 +204,13 @@ def run_fertility_eval_command(
         file_okay=False,
         dir_okay=True,
     ),
-): 
-    evaluate_tokenizers_fertility(str(registry_path), str(tokenizers_folder), str(dataset_path), str(output_folder))
+):
+    evaluate_tokenizers_fertility(
+        str(registry_path),
+        str(tokenizers_folder),
+        str(dataset_path),
+        str(output_folder),
+    )
 
 
 @app.command("embeddings-eval")
@@ -253,7 +258,7 @@ def evaluate_embeddings_command(
         smiles_col=smiles_col,
         label_col=label_col,
         output_path=output_path,
-        plot_title=plot_title
+        plot_title=plot_title,
     )
 
 

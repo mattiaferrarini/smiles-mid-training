@@ -4,8 +4,6 @@ import re
 import json
 import time
 
-from matplotlib.style import context
-
 # Load Periodic Table for Element Name validation
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PERIODIC_TABLE_PATH = os.path.join(BASE_DIR, "json", "periodic_table.json")
@@ -187,10 +185,48 @@ EXCLUDE_WORDS = {
     "UV",
     "at",
     # False Positives Blacklist
-    "BIS", "BWB", "CISCO", "COOKBOOK", "CV", "FON", "HH", "HNH", "IP", "ISBN",
-    "NOS", "NSF", "PPO", "SH", "SI", "SS", "UPS", "UNKNOWN", "WHY", "WWI",
-    "US", "UK", "U.S", "W.H", "II", "III", "IV", "VI", "VII", "VIII", "IX",
-    "[HAW93]", "B/c", "C-2", "C-4", "Sc1", "SS1", "SS2", "SS3", "SS4", "SS5", "SS6"
+    "BIS",
+    "BWB",
+    "CISCO",
+    "COOKBOOK",
+    "CV",
+    "FON",
+    "HH",
+    "HNH",
+    "IP",
+    "ISBN",
+    "NOS",
+    "NSF",
+    "PPO",
+    "SH",
+    "SI",
+    "SS",
+    "UPS",
+    "UNKNOWN",
+    "WHY",
+    "WWI",
+    "US",
+    "UK",
+    "U.S",
+    "W.H",
+    "II",
+    "III",
+    "IV",
+    "VI",
+    "VII",
+    "VIII",
+    "IX",
+    "[HAW93]",
+    "B/c",
+    "C-2",
+    "C-4",
+    "Sc1",
+    "SS1",
+    "SS2",
+    "SS3",
+    "SS4",
+    "SS5",
+    "SS6",
 }
 
 # Map of Ambiguous Formulas -> Required previous word (lowercase)
@@ -206,7 +242,7 @@ AMBIGUOUS_FORMULAS = {
 def is_smiles(token, previous_word=None, USE_LLM=False, context=None, model=None):
     """
     It determines whether a given token is a valid SMILES string based on regex rules and optional LLM classification.
-    
+
     Args:
         token (str): The token to evaluate.
         previous_word (str, optional): The word preceding the token in the text, used for context.
@@ -234,15 +270,14 @@ def is_smiles(token, previous_word=None, USE_LLM=False, context=None, model=None
     # Exclude patterns like SS1, SS2.1, SC5.1 (Sections/Codes)
     if re.match(r"^(SS|SC)\d+(\.\d+)*$", clean_token):
         return False
-    
+
     # Exclude Roman Numerals (II, III, IV, VI, etc.)
     if re.match(r"^(II|III|IV|VI|VII|VIII|IX)$", clean_token):
         return False
-    
+
     # Exclude Roman Numerals in parentheses (e.g. (IV), (IX))
     if re.search(r"\((?:I{1,3}|IV|VI{0,3}|IX)\)", clean_token):
         return False
-
 
     # Rule: Must contain at least one capital letter OR one number
     if not (re.search(r"[A-Z]", clean_token) or re.search(r"\d", clean_token)):
@@ -252,15 +287,14 @@ def is_smiles(token, previous_word=None, USE_LLM=False, context=None, model=None
     if clean_token[0].isdigit():
         return False
 
-
     if USE_LLM and model and len(clean_token) <= 6:
         try:
             time.sleep(1.5)
             prompt = (
                 f"Role: You are a strict chemical entity classifier.\n"
                 f"Task: Determine if the 'Target Token' below is a valid SMILES string or Chemical Formula acting as a molecule identifier in the given context.\n\n"
-                f"Context: \"...{context}...\"\n"
-                f"Target Token: \"{clean_token}\"\n\n"
+                f'Context: "...{context}..."\n'
+                f'Target Token: "{clean_token}"\n\n'
                 f"Rules:\n"
                 f"1. YES if it is a SMILES string (e.g., 'c1ccccc1', 'C(=O)O') or a specific chemical formula (e.g., 'H2SO4', 'CH4') used to denote a substance.\n"
                 f"2. NO if it is an English word (e.g., 'At', 'Is', 'No', 'Us').\n"
@@ -278,7 +312,7 @@ def is_smiles(token, previous_word=None, USE_LLM=False, context=None, model=None
                 if "NO" in answer:
                     return False
                 # If answer is unclear, fall through to standard rules
-        except Exception as e:
+        except Exception:
             # If LLM fails, silently fall back to regex rules
             pass
 
@@ -375,7 +409,7 @@ def annotate_smiles(text, USE_LLM=False, model=None):
         context = None
         if USE_LLM:
             start_index = max(0, i - 7)
-            end_index = min(len(tokens), i + 3) 
+            end_index = min(len(tokens), i + 3)
             context_tokens = tokens[start_index:end_index]
             context = " ".join(context_tokens)
         # Check if the token (or stripped version) is a SMILES

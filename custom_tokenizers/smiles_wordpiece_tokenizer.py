@@ -1,8 +1,3 @@
-"""
-Optimized APE (Atom Pair Encoding) tokenizer using HuggingFace's fast BPE implementation.
-This replaces the slow custom BPE training with tokenizers library for significant speedup.
-"""
-
 import os
 import json
 from pathlib import Path
@@ -13,15 +8,13 @@ from tokenizers import models, pre_tokenizers, trainers, Tokenizer
 LOGGER = get_logger(__name__)
 
 
-class APEHFTokenizer(PreTrainedTokenizerFast):
+class SmilesWordPieceTokenizer(PreTrainedTokenizerFast):
     """
-    Fast APE tokenizer using HuggingFace's optimized BPE implementation.
-    Compatible with build_tokenizer.py and assemble_tokenizer.py workflows.
+    Modified SMILES Pair Encoding tokenizer using HuggingFace's WordPiece implementation.
     """
 
     vocab_files_names = {
-        "vocab_file": "vocab.json",
-        "merges_file": "merges.txt",
+        "vocab_file": "vocab.txt",
         "tokenizer_file": "tokenizer.json",
     }
     model_input_names = ["input_ids", "attention_mask"]
@@ -39,7 +32,6 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
     def __init__(
         self,
         vocab_file=None,
-        merges_file=None,
         tokenizer_file=None,
         unk_token="[UNK]",
         pad_token="[PAD]",
@@ -49,31 +41,29 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
         **kwargs,
     ):
         """
-        Initializes the APEWordPieceTokenizer.
-
-        This constructor handles two scenarios:
-        1. Loading a pretrained tokenizer if `tokenizer_file` or `vocab_file` is provided.
-        2. Initializing a fresh, untrained WordPiece model if no files are provided.
+        Initializes the tokenizer.
 
         Args:
-            vocab_file (str, optional): Path to the vocabulary JSON file.
-            tokenizer_file (str, optional): Path to the full tokenizer JSON file (preferred).
+            vocab_file (str, optional): Path to a JSON file containing the vocabulary mapping.
+            tokenizer_file (str, optional): Path to a tokenizer.json file.
             unk_token (str): The unknown token. Defaults to "[UNK]".
             pad_token (str): The padding token. Defaults to "[PAD]".
             bos_token (str): The beginning of sequence token. Defaults to "[BOS]".
             eos_token (str): The end of sequence token. Defaults to "[EOS]".
-            config (dict, optional): A dictionary containing tokenizer configuration parameters
+            config (dict, optional): A dictionary containing tokenizer configuration parameters.
             **kwargs: Additional keyword arguments passed to `PreTrainedTokenizerFast`.
         """
         # Get config parameters
-        self.max_vocab_size = (
-            config["tokenizer"]["params"].get("max_vocab_size", 20000)
-            if config
-            else 20000
-        )
-        self.min_freq_for_merge = (
-            config["tokenizer"]["params"].get("min_freq_for_merge", 2) if config else 2
-        )
+        if config and isinstance(config, dict) and "tokenizer" in config:
+            self.max_vocab_size = config["tokenizer"]["params"].get(
+                "max_vocab_size", 20000
+            )
+            self.min_freq_for_merge = config["tokenizer"]["params"].get(
+                "min_freq_for_merge", 2
+            )
+        else:
+            self.max_vocab_size = kwargs.get("max_vocab_size", 20000)
+            self.min_freq_for_merge = kwargs.get("min_freq_for_merge", 2)
 
         # If loading from files
         if tokenizer_file and os.path.exists(tokenizer_file):
@@ -85,15 +75,9 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
                 eos_token=eos_token,
                 **kwargs,
             )
-        elif (
-            vocab_file
-            and merges_file
-            and os.path.exists(vocab_file)
-            and os.path.exists(merges_file)
-        ):
+        elif vocab_file and os.path.exists(vocab_file):
             super().__init__(
                 vocab_file=vocab_file,
-                merges_file=merges_file,
                 unk_token=unk_token,
                 pad_token=pad_token,
                 bos_token=bos_token,
@@ -101,8 +85,8 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
                 **kwargs,
             )
         else:
-            # Initialize with BPE model for training
-            tokenizer_object = Tokenizer(models.BPE())
+            # Initialize with WordPiece model for training
+            tokenizer_object = Tokenizer(models.WordPiece(unk_token=unk_token))
 
             # Set pre-tokenizer using built-in Split pattern for SMILES
             tokenizer_object.pre_tokenizer = pre_tokenizers.Split(
@@ -137,23 +121,21 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
         save_vocabulary=False,
     ):
         """
-        Train the BPE tokenizer on SMILES data using HuggingFace's fast implementation.
+        Train the WordPiece tokenizer on SMILES data using HuggingFace's fast implementation.
 
         Args:
             text: List of SMILES strings or single SMILES string
             append_to_existing_vocabulary: Not used, kept for compatibility
             vocab_path: Not used, kept for compatibility
             save_vocabulary: Not used, kept for compatibility
-
-        Returns:
-            Dict[str, int]: The dictionary mapping tokens to their IDs after training.
         """
         LOGGER.info(
-            f"Training APE-HF tokenizer with vocab_size={self.max_vocab_size}, min_frequency={self.min_freq_for_merge}..."
+            f"Training SmilesWordPieceTokenizer with vocab_size={self.max_vocab_size}, min_frequency={self.min_freq_for_merge}."
         )
 
-        # Initialize BPE Tokenizer with SMILES pre-tokenizer
-        tokenizer = Tokenizer(models.BPE())
+        # Initialize WordPiece Tokenizer with SMILES pre-tokenizer
+        unk_token = self.unk_token if self.unk_token else "[UNK]"
+        tokenizer = Tokenizer(models.WordPiece(unk_token=unk_token))
         tokenizer.pre_tokenizer = pre_tokenizers.Split(
             pattern=self.get_pretokenization_pattern(),
             behavior="isolated",
@@ -170,13 +152,13 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
         # Filter duplicates and None
         special_tokens = list(set([t for t in special_tokens if t]))
 
-        # Create BPE trainer with APE parameters
-        trainer = trainers.BpeTrainer(
+        # Create WordPiece trainer with parameters
+        trainer = trainers.WordPieceTrainer(
             vocab_size=self.max_vocab_size,
             min_frequency=self.min_freq_for_merge,
             special_tokens=special_tokens,
             show_progress=True,
-            initial_alphabet=[],  # Let BPE discover the alphabet from pre-tokenized units
+            continuing_subword_prefix="##",  # Standard WordPiece prefix for continuation tokens
         )
 
         # Handle both single string and list of strings
@@ -185,7 +167,7 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
         else:
             iterator = text
 
-        LOGGER.info(f"Training on {len(iterator)} SMILES sequences...")
+        LOGGER.info(f"Training on {len(iterator)} SMILES sequences.")
         tokenizer.train_from_iterator(iterator, trainer=trainer)
 
         # Update the underlying tokenizer
@@ -228,7 +210,7 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
         save_directory = Path(save_directory)
         save_directory.mkdir(parents=True, exist_ok=True)
 
-        # Save the full tokenizer
+        # Save the full tokenizer (includes vocab and config)
         super().save_pretrained(str(save_directory), **kwargs)
 
         # Also save explicit config for compatibility
@@ -238,7 +220,7 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
             "pad_token": self.pad_token,
             "bos_token": self.bos_token,
             "eos_token": self.eos_token,
-            "model_type": "ape_hf_tokenizer",
+            "model_type": "smiles_wordpiece_tokenizer",
             "max_vocab_size": self.max_vocab_size,
             "min_freq_for_merge": self.min_freq_for_merge,
         }
@@ -247,7 +229,7 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
         with open(config_file, "w", encoding="utf-8") as f:
             json.dump(config_dict, f, indent=4)
 
-        LOGGER.info(f"APE-HF tokenizer saved in {save_directory}")
+        LOGGER.info(f"SmilesWordPieceTokenizer saved in {save_directory}")
         return str(save_directory / "tokenizer.json"), str(config_file)
 
     @classmethod
@@ -263,44 +245,38 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
             **kwargs: Additional keyword arguments passed to the constructor.
 
         Returns:
-            APEWordPieceTokenizer: The loaded tokenizer instance.
+            SmilesWordPieceTokenizer: The loaded tokenizer instance.
 
         Raises:
             FileNotFoundError: If `tokenizer.json` and `vocab.json` are not found.
         """
         pretrained_directory = Path(pretrained_directory)
 
+        # Load config if exists to ensure we get custom parameters
+        config_file = pretrained_directory / "tokenizer_config.json"
+        if config_file.is_file():
+            with open(config_file, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            # Add config parameters to kwargs if not already present
+            for key, value in config.items():
+                if key not in kwargs:
+                    kwargs[key] = value
+
         # Try loading tokenizer.json first (full serialization)
         tokenizer_file = pretrained_directory / "tokenizer.json"
         if tokenizer_file.is_file():
             return super().from_pretrained(str(pretrained_directory), **kwargs)
 
-        # Fallback to vocab + merges
-        vocab_file = pretrained_directory / "vocab.json"
-        merges_file = pretrained_directory / "merges.txt"
+        # Fallback to vocab.txt
+        vocab_file = pretrained_directory / "vocab.txt"
 
-        if not vocab_file.is_file() or not merges_file.is_file():
+        if not vocab_file.is_file():
             raise FileNotFoundError(
                 f"Could not find tokenizer files in {pretrained_directory}. "
-                f"Expected either tokenizer.json or both vocab.json and merges.txt"
+                f"Expected either tokenizer.json or vocab.txt"
             )
 
-        # Load config if exists
-        config_file = pretrained_directory / "tokenizer_config.json"
-        config = {}
-        if config_file.is_file():
-            with open(config_file, "r", encoding="utf-8") as f:
-                config = json.load(f)
-
-        return cls(
-            vocab_file=str(vocab_file),
-            merges_file=str(merges_file),
-            unk_token=config.get("unk_token", "[UNK]"),
-            pad_token=config.get("pad_token", "[PAD]"),
-            bos_token=config.get("bos_token", "[BOS]"),
-            eos_token=config.get("eos_token", "[EOS]"),
-            **kwargs,
-        )
+        return cls(vocab_file=str(vocab_file), **kwargs)
 
     @property
     def vocab_size(self):
@@ -314,7 +290,8 @@ class APEHFTokenizer(PreTrainedTokenizerFast):
         """
         Reset to a fresh BPE model with special tokens
         """
-        tokenizer_object = Tokenizer(models.BPE())
+        unk_token = self.unk_token if self.unk_token else "[UNK]"
+        tokenizer_object = Tokenizer(models.WordPiece(unk_token=unk_token))
         tokenizer_object.pre_tokenizer = pre_tokenizers.Split(
             pattern=self.get_pretokenization_pattern(),
             behavior="isolated",

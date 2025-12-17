@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=Benchmark
+#SBATCH --job-name=TrainGemma_BaseAnnotations
 #SBATCH --ntasks-per-node=4
 #SBATCH --cpus-per-task=64
 #SBATCH --time=12:00:00
 #SBATCH --partition=normal
-#SBATCH --nodes=2
+#SBATCH --nodes=16
 #SBATCH --gres=gpu:4
 #SBATCH --output=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
 #SBATCH --error=/iopsstor/scratch/cscs/%u/logs/%x_%j.log
@@ -60,9 +60,25 @@ mkdir -p "/iopsstor/scratch/cscs/$USER/cache/huggingface/datasets"
 export JOBREPORT=/users/$USER/jobreport
 export PROFILING_FOLDER=/iopsstor/scratch/cscs/$USER/jobreports/jobreport_${SLURM_JOB_ID}
 
-# Settings
-export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/benchmarks/"
-export MODEL_PATH="/users/monti/smiles-mid-training/results_gemma_strict/checkpoint-783/"
+# Training settings
+if [ -z "$CONFIG_PATH" ]; then
+    export CONFIG_PATH=configs/training/base_annotations.yaml
+fi
+
+# Extract config values for dynamic naming
+TOKENIZER_TYPE=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['tokenizer']['type'])")
+CHEM_TYPE=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['tokenizer'].get('chem_type', 'none'))")
+EMBEDDING_INIT=$(python3 -c "import yaml; print(yaml.safe_load(open('$CONFIG_PATH'))['tokenizer'].get('embedding_initialization', 'default'))")
+
+# Construct Job Name
+if [ "$TOKENIZER_TYPE" == "base" ] || [ "$TOKENIZER_TYPE" == "hybrid" ]; then
+    TOKENIZER_NAME="${TOKENIZER_TYPE}_${CHEM_TYPE}"
+else
+    TOKENIZER_NAME="$TOKENIZER_TYPE"
+fi
+
+export JOB_NAME="train_${TOKENIZER_NAME}_${EMBEDDING_INIT}"
+export OUTPUT_DIR="/iopsstor/scratch/cscs/$USER/finetuning/${JOB_NAME}_${SLURM_JOB_ID}"
 
 # Get master host address
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
@@ -73,8 +89,8 @@ export MASTER_PORT=$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0
 export PYTHON_EXEC=$(which python)
 echo "Using Python at: $PYTHON_EXEC"
 
-# Run benchmarks
-srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" main.py run-chembench --model-path "$MODEL_PATH" --output-path "$OUTPUT_DIR"
+# Run the training with jobreport
+srun $JOBREPORT monitor -o "$PROFILING_FOLDER" -- "$PYTHON_EXEC" -m main train-model -c "$CONFIG_PATH" -o "$OUTPUT_DIR"
 
 # Print report
 $JOBREPORT print "$PROFILING_FOLDER"

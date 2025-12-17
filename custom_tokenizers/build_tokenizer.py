@@ -114,9 +114,7 @@ def build_tokenizer(config_path):
                 f"Using portion_of_data={portion}. Reduced dataset to {num_rows} rows."
             )
 
-        LOGGER.info(
-            f"Building and saving tokenizer to {full_output_dir} ..."
-        )
+        LOGGER.info(f"Building and saving tokenizer to {full_output_dir} ...")
 
         build_and_save_tokenizer(
             TokenizerClass=tokenizerclass,

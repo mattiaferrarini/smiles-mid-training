@@ -91,7 +91,7 @@ def create_vocabulary(
     Args:
         text (str or list[str]): The input text corpus
         _tokenize (callable): A function that takes a string and returns a list of tokens
-        append_to_existing_vocabulary (bool, optional): If True, attempts to load 
+        append_to_existing_vocabulary (bool, optional): If True, attempts to load
             an existing vocabulary from `vocab_path` before adding new tokens
         vocab_path (str, optional): Path to load existing vocabulary from if appending
         save_vocabulary (bool, optional): Unused flag kept for interface compatibility

@@ -80,7 +80,7 @@ def main():
 
     # Configure logging to write to file
     logging.basicConfig(
-        filename=OUTPUT_FILE, level=logging.INFO, format="%(message)s", filemode="w"
+        filename=OUTPUT_FILE, level=logging.INFO, format="%(message)s", filemode="w", force=True
     )
 
 

@@ -7,7 +7,7 @@ import time
 from matplotlib.style import context
 
 # Load Periodic Table for Element Name validation
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PERIODIC_TABLE_PATH = os.path.join(BASE_DIR, "json", "periodic_table.json")
 
 ELEMENT_NAME_MAP = {}

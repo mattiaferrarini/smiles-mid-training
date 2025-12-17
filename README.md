@@ -53,7 +53,13 @@ scp -r smiles-mid-training clariden:/desired/path/on/CSCS
 ```
 
 ### Environment Variables (`.env`)
-To perform most major tasks, 
+Some API keys are needed in order to access the model on HuggingFace and log runs on Wandb. Create a `.env` file and add your keys.The expected content of the file is available in `.env.local` and shown below.
+
+```
+HF_TOKEN="your_huggingface_token"
+WANDB_API_KEY="your_wandb_key_here"
+WANDB_PROJECT="your_wandb_project_name_here"
+```
 
 ### Conda Environment
 The SLURM scripts assume an environment named `ml4science` with all the necessary packages installed
@@ -66,7 +72,7 @@ bash Miniconda3-latest-Linux-aarch64.sh
 source ~/.bashrc
 ```
 
-2. Create the Environment
+2. Create the Environment and Install Requirements
 ```bash
 source ~/miniconda3/etc/profile.d/conda.sh
 conda create -n ml4science --override-channels -c conda-forge python=3.12 -y
@@ -162,12 +168,12 @@ scancel [JOBID]
 
 ### Tokenization
 
-We implement specialized tokenizers to better represent molecular strings.For detailed implementation and usage, refer to the `custom_tokenizers/` folder.
+We implement specialized tokenizers to better represent molecular strings. For detailed implementation and usage, refer to the `custom_tokenizers/` folder.
 
 
-The special tokenizers are applied exclusively to the smiles formula, that are between the tags [START_SMILES] and [END_SMILES]. The rest of the text is tokenized with Gemma 3 BaseTokenizer.
+The special tokenizers are applied exclusively to the SMILES formula, that are between the tags [START_SMILES] and [END_SMILES]. The rest of the text is tokenized with Gemma 3 BaseTokenizer.
 
-In order to use any tokenizer different from the base one to tokenize the smiles string, its vocabulary has to be built first. It is built either running `build_tokenizer.slurm` with the desired tokenizer in the field `['tokenizer']['chem_type']` of `configs/tokenizers/tokenizer` or running the dedicated slurm file. The script iterates on the whole dataset and builds a json with the tokenizer vocabulary. These vocabularies are already built and saved in `json/tokenizers`.
+In order to use any tokenizer different from the base one to tokenize the SMILES string, its vocabulary has to be built first. It is built either running `build_tokenizer.slurm` with the desired tokenizer in the field `['tokenizer']['chem_type']` of `configs/tokenizers/tokenizer` or running the dedicated slurm file. The script iterates on the whole dataset and builds a json with the tokenizer vocabulary. These vocabularies are already built and saved in `json/tokenizers`.
 
 In order to choose the right tokenizer when the model is trained, the right config file has to be passed to the "training.py" file. The ready-to-use configs are in the folder `configs/tokenizers` and are passed to the file setting `['tokenizer']['chem_type']` as desired in the file `configs/training/defaul_trl.yaml`.
 
@@ -177,7 +183,6 @@ In order to choose the right tokenizer when the model is trained, the right conf
 We implement three different embedding strategies for the embedding of the tokens created by the chemical tokenization.
 For detailed implementation and usage, refer to the `embedding/` folder.
 In order to choose the embedding strategy for the training, it has to be specified in `['tokenizer']['embedding_initialization']` in the file `configs/training/default_trl.yaml`.
-
 
 
 ### Continued Pre-Training (CPT)

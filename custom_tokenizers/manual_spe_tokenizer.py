@@ -13,7 +13,7 @@ LOGGER = get_logger(__name__)
 class ManualSPETokenizer(PreTrainedTokenizer):
     """
     Non-optimized implementation of SPE to allow custom merge scoring.
-    Adapted and simplified from both https://github.com/mikemayuare/apetokenizer 
+    Adapted and simplified from both https://github.com/mikemayuare/apetokenizer
     and https://github.com/XinhaoLi74/SmilesPE.
     """
 

@@ -8,6 +8,7 @@ This folder contains scripts to inspect text datasets, validate SMILES chemical 
 2. **Inspect Performance:** Compare the Regex-based annotation against an existing Ground Truth to find False Positives/Negatives.
 3. **Filter Noise:** Automatically exclude common English words (e.g., "FISH", "BOOKS") that resemble chemical formulas.
 4. **Generate Datasets:** Save a clean, re-annotated version of the dataset for training.
+5. **Annotation-Only Mode:** Run the annotation pipeline on raw text without requiring ground truth labels for comparison.
 
 ## Script Structure
 * **`create_smiles.py`**: The core library containing regex patterns and chemical logic.
@@ -25,6 +26,7 @@ Create or edit the configuration file at `configs/utils/inspect_config.yaml`.
 * Set `whole_dataset: true` for full processing or `false` for a quick test.
 * Set `save_new_dataset: true` if you want to save the output.
 * Set `use_llm: true` if you want the choice of difficult strings to be done by a llm
+* Set `compare_to_gt: true` if you want to compare your text with ground truth 
 
 ### 2. Run 
 To run directly on a login node for testing:

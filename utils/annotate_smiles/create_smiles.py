@@ -19,9 +19,6 @@ try:
 except Exception as e:
     logging.warning(f"Could not load periodic table from {PERIODIC_TABLE_PATH}: {e}")
 
-# Regex for SMILES validation
-# Matches organic subset, common elements, brackets, and special chars
-# Excludes common English words that might match
 ELEMENTS = [
     "H",
     "He",
@@ -195,8 +192,7 @@ EXCLUDE_WORDS = {
     "[HAW93]", "B/c", "C-2", "C-4", "Sc1", "SS1", "SS2", "SS3", "SS4", "SS5", "SS6"
 }
 
-# Map of Ambiguous Formulas -> Required previous word (lowercase)
-# This solves the problem of acronyms like IF (Intermediate Frequency) vs IF (Iodine Fluoride)
+# It solves the problem of acronyms like IF (Intermediate Frequency) vs IF (Iodine Fluoride)
 AMBIGUOUS_FORMULAS = {
     "IF": ["fluoride"],  # Iodine Fluoride
     "HF": ["fluoride", "acid"],  # Hydrogen Fluoride / Hydrofluoric Acid
@@ -336,7 +332,7 @@ def is_smiles(token, previous_word=None, USE_LLM=False, context=None, model=None
 
     # Single Element Context Check
     # If the token is exactly one element symbol (e.g. "Na", "O", "C")
-    # It is valid ONLY if the previous word corresponds to the element name (e.g. "Sodium")
+    # It is valid only if the previous word corresponds to the element name (e.g. "Sodium")
     if clean_token in ELEMENT_NAME_MAP:
         if previous_word:
             # Clean previous word (remove parens etc)
@@ -372,7 +368,7 @@ def is_smiles(token, previous_word=None, USE_LLM=False, context=None, model=None
     for t in tokens:
         if t in AROMATICS_SET:
             has_aromatic = True
-        # Check if token is a special char, digit, or bracket (anything that is NOT an element or aromatic letter)
+        # Check if token is a special char, digit, or bracket (anything that is not an element or aromatic letter)
         if re.match(P_SPECIAL, t) or re.match(P_BRACKET, t):
             has_special_or_digit = True
 
@@ -413,7 +409,6 @@ def annotate_smiles(text, USE_LLM=False, model=None):
             context = " ".join(context_tokens)
         # Check if the token (or stripped version) is a SMILES
         # "C[C@]12...," -> "[START_SMILES]C[C@]12...[END_SMILES],"
-        # Modified regex to NOT strip brackets [] as they are essential for SMILES (e.g. [Na+])
         match = re.match(r"^([^\w\s\[\]]*)(.*?)([^\w\s\[\]]*)$", token)
         if match:
             prefix, core, suffix = match.groups()

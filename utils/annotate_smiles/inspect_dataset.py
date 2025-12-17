@@ -10,7 +10,15 @@ from dotenv import load_dotenv
 from create_smiles import annotate_smiles
 
 def load_config(config_path):
-    """Carica il file YAML di configurazione."""
+    """
+    It loads a YAML configuration file.
+
+    Args:
+        config_path (str): Path to the YAML configuration file.
+
+    Returns:
+        dict: The loaded configuration.
+    """
     with open(config_path, 'r') as file:
         return yaml.safe_load(file)
 
@@ -18,6 +26,10 @@ load_dotenv()
 
 
 def main():
+    """
+    It inspects a dataset of text entries, annotates SMILES strings using regex or an LLM-regex logic,
+    it compares the results to annotations in a pre-annotated dataset.
+    """
 
     parser = argparse.ArgumentParser(description="Inspect Dataset Script")
     parser.add_argument(
@@ -47,6 +59,7 @@ def main():
     ORIGINAL_TEXT_FIELD = config.get("original_text_field", "text_annotated_v1")
     ORIGINAL_ANNOTATED_FIELD = config.get("original_annotated_field", "text_annotated_v1tags")
     ORIGINAL_SMILES_COUNT_FIELD = config.get("original_smiles_count_field", "text_annotated_v1_smiles_count")
+    COMPARE_TO_GT = config.get("compare_to_gt", True)
 
     # LLM Configuration 
     if USE_LLM:
@@ -62,12 +75,8 @@ def main():
             # Using 'gemini-1.5-flash' for speed and cost-efficiency
             model = genai.GenerativeModel(GEMINI_MODEL_NAME)
 
-    # Hardcoded variables
-    DATA_FOLDER = (
-        "/capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1"
-    )
-    DATA_FILES_PATTERN = "**/*.arrow"
-    OUTPUT_FILE = f"dataset_head_{'whole' if WHOLE_DATASET else 'sample'}_{'llm' if USE_LLM else 'no_llm'}.txt"
+    if not OUTPUT_FILE:
+        OUTPUT_FILE = f"dataset_head_{'whole' if WHOLE_DATASET else 'sample'}_{'llm' if USE_LLM else 'no_llm'}.txt"
 
     # Configure logging to write to file
     logging.basicConfig(
@@ -145,42 +154,47 @@ def main():
                 new_data_buffer.append(new_row)
 
             # Extraction and Comparison
-            gt_smiles = set(s.strip() for s in re.findall(r"\[START_SMILES\](.*?)\[END_SMILES\]", annotated_text))
             my_smiles = set(s.strip() for s in re.findall(r"\[START_SMILES\](.*?)\[END_SMILES\]", new_text))
 
-            tp = len(gt_smiles.intersection(my_smiles))
-            fp_set = my_smiles - gt_smiles
-            fn_set = gt_smiles - my_smiles
-            fp = len(fp_set)
-            fn = len(fn_set)
-            
-            total_tp += tp
-            total_fp += fp
-            total_fn += fn
+            if COMPARE_TO_GT:
+                gt_smiles = set(s.strip() for s in re.findall(r"\[START_SMILES\](.*?)\[END_SMILES\]", annotated_text))
 
-            all_false_positives.update(fp_set)
+                tp = len(gt_smiles.intersection(my_smiles))
+                fp_set = my_smiles - gt_smiles
+                fn_set = gt_smiles - my_smiles
+                fp = len(fp_set)
+                fn = len(fn_set)
+                
+                total_tp += tp
+                total_fp += fp
+                total_fn += fn
 
-            all_false_positives.update(fp_set)
-            all_false_negatives.update(fn_set)
+
+                all_false_positives.update(fp_set)
+                all_false_negatives.update(fn_set)
 
             if not WHOLE_DATASET:
                 logging.info(f"--- ROW {i+1} ---")
-                logging.info(f"Original Smiles Count (Variable): {annotated_smiles_count}")
+                if COMPARE_TO_GT:
+                    logging.info(f"Original Smiles Count (Variable): {annotated_smiles_count}")
                 logging.info(f"My Regex Smiles Count: {my_smiles_count}")
-                
-                logging.info(f"False Positives (My Regex found, but not in GT): {list(fp_set)}")
-                logging.info(f"False Negatives (In GT, but My Regex missed): {list(fn_set)}")
-                
-                logging.info("Confusion Matrix:")
-                logging.info(f"\t\tPred +\tPred -")
-                logging.info(f"Act +\t{tp}\t{fn}")
-                logging.info(f"Act -\t{fp}\tX")
+                if COMPARE_TO_GT:
+                    logging.info(f"False Positives (My Regex found, but not in GT): {list(fp_set)}")
+                    logging.info(f"False Negatives (In GT, but My Regex missed): {list(fn_set)}")
+                    
+                    logging.info("Confusion Matrix:")
+                    logging.info(f"\t\tPred +\tPred -")
+                    logging.info(f"Act +\t{tp}\t{fn}")
+                    logging.info(f"Act -\t{fp}\tX")
 
-                logging.info("-" * 20)
-                logging.info("Original Text Annotated V1:")
-                logging.info(original_text)
-                logging.info("-" * 20)
-                logging.info("My New Version (with [START_SMILES] tags):")
+                    logging.info("-" * 20)
+                    logging.info("Original Text Annotated V1:")
+                    logging.info(original_text)
+                    logging.info("-" * 20)
+                else:
+                    logging.info("Original Text")
+                    logging.info(original_text)
+                logging.info("New Version (with [START_SMILES] tags):")
                 logging.info(new_text)
                 logging.info("\n")
                 logging.info("=" * 50)
@@ -203,29 +217,29 @@ def main():
                 print(f"FAILED to save dataset: {e}")
                 logging.error(f"FAILED to save dataset: {e}")
 
+        if COMPARE_TO_GT:
+            logging.info("=" * 50)
+            logging.info("TOP 1000 MOST FREQUENT FALSE POSITIVES (Predicted but NOT in GT):")
+            logging.info("Count\tString")
+            # most_common returns a list of (element, count) tuples
+            for smi, freq in all_false_positives.most_common(1000):
+                logging.info(f"{freq}\t{smi}")
+            
+            # Added logic to print False Negatives sorted by frequency
+            logging.info("=" * 50)
+            logging.info("TOP 1000 MOST FREQUENT FALSE NEGATIVES (In GT but MISSED by Regex):")
+            logging.info("Count\tString")
+            for smi, freq in all_false_negatives.most_common(1000):
+                logging.info(f"{freq}\t{smi}")
 
-        logging.info("=" * 50)
-        logging.info("TOP 1000 MOST FREQUENT FALSE POSITIVES (Predicted but NOT in GT):")
-        logging.info("Count\tString")
-        # most_common returns a list of (element, count) tuples
-        for smi, freq in all_false_positives.most_common(1000):
-            logging.info(f"{freq}\t{smi}")
-        
-        # Added logic to print False Negatives sorted by frequency
-        logging.info("=" * 50)
-        logging.info("TOP 1000 MOST FREQUENT FALSE NEGATIVES (In GT but MISSED by Regex):")
-        logging.info("Count\tString")
-        for smi, freq in all_false_negatives.most_common(1000):
-            logging.info(f"{freq}\t{smi}")
 
+            logging.info("=" * 50)
 
-        logging.info("=" * 50)
-
-        logging.info("FINAL AGGREGATED CONFUSION MATRIX:")
-        logging.info(f"\t\tPred +\tPred -")
-        logging.info(f"Act +\t{total_tp}\t{total_fn}")
-        logging.info(f"Act -\t{total_fp}\tX")
-        logging.info("=" * 50)
+            logging.info("FINAL AGGREGATED CONFUSION MATRIX:")
+            logging.info(f"\t\tPred +\tPred -")
+            logging.info(f"Act +\t{total_tp}\t{total_fn}")
+            logging.info(f"Act -\t{total_fp}\tX")
+            logging.info("=" * 50)
 
         print(f"Done. {count} rows written to {OUTPUT_FILE}")
 

@@ -94,7 +94,7 @@ class BPETokenizer(PreTrainedTokenizerFast):
                 eos_token=eos_token,
                 **kwargs
             )
-    
+
         self.max_vocab_size = (
             config["tokenizer"]["params"].get("max_vocab_size", 2000)
             if config

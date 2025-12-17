@@ -88,7 +88,11 @@ def main():
 
     # Configure logging to write to file
     logging.basicConfig(
-        filename=OUTPUT_FILE, level=logging.INFO, format="%(message)s", filemode="w", force=True
+        filename=OUTPUT_FILE,
+        level=logging.INFO,
+        format="%(message)s",
+        filemode="w",
+        force=True,
     )
 
     print(f"Starting inspection. Output will be saved to {OUTPUT_FILE}")

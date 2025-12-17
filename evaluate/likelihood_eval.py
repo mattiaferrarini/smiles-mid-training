@@ -13,7 +13,7 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 from utils.config import load_config
 from torch.nn import CrossEntropyLoss
-from utils.create_smiles import annotate_smiles
+from utils.annotate_smiles.create_smiles import annotate_smiles
 from datasets import load_dataset, load_from_disk
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from custom_tokenizers.hybrid_tokenizer import HybridTokenizer

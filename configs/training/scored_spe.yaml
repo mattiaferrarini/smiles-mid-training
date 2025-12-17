@@ -60,7 +60,7 @@ tokenizer:
   type: hybrid
   chem_type: scored_spe 
   embedding_initialization: random
-  output_dir: /users/$USER/json/tokenizers/scored_spe
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers/scored_spe
   special_tokens:
     start_smiles: "[START_SMILES]"
     end_smiles: "[END_SMILES]"

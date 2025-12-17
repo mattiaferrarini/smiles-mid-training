@@ -60,7 +60,7 @@ tokenizer:
   type: hybrid
   chem_type: kmer 
   embedding_initialization: random
-  output_dir: /users/$USER/json/tokenizers/kmer
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers/kmer
   special_tokens:
     start_smiles: "[START_SMILES]"
     end_smiles: "[END_SMILES]"

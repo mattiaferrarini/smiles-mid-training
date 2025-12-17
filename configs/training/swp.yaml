@@ -60,7 +60,7 @@ tokenizer:
   type: hybrid
   chem_type: swp 
   embedding_initialization: random
-  output_dir: /users/$USER/json/tokenizers/swp
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers/swp
   special_tokens:
     start_smiles: "[START_SMILES]"
     end_smiles: "[END_SMILES]"

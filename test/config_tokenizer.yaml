@@ -1,0 +1,15 @@
+job:
+  name: element_tokenizer
+
+data:
+  data_folder: data/sample_dataset
+  data_files_pattern: "**/*.arrow" 
+  text_field: text_annotated_v1tags
+  count_field: text_annotated_v1tags_smiles_count
+  portion_of_data: 1.0
+
+tokenizer:
+  type: hybrid
+  chem_type: element
+  output_dir: test/json/tokenizers
+  output_subdir_name: element

@@ -272,10 +272,6 @@ def is_smiles(token, previous_word=None, USE_LLM=False, context=None, model=None
     if re.fullmatch(r"\(?(?:I{1,3}|IV|VI{0,3}|IX)\)?", clean_token):
         return False
 
-    # Exclude Roman Numerals in parentheses (e.g. (IV), (IX))
-    if re.search(r"\((?:I{1,3}|IV|VI{0,3}|IX)\)", clean_token):
-        return False
-
     # they are not smiles
     if clean_token.endswith(("(s)", "(l)", "(g)", "(aq)", ".s")):
         return False

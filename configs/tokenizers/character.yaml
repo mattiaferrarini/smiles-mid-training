@@ -1,0 +1,15 @@
+job:
+  name: character_tokenizer
+
+data:
+  data_folder: /capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1
+  data_files_pattern: "**/*.arrow" 
+  text_field: text_annotated_v1tags
+  count_field: text_annotated_v1tags_smiles_count
+  portion_of_data: 1.0
+
+tokenizer:
+  type: hybrid
+  chem_type: character
+  output_dir: /users/$USER/smiles-mid-training/json/tokenizers
+  output_subdir_name: character

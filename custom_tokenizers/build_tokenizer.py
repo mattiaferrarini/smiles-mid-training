@@ -1,78 +1,61 @@
-import argparse
-import os
-import re
-from pathlib import Path
-from datasets import load_dataset
-from character_tokenizer import CharacterTokenizer 
-from element_tokenizer import ElementTokenizer
-from elementallparenthesis_tokenizer import ElementAllParenthesisTokenizer
-from elementaromatics_tokenizer import ElementAromaticsTokenizer
-from elementnoparenthesis_tokenizer import ElementNoParenthesisTokenizer
-from elementrings_tokenizer import ElementRingsTokenizer
-from selfies_tokenizer import SelfiesTokenizer
-from smiles_bpe_tokenizer import SmilesBpeTokenizer
-from ape_tokenizer import APETokenizer
-from ape_hf_tokenizer import APEHFTokenizer
-from ape_wp_hf_tokenizer import APEWPHFTokenizer
-from chem_ape import ChemAPETokenizer
-
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.helpers import build_and_save_tokenizer
+import os
+import re
+
+from datasets import load_dataset
 from utils.config import load_config
+from utils.logging import get_logger
+from utils.helpers import build_and_save_tokenizer
+from .registry import TOKENIZER_CLASSES
 
-TOKENIZER_CLASSES = {
-    "character": CharacterTokenizer,
-    "element": ElementTokenizer,
-    "elementallparenthesis": ElementAllParenthesisTokenizer,
-    "elementaromatics": ElementAromaticsTokenizer,
-    "elementnoparenthesis": ElementNoParenthesisTokenizer,
-    "elementrings": ElementRingsTokenizer,
-    "selfies": SelfiesTokenizer,
-    "smiles_bpe": SmilesBpeTokenizer,
-    "ape": APETokenizer,
-    "ape_hf": APEHFTokenizer,
-    "ape_wp_hf": APEWPHFTokenizer,
-    "chem_ape": ChemAPETokenizer,
-}
+LOGGER = get_logger(__name__)
 
 
-def main():
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Build tokenizer")
-    parser.add_argument("--output-dir", type=str, required=True, help="Directory where to save the tokenizer")
-    parser.add_argument("--config", type=str, default="configs/tokenizer.yaml", help="Path to config file")
+def build_tokenizer(config_path):
+    """
+    Builds and saves a tokenizer based on the provided configuration
 
-    args = parser.parse_args()
+    Args:
+        output_dir (str): Directory where to save the tokenizer
+        config_path (str): Path to the configuration file
+    """
+    config = load_config(config_path)
 
-    config = load_config(args.config)
+    LOGGER.info("Configuration loaded")
+    LOGGER.debug(f"Config: {config}")
 
-    print("Configuration Loaded:")
-    print(config)
-
-    print("Loading dataset...")
+    LOGGER.info("Loading dataset...")
     dataset = load_dataset(
-        "arrow", 
-        data_dir=config["data"]["data_folder"],
+        "arrow",
+        data_dir=os.path.expandvars(config["data"]["data_folder"]),
         data_files=config["data"].get("data_files_pattern", "**/*.arrow"),
         split="train",
     )
 
+    base_output_dir = os.path.expandvars(config["tokenizer"]["output_dir"])
     text_field = config["data"]["text_field"]
-    base_output_dir = args.output_dir
-    tokenizer_type = config["tokenizer"]["type"] 
+    tokenizer_type = config["tokenizer"]["type"]
 
     # Handle case where type is 'base' or 'hybrid'
-    if (tokenizer_type == "base" or tokenizer_type == "hybrid") and "chem_type" in config["tokenizer"]:
-        print(f"[INFO] Tokenizer type is '{tokenizer_type}'. Switching to build chemical tokenizer defined in 'chem_type': {config['tokenizer']['chem_type']}")
+    if (
+        tokenizer_type == "base" or tokenizer_type == "hybrid"
+    ) and "chem_type" in config["tokenizer"]:
+        LOGGER.info(
+            f"Tokenizer type is '{tokenizer_type}'. Switching to build chemical tokenizer defined in 'chem_type': {config['tokenizer']['chem_type']}"
+        )
         tokenizer_type = config["tokenizer"]["chem_type"]
 
     Path(base_output_dir).mkdir(parents=True, exist_ok=True)
 
-    output_subdir_name = config["tokenizer"].get("output_subdir_name", f"{tokenizer_type}_tokenizer")
-    print(f"Output directory for tokenizer: {base_output_dir}/{output_subdir_name}")
+    output_subdir_name = config["tokenizer"].get("output_subdir_name") or ""
+    full_output_dir = os.path.join(base_output_dir, output_subdir_name)
+    os.makedirs(full_output_dir, exist_ok=True)
+
+    LOGGER.info(f"Output directory for tokenizer: {full_output_dir}")
 
     if tokenizer_type in TOKENIZER_CLASSES:
         tokenizerclass = TOKENIZER_CLASSES[tokenizer_type]
@@ -80,64 +63,65 @@ def main():
         raise ValueError(f"Unknown tokenizer type: {tokenizer_type}")
 
     if tokenizerclass:
-        print(f"--- Starting build for tokenizer type: {tokenizer_type} ---")
-        
-        print("Filtering dataset to extract chemical segments (flattening to one SMILES per row)...")
-        
+        LOGGER.info(f"Starting build for tokenizer type: {tokenizer_type}")
+
+        LOGGER.info(
+            "Filtering dataset to extract chemical segments (flattening to one SMILES per row)..."
+        )
+
         def extract_smiles_batch(batch):
             extracted_smiles = []
             pattern = r"\[START_SMILES\](.*?)\[END_SMILES\]"
-            
+
             for text in batch[text_field]:
                 if text:
                     matches = re.findall(pattern, text, re.DOTALL)
                     valid_matches = [m.strip() for m in matches if m.strip()]
                     extracted_smiles.extend(valid_matches)
-            
+
             return {text_field: extracted_smiles}
 
-        print("\n[DEBUG] First 3 original examples:")
+        LOGGER.debug("First 3 original examples:")
         for i in range(min(3, len(dataset))):
-            print(f"Example {i}: {dataset[i][text_field]}...")
+            LOGGER.debug(f"Example {i}: {dataset[i][text_field]}...")
 
         safe_num_proc = min(8, os.cpu_count() or 1)
-        print(f"[INFO] Using num_proc={safe_num_proc} for processing")
+        LOGGER.info(f"Using num_proc={safe_num_proc} for processing")
 
         chem_dataset = dataset.map(
-            extract_smiles_batch, 
-            batched=True, 
+            extract_smiles_batch,
+            batched=True,
             batch_size=10000,
             remove_columns=dataset.column_names,
-            num_proc=safe_num_proc 
+            num_proc=safe_num_proc,
         )
 
-        print(f"\n[DEBUG] New dataset size: {len(chem_dataset)} rows.")
-        print("[DEBUG] First 5 extracted SMILES:")
+        LOGGER.debug(f"New dataset size: {len(chem_dataset)} rows.")
+        LOGGER.debug("First 5 extracted SMILES:")
         for i in range(min(5, len(chem_dataset))):
-            print(f"Row {i}: {chem_dataset[i][text_field]}")
-        
+            LOGGER.debug(f"Row {i}: {chem_dataset[i][text_field]}")
+
         if len(chem_dataset) == 0:
-            print("\n[WARNING] !!! NO CHEMICAL DATA FOUND !!!")
+            LOGGER.warning("No chemical data found")
         else:
-            print(f"\n[INFO] Successfully extracted {len(chem_dataset)} SMILES segments.")
+            LOGGER.info(f"Successfully extracted {len(chem_dataset)} SMILES segments.")
 
         if "portion_of_data" in config["data"]:
             portion = config["data"]["portion_of_data"]
             num_rows = int(len(chem_dataset) * portion)
             chem_dataset = chem_dataset.select(range(num_rows))
-            print(f"\n[INFO] Using portion_of_data={portion}. Reduced dataset to {num_rows} rows.")
+            LOGGER.info(
+                f"Using portion_of_data={portion}. Reduced dataset to {num_rows} rows."
+            )
 
-        print(f"\nBuilding and saving tokenizer to {base_output_dir}/{output_subdir_name} ...")
+        LOGGER.info(f"Building and saving tokenizer to {full_output_dir} ...")
 
         build_and_save_tokenizer(
             TokenizerClass=tokenizerclass,
-            dataset=chem_dataset, 
-            text_field=text_field, 
-            output_dir=f"{base_output_dir}/{output_subdir_name}",
-            config=config
+            dataset=chem_dataset,
+            text_field=text_field,
+            output_dir=full_output_dir,
+            config=config,
         )
 
-        print("\nTokenizer built and saved.")
-
-if __name__ == "__main__":
-    main()
+        LOGGER.info("Tokenizer built and saved")

@@ -1,0 +1,19 @@
+
+# Dataset settings
+data_folder: "/capstor/store/cscs/swissai/a131/ML4Science/datasets/CEMB_v1tags_HF_FineWeb-chemV1"
+data_files_pattern: "**/*.arrow"
+compare_to_gt: false
+original_text_field: "text_annotated_v1"
+original_annotated_field: "text_annotated_v1tags"
+original_smiles_count_field: "text_annotated_v1_smiles_count"
+whole_dataset: true
+random_seed: 42
+
+# Output settings
+output_log_file: "dataset_head_inspection.txt"
+save_new_dataset: false
+new_dataset_output_path: "processed_dataset_output"
+
+# LLM settings
+use_llm: false
+gemini_model: "gemini-1.5-flash"

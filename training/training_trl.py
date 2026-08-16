@@ -3,34 +3,28 @@ import sys
 from pathlib import Path
 import yaml
 
-# Add parent directory to Python path to enable imports from utils
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import transformers
 import transformers.utils.import_utils
 import transformers.trainer
 
+
 def patched_check_safety():
     """
     Completely bypass the torch.load security check.
-    Required because checking optimizer.pt (legacy pickle) causes a crash 
+    Required because checking optimizer.pt (legacy pickle) causes a crash
     in newer transformers versions.
     """
     return
+
 
 transformers.utils.import_utils.check_torch_load_is_safe = patched_check_safety
 transformers.trainer.check_torch_load_is_safe = patched_check_safety
 
 from accelerate import Accelerator, InitProcessGroupKwargs
 from trl import SFTTrainer, SFTConfig
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    DataCollatorForLanguageModeling,
-    Trainer,
-    TrainingArguments,
-    TrainerCallback
-)
+from transformers import AutoModelForCausalLM, TrainerCallback
 
 from datasets import load_dataset, interleave_datasets
 import datasets
@@ -38,19 +32,18 @@ from dotenv import load_dotenv
 import wandb
 import torch
 import torch.distributed as dist
-import time
 from utils.logging import get_logger
-import argparse
-from utils.config import load_config
 from datetime import timedelta
 import json
 from custom_tokenizers.assemble_tokenizer import assemble_tokenizer
 from embeddings.embedding_initializer import initialize_embeddings as init_embeddings_fn
 
+import math
 
 LOGGER = get_logger(__name__)
 
 START_SMILES, END_SMILES = "[START_SMILES]", "[END_SMILES]"
+
 
 class MultiGPUResourcesCallback(TrainerCallback):
     def __init__(self, log_steps):
@@ -61,10 +54,22 @@ class MultiGPUResourcesCallback(TrainerCallback):
         # Print memory usage for every rank to ensure load balancing
         if torch.cuda.is_available():
             rank = int(os.environ.get("RANK", 0))
-            if state.global_step % self.log_steps == 0: 
-                current_mem = torch.cuda.memory_allocated() / (1024 ** 3)
-                max_mem = torch.cuda.max_memory_allocated() / (1024 ** 3)
-                print(f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)")
+            if state.global_step % self.log_steps == 0:
+                current_mem = torch.cuda.memory_allocated() / (1024**3)
+                max_mem = torch.cuda.max_memory_allocated() / (1024**3)
+                LOGGER.info(
+                    f"[Step {state.global_step}] Rank {rank}: {current_mem:.2f} GB (Max: {max_mem:.2f} GB)"
+                )
+
+
+class PerplexityCallback(TrainerCallback):
+    def on_evaluate(self, args, state, control, metrics, **kwargs):
+        if "eval_loss" in metrics:
+            try:
+                metrics["eval_perplexity"] = math.exp(metrics["eval_loss"])
+                LOGGER.info(f"Perplexity: {metrics['eval_perplexity']:.2f}")
+            except Exception:
+                metrics["eval_perplexity"] = float("inf")
 
 
 def prepare_training_args(config, output_dir):
@@ -74,7 +79,9 @@ def prepare_training_args(config, output_dir):
     args_dict = {
         "output_dir": output_dir,
         "per_device_train_batch_size": config["training"]["per_device_batch_size"],
-        "gradient_accumulation_steps": config["training"]["gradient_accumulation_steps"],
+        "gradient_accumulation_steps": config["training"][
+            "gradient_accumulation_steps"
+        ],
         "num_train_epochs": config["training"]["epochs"],
         "warmup_ratio": config["training"]["warmup_ratio"],
         "lr_scheduler_type": config["training"]["lr_scheduler_type"],
@@ -97,14 +104,18 @@ def prepare_training_args(config, output_dir):
             "dispatch_batches": False,
         },
         "dataloader_drop_last": True,
-        # --- FIX CRITICO QUI SOTTO: max_seq_length ---
         "max_length": config["training"]["max_length"],
         "include_tokens_per_second": True,
         "include_num_input_tokens_seen": True,
+        "eval_strategy": config["training"].get("eval_strategy", "no"),
+        "eval_steps": config["training"].get("eval_steps", None),
+        "per_device_eval_batch_size": config["training"].get(
+            "per_device_eval_batch_size", 1
+        ),
     }
 
     if config["tokenizer"]["type"] == "hybrid":
-        args_dict["dataset_num_proc"] = 1 
+        args_dict["dataset_num_proc"] = 1
 
     if strategy == "fsdp":
         # FSDP-specific arguments
@@ -113,15 +124,19 @@ def prepare_training_args(config, output_dir):
         fsdp_inner_config = fsdp_conf["config"].copy()
 
         if "fsdp_transformer_layer_cls_to_wrap" in fsdp_inner_config:
-            args_dict["fsdp_transformer_layer_cls_to_wrap"] = fsdp_inner_config.pop("fsdp_transformer_layer_cls_to_wrap")
-            LOGGER.info(f"FSDP Wrapping Layer: {args_dict['fsdp_transformer_layer_cls_to_wrap']}")
-        
+            args_dict["fsdp_transformer_layer_cls_to_wrap"] = fsdp_inner_config.pop(
+                "fsdp_transformer_layer_cls_to_wrap"
+            )
+            LOGGER.info(
+                f"FSDP Wrapping Layer: {args_dict['fsdp_transformer_layer_cls_to_wrap']}"
+            )
+
         if args_dict["gradient_checkpointing"]:
             fsdp_inner_config["activation_checkpointing"] = True
-        args_dict["gradient_checkpointing"] = False       
- 
+        args_dict["gradient_checkpointing"] = False
+
         args_dict["fsdp_config"] = fsdp_inner_config
-        
+
         LOGGER.info(f"Training Strategy: FSDP ({args_dict['fsdp']})")
     elif strategy == "ddp":
         # DDP-specific arguments
@@ -131,7 +146,7 @@ def prepare_training_args(config, output_dir):
         LOGGER.info(f"Training Strategy: DDP (Backend: {args_dict['ddp_backend']})")
     else:
         raise ValueError(f"Unsupported distributed strategy: {strategy}")
-    
+
     return SFTConfig(**args_dict)
 
 
@@ -141,32 +156,32 @@ def build_tokenizer(config):
 
 
 def initialize_embeddings(model, tokenizer, config):
-    initialization_strategy = config["tokenizer"].get("embedding_initialization", "default")
-    
-    # DEBUG: Verifica che tipo di tokenizer abbiamo
-    print(f"[DEBUG] initialize_embeddings called with tokenizer type: {type(tokenizer)}")
+    initialization_strategy = config["tokenizer"].get(
+        "embedding_initialization", "default"
+    )
+
+    LOGGER.debug(f"initialize_embeddings called with tokenizer type: {type(tokenizer)}")
     if hasattr(tokenizer, "chem_tokenizer"):
-        print("[DEBUG] Tokenizer is Hybrid (chem_tokenizer found).")
+        LOGGER.debug("Tokenizer is Hybrid (chem_tokenizer found).")
     else:
-        print("[DEBUG] Tokenizer appears to be standard (NO chem_tokenizer found).")
+        LOGGER.debug("Tokenizer appears to be standard (NO chem_tokenizer found).")
 
     if initialization_strategy == "random":
-        print("Initializing embeddings with strategy: random")
+        LOGGER.info("Initializing embeddings with strategy: random")
         model.resize_token_embeddings(len(tokenizer))
     else:
-        print(f"Initializing embeddings with strategy: {initialization_strategy}")
-        # Chiamata alla funzione esterna
+        LOGGER.info(f"Initializing embeddings with strategy: {initialization_strategy}")
         model = init_embeddings_fn(model, tokenizer, strategy=initialization_strategy)
-        
+
     return model
 
 
 def prepare_dataset(tokenizer, config, accelerator):
     # Load and process main dataset
     dataset = load_dataset(
-        "arrow", 
-        data_dir=config["data"]["data_folder"], 
-        data_files=config["data"]["data_files_pattern"], 
+        "arrow",
+        data_dir=os.path.expandvars(config["data"]["data_folder"]),
+        data_files=config["data"]["data_files_pattern"],
         split="train",
         # streaming=True
     ).select_columns([config["data"]["text_field"]])
@@ -178,31 +193,37 @@ def prepare_dataset(tokenizer, config, accelerator):
     dataset = dataset.select_columns(["text"])
 
     # Select a portion of the dataset if specified
-    print(f"Original dataset size: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")
+    LOGGER.info(f"Original dataset size: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")
     portion_of_data_used = config["data"]["portion_of_data_used"]
     if portion_of_data_used < 1.0:
         total_samples = dataset.num_rows
         samples_to_use = int(total_samples * portion_of_data_used)
         dataset = dataset.select(range(samples_to_use))
-    print(f"Dataset size after selecting {portion_of_data_used*100}%: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB")
+    LOGGER.info(
+        f"Dataset size after selecting {portion_of_data_used*100}%: {(dataset.data.nbytes / (1024 ** 3)):.2f} GB"
+    )
 
     # Determine number of fineweb chunks to use
     SIZE_OF_CHUNK_GB = 2.15
     probabilities = config["data_mix"]["probabilities"]
 
-    dataset_gb = dataset.data.nbytes / (1024 ** 3)
-    num_chunks = round(dataset_gb / SIZE_OF_CHUNK_GB * probabilities[0] / probabilities[1])
+    dataset_gb = dataset.data.nbytes / (1024**3)
+    num_chunks = round(
+        dataset_gb / SIZE_OF_CHUNK_GB * probabilities[0] / probabilities[1]
+    )
     subset_path = config["data_mix"]["external_subset_name"]
-    print(f"Using {num_chunks} chunks from FineWeb based on dataset size of {dataset_gb:.2f} GB")
+    LOGGER.info(
+        f"Using {num_chunks} chunks from FineWeb based on dataset size of {dataset_gb:.2f} GB"
+    )
 
     fineweb_data_files = []
     FILES_PER_MAIN_INDEX = config["data_mix"]["files_per_main_index"]
 
     for i in range(num_chunks):
-        main_index = i // FILES_PER_MAIN_INDEX  
-        sub_index = i % FILES_PER_MAIN_INDEX   
-        main_part = f"{main_index:03d}"  
-        sub_part = f"{sub_index:05d}"    
+        main_index = i // FILES_PER_MAIN_INDEX
+        sub_index = i % FILES_PER_MAIN_INDEX
+        main_part = f"{main_index:03d}"
+        sub_part = f"{sub_index:05d}"
         file_name = f"{subset_path}/{main_part}_{sub_part}.parquet"
         fineweb_data_files.append(file_name)
 
@@ -212,7 +233,7 @@ def prepare_dataset(tokenizer, config, accelerator):
         data_files=fineweb_data_files,
         # streaming=True
     ).select_columns(["text"])
-    
+
     # dataset = dataset.select(range(100000))
     # fineweb = fineweb.select(range(100000))
 
@@ -227,26 +248,26 @@ def prepare_dataset(tokenizer, config, accelerator):
             examples["text"],
             truncation=True,
             max_length=config["training"]["max_length"],
-            return_overflowing_tokens=True, # Split long samples
-            stride=config["training"]["stride_size"], # Overlap between chunks
-            padding=False
+            return_overflowing_tokens=True,  # Split long samples
+            stride=config["training"]["stride_size"],  # Overlap between chunks
+            padding=False,
         )
-        
+
         if "overflow_to_sample_mapping" in outputs:
             outputs.pop("overflow_to_sample_mapping")
-            
+
         return outputs
-    
+
     # Process dataset with main process
     with accelerator.main_process_first():
-        # Tokenize datasets 
+        # Tokenize datasets
         fineweb = fineweb.map(
             tokenize_and_split,
             batched=True,
             num_proc=config["training"]["preprocessing_num_workers"],
             batch_size=config["training"]["preprocessing_batch_size"],
-            remove_columns=fineweb.column_names, 
-            load_from_cache_file=True
+            remove_columns=fineweb.column_names,
+            load_from_cache_file=True,
         )
 
         dataset = dataset.map(
@@ -254,25 +275,34 @@ def prepare_dataset(tokenizer, config, accelerator):
             batched=True,
             num_proc=config["training"]["preprocessing_num_workers"],
             batch_size=config["training"]["preprocessing_batch_size"],
-            remove_columns=dataset.column_names, 
-            load_from_cache_file=True
+            remove_columns=dataset.column_names,
+            load_from_cache_file=True,
         )
 
-        print("Tokenized samples in dataset:", len(dataset))
-        print("Tokenized samples in fineweb:", len(fineweb))
-        print("Total tokenized samples:", len(dataset) + len(fineweb))
+        LOGGER.info(f"Tokenized samples in dataset: {len(dataset)}")
+        LOGGER.info(f"Tokenized samples in fineweb: {len(fineweb)}")
+        LOGGER.info(f"Total tokenized samples: {len(dataset) + len(fineweb)}")
 
     # Re-enable logging
     if not accelerator.is_main_process:
-        datasets.utils.logging.enable_progress_bar()   
+        datasets.utils.logging.enable_progress_bar()
 
     combined_dataset = interleave_datasets(
         [fineweb, dataset],
         probabilities=probabilities,
-        seed=config["training"]["seed"], 
-        stopping_strategy="first_exhausted"
+        seed=config["training"]["seed"],
+        stopping_strategy="first_exhausted",
     )
-    return combined_dataset
+
+    eval_ratio = config["training"].get("eval_ratio", 0.0)
+    if eval_ratio > 0:
+        LOGGER.info(f"Splitting dataset with eval_ratio={eval_ratio}")
+        split_dataset = combined_dataset.train_test_split(
+            test_size=eval_ratio, seed=config["training"]["seed"]
+        )
+        return split_dataset["train"], split_dataset["test"]
+
+    return combined_dataset, None
 
 
 def get_last_checkpoint(output_dir):
@@ -291,8 +321,8 @@ def get_last_checkpoint(output_dir):
 def train(config, accelerator, output_dir):
     # Check for existing checkpoints
     checkpoint_dir = get_last_checkpoint(output_dir)
-    
-    # Load tokenizer   
+
+    # Load tokenizer
     tokenizer = build_tokenizer(config)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -303,47 +333,49 @@ def train(config, accelerator, output_dir):
         config["model"]["name"],
         dtype=torch.bfloat16,
         attn_implementation="flash_attention_2",
-        device_map=None # Let accelerator handle device mapping
+        device_map=None,  # Let accelerator handle device mapping
     )
-   
+
     # Explicitly sync model config with tokenizer
     model.config.pad_token_id = tokenizer.pad_token_id
     model.config.eos_token_id = tokenizer.eos_token_id
     if hasattr(model, "generation_config"):
         model.generation_config.pad_token_id = tokenizer.pad_token_id
         model.generation_config.eos_token_id = tokenizer.eos_token_id
-    
+
     # Initialize new tokens' embeddings
     model = initialize_embeddings(model, tokenizer, config)
-    
+
     # Enable gradient checkpointing
     if config["training"]["gradient_checkpointing"]:
         model.gradient_checkpointing_enable()
 
     # Prepare dataset
-    combined_dataset = prepare_dataset(tokenizer, config, accelerator)
-    
+    # combined_dataset = prepare_dataset(tokenizer, config, accelerator)
+    train_dataset, eval_dataset = prepare_dataset(tokenizer, config, accelerator)
+
     # Training arguments
     training_args = prepare_training_args(config, output_dir)
-    resource_logging_steps = config["training"]["resource_logging_steps"]    
+    resource_logging_steps = config["training"]["resource_logging_steps"]
 
-    # Initialize Trainer
     trainer = SFTTrainer(
         model=model,
         args=training_args,
-        train_dataset=combined_dataset,
-        processing_class=tokenizer, # pass tokenizer here
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        processing_class=tokenizer,
         callbacks=[
             MultiGPUResourcesCallback(resource_logging_steps),
-        ]
-    )    
+            PerplexityCallback(),
+        ],
+    )
 
     # Train the model (resume from checkpoint if available)
     if checkpoint_dir:
-        print(f"Resuming training from checkpoint: {checkpoint_dir}")
+        LOGGER.info(f"Resuming training from checkpoint: {checkpoint_dir}")
         trainer.train(resume_from_checkpoint=checkpoint_dir)
     else:
-        print("Starting training from scratch")
+        LOGGER.info("Starting training from scratch")
         trainer.train()
     return trainer
 
@@ -361,7 +393,7 @@ def init_wandb(config):
             "lr": config["training"]["learning_rate"],
             "batch_size": config["training"]["per_device_batch_size"],
             "epochs": config["training"]["epochs"],
-            "data_folder": config["data"]["data_folder"],
+            "data_folder": os.path.expandvars(config["data"]["data_folder"]),
             "text_field": config["data"]["text_field"],
             "num_workers": config["training"]["num_workers"],
         },
@@ -370,7 +402,15 @@ def init_wandb(config):
     return run
 
 
-def train_model(config, output_dir):
+def train_model(config_dict, output_dir):
+    """
+    Main entry point for fine-tuning a model
+    Sets up the environment, accelerator, and runs the training loop
+
+    Args:
+        config_dict (dict): The configuration dictionary
+        output_dir (str): The directory where results will be saved
+    """
     load_dotenv()
 
     if "SLURM_PROCID" in os.environ:
@@ -385,58 +425,44 @@ def train_model(config, output_dir):
     output_dir = str(Path(output_dir).resolve())
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     accelerator.wait_for_everyone()
-    
+
     if accelerator.is_main_process:
         # Save config to output directory in both YAML and JSON formats
         config_output_path_yaml = os.path.join(output_dir, "training_config.yaml")
         with open(config_output_path_yaml, "w") as f:
-            yaml.dump(config, f, default_flow_style=False)
-        print(f"Saved config to {config_output_path_yaml}")
+            yaml.dump(config_dict, f, default_flow_style=False)
+        LOGGER.info(f"Saved config to {config_output_path_yaml}")
 
         config_output_path_json = os.path.join(output_dir, "training_config.json")
         with open(config_output_path_json, "w") as f:
-            json.dump(config, f, indent=4)
-        print(f"Saved config to {config_output_path_json}")
-        
-        print("Starting fine-tuning.")
-        print(f"Distributed: {accelerator.distributed_type}")
-        print(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
-        print(f"Config: {config}")
-        print(f"Output dir: {output_dir}")
-    
+            json.dump(config_dict, f, indent=4)
+        LOGGER.info(f"Saved config to {config_output_path_json}")
+
+        LOGGER.info("Starting fine-tuning.")
+        LOGGER.info(f"Distributed: {accelerator.distributed_type}")
+        LOGGER.info(f"Process: {accelerator.process_index}/{accelerator.num_processes}")
+        LOGGER.info(f"Config: {config_dict}")
+        LOGGER.info(f"Output dir: {output_dir}")
+
     # Initialize wandb
-    if config["training"]["report_to"] == "wandb":
-        run = init_wandb(config)
+    if config_dict["training"]["report_to"] == "wandb":
+        run = init_wandb(config_dict)
 
     # Start training
-    trainer = train(config, accelerator, output_dir)
+    trainer = train(config_dict, accelerator, output_dir)
     LOGGER.info(f"[RANK {int(os.environ.get('RANK', 0))}] Finished training")
-    
+
     # Save final model
-    final_model_dir = f"{output_dir}/final_model" 
+    final_model_dir = f"{output_dir}/final_model"
     trainer.save_model(final_model_dir)
 
     if accelerator.is_main_process:
-        print(f"Saved model to {final_model_dir}")
-    
-    if config["training"]["report_to"] == "wandb":
+        LOGGER.info(f"Saved model to {final_model_dir}")
+
+    if config_dict["training"]["report_to"] == "wandb":
         run.finish()
-    
-    # Ensure group termination    
+
+    # Ensure group termination
     accelerator.wait_for_everyone()
     if dist.is_initialized():
         dist.destroy_process_group()
-
-
-if __name__ == "__main__":
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Fine-tune Gemma model.")
-    parser.add_argument("--config-path", "-c", type=str, required=True)
-    parser.add_argument("--output-dir", "-o", type=str, required=True)
-    args = parser.parse_args()
-
-    config = load_config(args.config_path)
-    output_dir = args.output_dir
-    train_model(config, output_dir)
-
-    

@@ -1,0 +1,75 @@
+[
+    {
+        "name": "Base",
+        "tokenizer": {
+            "type": "base"
+        },
+        "model": {
+            "name": "google/gemma-3-1b-pt"
+        }
+    },
+    {
+        "name": "Character",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "character",
+            "output_subdir_name": "character"
+        }
+    },
+    {
+        "name": "Element",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "element",
+            "output_subdir_name": "element"
+        }
+    },
+    {
+        "name": "BPE",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "bpe",
+            "output_subdir_name": "bpe"
+        }
+    },
+    {
+        "name": "WordPiece",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "wordpiece",
+            "output_subdir_name": "wordpiece"
+        }
+    },
+    {
+        "name": "SMILES Pair Encoding",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "spe",
+            "output_subdir_name": "spe"
+        }
+    },
+    {
+        "name": "Scored SPE",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "scored_spe",
+            "output_subdir_name": "scored_spe"
+        }
+    },
+    {
+        "name": "4-mer",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "kmer",
+            "output_subdir_name": "kmer"
+        }
+    },
+    {
+        "name": "SMILES WordPiece",
+        "tokenizer": {
+            "type": "chem_only",
+            "chem_type": "swp",
+            "output_subdir_name": "swp"
+        }
+    }
+]

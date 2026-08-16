@@ -1,4 +1,4 @@
-# Project 2, Machine Learning (CS433), Fall 2025
+# Novel Tokenization Schemes and Mid-Stage Training for LLM Chemical Knowledge - Machine Learning (CS433), Fall 2025
 
 ## Authors 
 - Mattia Ferrarini (407144)
